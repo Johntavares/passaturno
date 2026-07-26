@@ -39,6 +39,7 @@ interface HeaderNavProps {
   onOpenCloseShift: () => void;
   onOpenEquipmentManager: () => void;
   onOpenOneNoteRoutine?: () => void;
+  onOpenTwoHourReport?: () => void;
   onRefreshData: () => void;
   isRefreshing?: boolean;
   unacceptedCount?: number;
@@ -56,6 +57,7 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
   onOpenCloseShift,
   onOpenEquipmentManager,
   onOpenOneNoteRoutine,
+  onOpenTwoHourReport,
   onRefreshData,
   isRefreshing = false,
   unacceptedCount = 0,
@@ -219,16 +221,27 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
             {/* Separador */}
             <div className="h-6 w-px bg-slate-200/80 dark:bg-slate-700 hidden sm:block" />
 
-            {/* GRUPO 2: Gestão de Turno */}
+            {/* GRUPO 2: Gestão de Turno & Envio de 2h */}
             <div className="flex items-center bg-slate-100/70 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200/80 dark:border-slate-700 gap-1">
+              {onOpenTwoHourReport && (
+                <button
+                  onClick={onOpenTwoHourReport}
+                  title="Gerar e enviar Boletim de Automação de 2 Horas no WhatsApp"
+                  className="inline-flex items-center px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg shadow-sm transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+                >
+                  <Clock className="w-3.5 h-3.5 mr-1.5 stroke-[2.5]" />
+                  Boletim de 2h
+                </button>
+              )}
+
               {onOpenOneNoteRoutine && (
                 <button
                   onClick={onOpenOneNoteRoutine}
-                  title="Checklist do Turno, Equipes e Diagnósticos (OneNote)"
-                  className="inline-flex items-center px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/80 hover:bg-emerald-100 dark:hover:bg-emerald-900 text-emerald-800 dark:text-emerald-200 text-xs font-bold rounded-lg border border-emerald-200 dark:border-emerald-800 transition-all cursor-pointer shadow-2xs"
+                  title="Meu Checklist de Rotina Pessoal (Acompanhamento interno)"
+                  className="inline-flex items-center px-3 py-1.5 bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-lg shadow-xs border border-slate-200/60 dark:border-slate-600 transition-all cursor-pointer"
                 >
-                  <FileSpreadsheet className="w-3.5 h-3.5 mr-1.5 text-emerald-600 dark:text-emerald-400" />
-                  Rotina FMDS
+                  <FileSpreadsheet className="w-3.5 h-3.5 mr-1.5 text-sky-600 dark:text-sky-400" />
+                  Minha Rotina
                 </button>
               )}
 
@@ -237,7 +250,7 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
                 title="Assumir o turno atual ou iniciar novo"
                 className="inline-flex items-center px-3 py-1.5 bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-lg shadow-xs border border-slate-200/60 dark:border-slate-600 transition-all hover:text-sky-700 cursor-pointer"
               >
-                <UserCheck className="w-3.5 h-3.5 mr-1.5 text-sky-600 dark:text-sky-400" />
+                <UserCheck className="w-3.5 h-3.5 mr-1.5 text-slate-500 dark:text-slate-400" />
                 Assumir Turno
               </button>
 
