@@ -1,0 +1,120 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  nome      String
+  email     String   @unique
+  senha     String   @default("passaturno2026")
+  matricula String?  @unique
+  equipe    String   // ex: Automação A, Automação B, CCO
+  cargo     String   // ex: Técnico de Automação, Engenheiro de Automação, Supervisor
+  criadoEm  DateTime @default(now())
+  shifts    Shift[]  @relation("ResponsavelShift")
+}
+
+model Shift {
+  id                             String          @id @default(uuid())
+  equipe                         String          // Automação A, Automação B, Automação C
+  turma                          String?         @default("A") // Turma A, B, C, D
+  monitoramento                  String?         // Nome do monitor/responsável do CCO
+  horarioTurno                   String?         @default("07h às 19h") // ex: 07h às 19h, 19h às 07h
+  responsavelId                  String?
+  responsavel                    User?           @relation("ResponsavelShift", fields: [responsavelId], references: [id])
+  responsavelNome                String
+  data                           String          // YYYY-MM-DD
+  horaInicio                     DateTime        @default(now())
+  horaFim                        DateTime?
+  status                         String          @default("ATIVO") // ATIVO, ENCERRADO
+  observacoes                    String?
+  checklistMalaoStatus           String?         @default("Realizado")
+  checklistMalaoFaltantes        String?
+  checklistMalaoResponsavel      String?
+  solicitacaoMaterialStatus      String?
+  solicitacaoMaterialResponsavel String?
+  anomaliasIdentificadas         String?
+  incidents                      Incident[]
+  handoversSaida                 ShiftHandover[] @relation("TurnoSaida")
+  handoversEntrada                ShiftHandover[] @relation("TurnoEntrada")
+  criadoEm                       DateTime        @default(now())
+}
+
+model Equipment {
+  id               String     @id @default(uuid())
+  tag              String     @unique // ex: CAT-793D-05, EX-5500-01, PR-08
+  nome             String     // ex: Caminhão Fora de Estrada, Escavadeira Hidráulica
+  tipo             String     // Caminhão, Escavadeira, Perfuratriz, Trator, Carregadeira, Motoniveladora, Outros
+  area             String     // Frota Mina, Praça de Carga, Infraestrutura, Usina
+  horimetroOpcional Float?
+  incidents        Incident[]
+  criadoEm         DateTime   @default(now())
+}
+
+model Incident {
+  id                      String          @id @default(uuid())
+  equipmentId             String?
+  equipment               Equipment?      @relation(fields: [equipmentId], references: [id])
+  tag                     String
+  equipamentoNome         String
+  area                    String
+  tipoFalha               String          // Comunicação, PLC, Inversor, Instrumentação, Rede Industrial, Sensor, Supervisório, Outro
+  falha                   String
+  sintoma                 String?
+  dataHoraParada          DateTime
+  dataHoraLiberacao       DateTime?
+  prioridade              String          @default("MEDIA") // BAIXA, MEDIA, ALTA, CRITICA
+  status                  String          @default("EM_ANDAMENTO") // EM_ANDAMENTO, AGUARDANDO, FINALIZADO, PENDENCIA_PROXIMO_TURNO
+  responsavelId           String?
+  responsavel             String
+  solucao                 String?
+  motivoEspera            String?
+  proximaAcao             String?
+  localizacaoAtualOpcional String?
+  observacao              String?
+  shiftId                 String?
+  shift                   Shift?          @relation(fields: [shiftId], references: [id])
+  isPendenciaHerdada      Boolean         @default(false)
+  historico               IncidentHistory[]
+  criadoEm                DateTime        @default(now())
+  atualizadoEm            DateTime        @updatedAt
+}
+
+model IncidentHistory {
+  id         String   @id @default(uuid())
+  incidentId String
+  incident   Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  tipoEvento String   @default("ATUALIZACAO") // ABERTURA, ATUALIZACAO, ALTERACAO_STATUS, SOLUCAO, LIBERACAO, TRANSFERENCIA_TURNO
+  descricao  String
+  usuario    String
+  dataHora   DateTime @default(now())
+}
+
+model ShiftHandover {
+  id                             String   @id @default(uuid())
+  turnoAnteriorId                String
+  turnoAnterior                  Shift    @relation("TurnoSaida", fields: [turnoAnteriorId], references: [id])
+  turnoNovoId                    String?
+  turnoNovo                      Shift?   @relation("TurnoEntrada", fields: [turnoNovoId], references: [id])
+  dataHora                       DateTime @default(now())
+  responsavelSaida               String
+  responsavelEntrada             String?
+  turma                          String?
+  monitoramento                  String?
+  horarioTurno                   String?
+  checklistMalaoStatus           String?
+  checklistMalaoFaltantes        String?
+  checklistMalaoResponsavel      String?
+  solicitacaoMaterialStatus      String?
+  solicitacaoMaterialResponsavel String?
+  anomaliasIdentificadas         String?
+  observacoes                    String?
+  resumoFinalizados              String   // JSON string
+  resumoPendencias               String   // JSON string
+  prioridades                    String   // JSON string
+}
