@@ -43,6 +43,7 @@ export async function PATCH(
       prioridade,
       responsavel,
       observacao,
+      previsaoLiberacao,
       logDescription,
       logUsuario,
     } = body;
@@ -82,6 +83,7 @@ export async function PATCH(
     if (prioridade) updateData.prioridade = prioridade;
     if (responsavel) updateData.responsavel = responsavel;
     if (observacao !== undefined) updateData.observacao = observacao;
+    if (previsaoLiberacao !== undefined) updateData.previsaoLiberacao = previsaoLiberacao;
 
     const updatedIncident = await prisma.incident.update({
       where: { id },

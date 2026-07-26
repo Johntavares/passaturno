@@ -74,6 +74,8 @@ export const NewIncidentModal: React.FC<NewIncidentModalProps> = ({
     'Utilidades'
   ];
 
+  const [previsaoLiberacao, setPrevisaoLiberacao] = useState('');
+
   // Ao digitar a TAG, auto-completar os dados se o equipamento já existir na frota
   useEffect(() => {
     if (!tag) return;
@@ -145,6 +147,7 @@ export const NewIncidentModal: React.FC<NewIncidentModalProps> = ({
           falha,
           sintoma,
           dataHoraParada: new Date(dataHoraParada).toISOString(),
+          previsaoLiberacao: previsaoLiberacao.trim() || null,
           prioridade,
           status,
           responsavel,
@@ -273,14 +276,32 @@ export const NewIncidentModal: React.FC<NewIncidentModalProps> = ({
               </datalist>
             </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Data e Hora da Parada</label>
-              <input
-                type="datetime-local"
-                value={dataHoraParada}
-                onChange={(e) => setDataHoraParada(e.target.value)}
-                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-800 font-mono focus:outline-none focus:border-sky-500"
-              />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Data e Hora da Parada</label>
+                <input
+                  type="datetime-local"
+                  value={dataHoraParada}
+                  onChange={(e) => setDataHoraParada(e.target.value)}
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-800 font-mono focus:outline-none focus:border-sky-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-emerald-700 mb-1">
+                  Previsão de Liberação (ex: 15:30)
+                </label>
+                <input
+                  type="text"
+                  placeholder="ex: 15:30 ou Sem previsão"
+                  value={previsaoLiberacao}
+                  onChange={(e) => setPrevisaoLiberacao(e.target.value)}
+                  spellCheck={false}
+                  data-gramm={false}
+                  autoComplete="off"
+                  className="w-full bg-emerald-50/60 border border-emerald-200 rounded-xl px-3 py-1.5 text-xs text-emerald-900 font-bold focus:outline-none focus:border-emerald-500 shadow-2xs"
+                />
+              </div>
             </div>
           </div>
 

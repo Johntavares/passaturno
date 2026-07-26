@@ -296,8 +296,8 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
         {/* MODO MINIMIZADO (Informações essenciais: Status + Hora da Parada + Ações) */}
         {!isExpanded ? (
           <div className="space-y-2 pt-1 border-t border-slate-100">
-            {/* Status e Tempo Parado */}
-            <div className="flex items-center justify-between text-[11px]">
+            {/* Status, Tempo Parado e Previsão de Liberação */}
+            <div className="flex items-center justify-between text-[11px] flex-wrap gap-1">
               <select
                 value={item.status}
                 onChange={(e) => onStatusChange(item.id, e.target.value as IncidentStatusType)}
@@ -309,10 +309,16 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                 <option value="PENDENCIA_PROXIMO_TURNO">🔵 Pendência Herdada</option>
               </select>
 
-              <span className="text-[11px] font-medium text-slate-600 flex items-center gap-1" title={format(paradaDate, 'dd/MM/yyyy HH:mm')}>
-                <Clock className="w-3 h-3 text-slate-400" />
-                Parado: <strong>{downtimeStr}</strong>
-              </span>
+              <div className="flex items-center gap-2 text-[10px]">
+                <span className="font-semibold text-slate-600 flex items-center gap-1" title={format(paradaDate, 'dd/MM/yyyy HH:mm')}>
+                  <Clock className="w-3 h-3 text-slate-400" />
+                  Parado: <strong>{downtimeStr}</strong>
+                </span>
+
+                <span className="font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                  Prev: <strong>{item.previsaoLiberacao || '---'}</strong>
+                </span>
+              </div>
             </div>
 
             {/* Ícones de Ação Rápida + Botão Detalhes (Expandir) */}
