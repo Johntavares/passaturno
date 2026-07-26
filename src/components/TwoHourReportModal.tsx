@@ -116,24 +116,7 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
       });
     }
 
-    text += `Status de Operação – Diagnóstico de GPS\n`;
-    text += `- Em manutenção: ${equipManutencao || 'Nenhum'}\n`;
-    text += `- Em preventiva: ${equipPreventiva || 'Nenhum'}\n`;
-    text += `- Operando com falha de GPS: ${equipSemGps || 'Nenhum'}\n`;
-    text += `- Código de acidente:\n`;
-    text += `- Parada Com/Sem previsão:\n\n`;
-
-    if (equipSemDespacho) {
-      text += `Observação:\n`;
-      equipSemDespacho.split(',').forEach(e => {
-        if (e.trim()) text += `${e.trim()} - Fora do sistema do Despacho.\n`;
-      });
-      text += `\n`;
-    }
-
-    text += `Todos os demais equipamentos com status verde no gráfico estão operando normalmente e com GPS.`;
-
-    return text;
+    return text.trim();
   };
 
   const handleCopy = () => {
