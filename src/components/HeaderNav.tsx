@@ -38,6 +38,7 @@ interface HeaderNavProps {
   onOpenAssumeShift: () => void;
   onOpenCloseShift: () => void;
   onOpenEquipmentManager: () => void;
+  onOpenOneNoteRoutine?: () => void;
   onRefreshData: () => void;
   isRefreshing?: boolean;
   unacceptedCount?: number;
@@ -54,6 +55,7 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
   onOpenAssumeShift,
   onOpenCloseShift,
   onOpenEquipmentManager,
+  onOpenOneNoteRoutine,
   onRefreshData,
   isRefreshing = false,
   unacceptedCount = 0,
@@ -219,6 +221,17 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
 
             {/* GRUPO 2: Gestão de Turno */}
             <div className="flex items-center bg-slate-100/70 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200/80 dark:border-slate-700 gap-1">
+              {onOpenOneNoteRoutine && (
+                <button
+                  onClick={onOpenOneNoteRoutine}
+                  title="Checklist do Turno, Equipes e Diagnósticos (OneNote)"
+                  className="inline-flex items-center px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/80 hover:bg-emerald-100 dark:hover:bg-emerald-900 text-emerald-800 dark:text-emerald-200 text-xs font-bold rounded-lg border border-emerald-200 dark:border-emerald-800 transition-all cursor-pointer shadow-2xs"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5 mr-1.5 text-emerald-600 dark:text-emerald-400" />
+                  Rotina FMDS
+                </button>
+              )}
+
               <button
                 onClick={onOpenAssumeShift}
                 title="Assumir o turno atual ou iniciar novo"

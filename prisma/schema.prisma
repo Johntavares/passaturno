@@ -23,6 +23,9 @@ model Shift {
   id                             String          @id @default(uuid())
   equipe                         String          // Automação A, Automação B, Automação C
   turma                          String?         @default("A") // Turma A, B, C, D
+  tipoTurno                      String?         @default("Diurno") // Diurno, Noturno
+  escala                         String?         @default("2x3") // 2x3, 4x3, 3x2
+  ausencias                      String?         // ex: Baia (férias)
   monitoramento                  String?         // Nome do monitor/responsável do CCO
   horarioTurno                   String?         @default("07h às 19h") // ex: 07h às 19h, 19h às 07h
   responsavelId                  String?
@@ -33,6 +36,19 @@ model Shift {
   horaFim                        DateTime?
   status                         String          @default("ATIVO") // ATIVO, ENCERRADO
   observacoes                    String?
+
+  // Equipes em campo (OneNote)
+  liderVale                      String?         // ex: Vinicius
+  equipeSonda                    String?         // ex: Valdenir, Gustavo, Vitor
+  equipeContratadas              String?         // ex: Railton (Flanders), Igor (COM3), Marcos e Gustavo (ALCON), Tarcisio (Creare ADM)
+
+  // Checklist FMDS & Rotina Diária (OneNote)
+  fmdsChecklist                  String?         // JSON com estado dos itens de FMDS
+  equipamentosSemDespacho        String?         // ex: EC10, PZ15, PZ20, PZ21, PZ42, PZ43, TT52, TT53, TT81, TT84
+  equipamentosSemGps             String?         // ex: TT57, TT92
+  equipamentosPreventiva         String?         // ex: EC17, PZ02, TT84, TT85
+  equipamentosManutencao         String?         // ex: PZ14, PZ47, TT56
+
   checklistMalaoStatus           String?         @default("Realizado")
   checklistMalaoFaltantes        String?
   checklistMalaoResponsavel      String?
@@ -67,6 +83,8 @@ model Incident {
   falha                   String
   sintoma                 String?
   dataHoraParada          DateTime
+  dataHoraAcionamento     DateTime?       // OneNote: Hora do acionamento
+  previsaoLiberacao       String?         // OneNote: Previsão de liberação (ex: 15:30)
   dataHoraLiberacao       DateTime?
   prioridade              String          @default("MEDIA") // BAIXA, MEDIA, ALTA, CRITICA
   status                  String          @default("EM_ANDAMENTO") // EM_ANDAMENTO, AGUARDANDO, FINALIZADO, PENDENCIA_PROXIMO_TURNO

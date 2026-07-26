@@ -16,6 +16,7 @@ import { WhatsappModal } from '@/components/WhatsappModal';
 import { EquipmentManagerModal } from '@/components/EquipmentManagerModal';
 import { CommentModal } from '@/components/CommentModal';
 import { LoginModal } from '@/components/LoginModal';
+import { OneNoteRoutineModal } from '@/components/OneNoteRoutineModal';
 
 export default function Home() {
   const [incidents, setIncidents] = useState<IncidentType[]>([]);
@@ -29,6 +30,7 @@ export default function Home() {
   const [isAssumeShiftOpen, setIsAssumeShiftOpen] = useState(false);
   const [isCloseShiftOpen, setIsCloseShiftOpen] = useState(false);
   const [isEquipmentManagerOpen, setIsEquipmentManagerOpen] = useState(false);
+  const [isOneNoteRoutineOpen, setIsOneNoteRoutineOpen] = useState(false);
 
   const [selectedTimelineIncident, setSelectedTimelineIncident] = useState<IncidentType | null>(null);
   const [isTimelineOpen, setIsTimelineOpen] = useState(false);
@@ -309,6 +311,7 @@ export default function Home() {
         onOpenAssumeShift={() => setIsAssumeShiftOpen(true)}
         onOpenCloseShift={() => setIsCloseShiftOpen(true)}
         onOpenEquipmentManager={() => setIsEquipmentManagerOpen(true)}
+        onOpenOneNoteRoutine={() => setIsOneNoteRoutineOpen(true)}
         onRefreshData={loadData}
         isRefreshing={isRefreshing}
         unacceptedCount={unacceptedCount}
@@ -510,6 +513,14 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      {/* Modal Rotina FMDS e OneNote */}
+      <OneNoteRoutineModal
+        isOpen={isOneNoteRoutineOpen}
+        onClose={() => setIsOneNoteRoutineOpen(false)}
+        activeShift={activeShift}
+        onShiftUpdated={loadData}
+      />
 
     </div>
   );

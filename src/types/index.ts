@@ -51,6 +51,8 @@ export interface IncidentType {
   falha: string;
   sintoma?: string | null;
   dataHoraParada: string;
+  dataHoraAcionamento?: string | null;
+  previsaoLiberacao?: string | null;
   dataHoraLiberacao?: string | null;
   prioridade: PriorityLevel;
   status: IncidentStatusType;
@@ -72,6 +74,9 @@ export interface ShiftType {
   id: string;
   equipe: string;
   turma?: string | null;
+  tipoTurno?: string | null;
+  escala?: string | null;
+  ausencias?: string | null;
   monitoramento?: string | null;
   horarioTurno?: string | null;
   responsavelId?: string | null;
@@ -81,6 +86,17 @@ export interface ShiftType {
   horaFim?: string | null;
   status: 'ATIVO' | 'ENCERRADO';
   observacoes?: string | null;
+
+  // Equipes e diagnósticos OneNote
+  liderVale?: string | null;
+  equipeSonda?: string | null;
+  equipeContratadas?: string | null;
+  fmdsChecklist?: string | null;
+  equipamentosSemDespacho?: string | null;
+  equipamentosSemGps?: string | null;
+  equipamentosPreventiva?: string | null;
+  equipamentosManutencao?: string | null;
+
   checklistMalaoStatus?: string | null;
   checklistMalaoFaltantes?: string | null;
   checklistMalaoResponsavel?: string | null;
