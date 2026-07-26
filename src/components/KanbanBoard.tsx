@@ -80,9 +80,9 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   // Separar colunas
   const colEmAndamento = filteredIncidents.filter((i) => i.status === 'EM_ANDAMENTO');
   const colAguardando = filteredIncidents.filter((i) => i.status === 'AGUARDANDO');
-  const colFinalizados = filteredIncidents.filter((i) => i.status === 'FINALIZADO');
+  const colFinalizados = filteredIncidents.filter((i) => i.status === 'FINALIZADO' || i.status === 'RETROAGIDO');
   const colHerdados = filteredIncidents.filter(
-    (i) => i.status === 'PENDENCIA_PROXIMO_TURNO' || (i.isPendenciaHerdada && i.status !== 'FINALIZADO')
+    (i) => i.status === 'PENDENCIA_PROXIMO_TURNO' || (i.isPendenciaHerdada && i.status !== 'FINALIZADO' && i.status !== 'RETROAGIDO')
   );
 
   const calculateDowntime = (dataParada: string, dataLiberacao?: string | null) => {
@@ -306,6 +306,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                 <option value="EM_ANDAMENTO">🔴 Em Andamento</option>
                 <option value="AGUARDANDO">🟡 Aguardando</option>
                 <option value="FINALIZADO">🟢 Concluído</option>
+                <option value="RETROAGIDO">🟣 Retroagido (Não era Automação)</option>
                 <option value="PENDENCIA_PROXIMO_TURNO">🔵 Pendência Herdada</option>
               </select>
 

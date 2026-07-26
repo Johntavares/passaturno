@@ -74,7 +74,7 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
 
   if (!isOpen) return null;
 
-  const activeIncidents = incidents.filter(i => i.status !== 'FINALIZADO');
+  const activeIncidents = incidents.filter(i => i.status !== 'FINALIZADO' && i.status !== 'RETROAGIDO');
 
   // Gerar o texto completo formatado para envio de 2 em 2 horas (Sem título e sem ícones)
   const generateReportText = () => {

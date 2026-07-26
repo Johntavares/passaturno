@@ -69,6 +69,12 @@ export async function PATCH(
         updateData.dataHoraLiberacao = new Date();
         eventType = 'LIBERACAO';
         defaultLogDesc = `Equipamento liberado por ${logUsuario || responsavel || currentIncident.responsavel}.`;
+      } else if (status === 'RETROAGIDO') {
+        if (!currentIncident.dataHoraLiberacao) {
+          updateData.dataHoraLiberacao = new Date();
+        }
+        eventType = 'RETROACAO';
+        defaultLogDesc = `Atendimento retroagido por ${logUsuario || responsavel || currentIncident.responsavel} (Constatado que não era falha de automação).`;
       }
     }
 

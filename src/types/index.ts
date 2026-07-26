@@ -1,6 +1,6 @@
 export type PriorityLevel = 'BAIXA' | 'MEDIA' | 'ALTA' | 'CRITICA';
 
-export type IncidentStatusType = 'EM_ANDAMENTO' | 'AGUARDANDO' | 'FINALIZADO' | 'PENDENCIA_PROXIMO_TURNO';
+export type IncidentStatusType = 'EM_ANDAMENTO' | 'AGUARDANDO' | 'FINALIZADO' | 'PENDENCIA_PROXIMO_TURNO' | 'RETROAGIDO';
 
 export type EventTypeEnum = 
   | 'ABERTURA' 
@@ -8,6 +8,7 @@ export type EventTypeEnum =
   | 'ALTERACAO_STATUS' 
   | 'SOLUCAO' 
   | 'LIBERACAO' 
+  | 'RETROACAO'
   | 'TRANSFERENCIA_TURNO';
 
 export interface UserType {
