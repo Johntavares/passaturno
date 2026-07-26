@@ -361,7 +361,6 @@ export const NewIncidentModal: React.FC<NewIncidentModalProps> = ({
               >
                 <option value="EM_ANDAMENTO">🔴 Em Andamento</option>
                 <option value="AGUARDANDO">🟡 Aguardando</option>
-                <option value="RETROAGIDO">🟣 Retroagido (Não era Automação)</option>
                 <option value="PENDENCIA_PROXIMO_TURNO">🔵 Pendência Herdada</option>
               </select>
             </div>
