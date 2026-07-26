@@ -175,7 +175,7 @@ export const NewIncidentModal: React.FC<NewIncidentModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm overflow-y-auto">
-      <div className="bg-white border border-slate-200 rounded-2xl max-w-2xl w-full p-6 shadow-2xl relative my-8 text-slate-800 animate-fadeIn">
+      <div className="bg-white border border-slate-200 rounded-2xl max-w-3xl w-full p-6 shadow-2xl relative my-8 text-slate-800 animate-fadeIn">
         
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-4">
@@ -245,8 +245,8 @@ export const NewIncidentModal: React.FC<NewIncidentModalProps> = ({
             </datalist>
           </div>
 
-          {/* Seção 2: Detalhes da Falha */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {/* Seção 2: Categoria da Falha e Horários */}
+          <div className="space-y-3">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
                 Tipo / Categoria da Falha
@@ -260,7 +260,7 @@ export const NewIncidentModal: React.FC<NewIncidentModalProps> = ({
                 spellCheck={false}
                 data-gramm={false}
                 autoComplete="off"
-                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-800 font-medium focus:outline-none focus:border-sky-500 shadow-2xs"
+                className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-800 font-medium focus:outline-none focus:border-sky-500 shadow-2xs"
               />
               <datalist id="failure-types-list">
                 <option value="Comunicação" />
@@ -276,19 +276,19 @@ export const NewIncidentModal: React.FC<NewIncidentModalProps> = ({
               </datalist>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Data e Hora da Parada</label>
                 <input
                   type="datetime-local"
                   value={dataHoraParada}
                   onChange={(e) => setDataHoraParada(e.target.value)}
-                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-800 font-mono focus:outline-none focus:border-sky-500"
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 font-mono focus:outline-none focus:border-sky-500"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-emerald-700 mb-1">
+                <label className="block text-xs font-bold text-emerald-800 mb-1">
                   Previsão de Liberação (ex: 15:30)
                 </label>
                 <input
@@ -299,7 +299,7 @@ export const NewIncidentModal: React.FC<NewIncidentModalProps> = ({
                   spellCheck={false}
                   data-gramm={false}
                   autoComplete="off"
-                  className="w-full bg-emerald-50/60 border border-emerald-200 rounded-xl px-3 py-1.5 text-xs text-emerald-900 font-bold focus:outline-none focus:border-emerald-500 shadow-2xs"
+                  className="w-full bg-emerald-50/70 border border-emerald-300 rounded-xl px-3.5 py-2 text-xs text-emerald-900 font-bold focus:outline-none focus:border-emerald-500 shadow-2xs"
                 />
               </div>
             </div>
