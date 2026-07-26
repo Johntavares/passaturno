@@ -234,17 +234,6 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
                 </button>
               )}
 
-              {onOpenOneNoteRoutine && (
-                <button
-                  onClick={onOpenOneNoteRoutine}
-                  title="Meu Checklist de Rotina Pessoal (Acompanhamento interno)"
-                  className="inline-flex items-center px-3 py-1.5 bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-lg shadow-xs border border-slate-200/60 dark:border-slate-600 transition-all cursor-pointer"
-                >
-                  <FileSpreadsheet className="w-3.5 h-3.5 mr-1.5 text-sky-600 dark:text-sky-400" />
-                  Minha Rotina
-                </button>
-              )}
-
               <button
                 onClick={onOpenAssumeShift}
                 title="Assumir o turno atual ou iniciar novo"

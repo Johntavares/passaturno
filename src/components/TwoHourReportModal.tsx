@@ -67,29 +67,29 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
 
   const activeIncidents = incidents.filter(i => i.status !== 'FINALIZADO');
 
-  // Gerar o texto completo formatado para envio de 2 em 2 horas
+  // Gerar o texto completo formatado para envio de 2 em 2 horas (Sem título e sem ícones)
   const generateReportText = () => {
     const now = new Date();
-    const horaFormatada = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     const dataFormatada = now.toLocaleDateString('pt-BR');
+    const pad = (n: number) => String(n).padStart(2, '0');
 
-    let text = `📊 *BOLETIM DE AUTOMAÇÃO DE 2 HORAS*\n`;
-    text += `📅 *Data:* ${dataFormatada} às ${horaFormatada}\n`;
-    text += `🔄 *Turno:* ${activeShift?.tipoTurno || 'Diurno'} | *Escala:* ${activeShift?.escala || '2x3'} | *Turma:* ${activeShift?.turma || 'C'}\n`;
-    text += `👥 *EQUIPE:* _${equipeSonda}_\n`;
-    text += `🎧 *MONITORAMENTO (CCO):* ${activeShift?.responsavelNome || 'John Tavares'}\n`;
-    if (ausencia) text += `🏖️ *AUSÊNCIA:* ${ausencia}\n`;
+    let text = `Turno: ${activeShift?.tipoTurno || 'Diurno'}\n`;
+    text += `ESCALA: ${activeShift?.escala || '2x3'}\n`;
+    text += `LETRA: ${activeShift?.turma || 'C'}\n`;
+    text += `DATA: ${dataFormatada}\n`;
+    text += `EQUIPE: _ ${equipeSonda} _\n`;
+    text += `MONITORAMENTO: ${activeShift?.responsavelNome || 'John Tavares'}\n`;
+    if (ausencia) text += `AUSÊNCIA: ${ausencia}\n`;
     text += `\n`;
 
-    text += `📋 *RESUMO DA CARTEIRA DE ATENDIMENTOS*\n`;
-    text += `• *${totalCarteira}* - INCIDENTES NA CARTEIRA\n`;
-    text += `• *${emAndamento}* - EM ANDAMENTO\n`;
-    text += `• *${emAberto}* - EM ABERTO\n`;
-    text += `• *${concluídos}* - CONCLUÍDOS NESTE TURNO\n\n`;
+    text += `${pad(totalCarteira)} - INCIDENTES NA CARTEIRA\n`;
+    text += `${pad(emAndamento)} - EM ANDAMENTO\n`;
+    text += `${pad(emAberto)} - EM ABERTO\n`;
+    text += `${pad(concluídos)} - PENDENTE\n\n`;
 
-    text += `🚜 *EQUIPAMENTOS EM CÓDIGO DA AUTOMAÇÃO*\n`;
+    text += `${pad(activeIncidents.length)} - EQUIPAMENTO CÓDIGO DA AUTOMAÇÃO\n\n`;
     if (activeIncidents.length === 0) {
-      text += `_Nenhum equipamento parado por automação no momento._\n\n`;
+      text += `Nenhum equipamento parado no momento.\n\n`;
     } else {
       activeIncidents.forEach(inc => {
         const horaParada = new Date(inc.dataHoraParada).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
@@ -98,26 +98,31 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
           : horaParada;
         const previsao = inc.previsaoLiberacao || '---';
 
-        text += `• *Equipamento:* ${inc.tag}\n`;
-        text += `  *Ocorrência:* ${inc.falha}\n`;
-        text += `  *Parada:* ${horaParada} | *Acionamento:* ${horaAcionamento} | *Previsão:* ${previsao}\n\n`;
+        text += `Equipamento: ${inc.tag}\n`;
+        text += `Ocorrência: ${inc.falha.toUpperCase()}\n`;
+        text += `Diagnóstico: ${inc.sintoma || inc.observacao || ''}\n\n`;
+        text += `Hora da Parada: ${horaParada}\n`;
+        text += `Hora de Acionamento: ${horaAcionamento}\n`;
+        text += `Previsão de Liberação: ${previsao}\n\n`;
       });
     }
 
-    text += `📡 *DIAGNÓSTICO DE GPS E OPERAÇÃO*\n`;
-    if (equipManutencao) text += `🛠️ *Em manutenção:* ${equipManutencao}\n`;
-    if (equipPreventiva) text += `⚙️ *Em preventiva:* ${equipPreventiva}\n`;
-    if (equipSemGps) text += `⚠️ *Falha de GPS:* ${equipSemGps}\n\n`;
+    text += `Status de Operação – Diagnóstico de GPS\n`;
+    text += `- Em manutenção: ${equipManutencao || 'Nenhum'}\n`;
+    text += `- Em preventiva: ${equipPreventiva || 'Nenhum'}\n`;
+    text += `- Operando com falha de GPS: ${equipSemGps || 'Nenhum'}\n`;
+    text += `- Código de acidente:\n`;
+    text += `- Parada Com/Sem previsão:\n\n`;
 
     if (equipSemDespacho) {
-      text += `📝 *Fora do Sistema do Despacho:*\n`;
+      text += `Observação:\n`;
       equipSemDespacho.split(',').forEach(e => {
-        if (e.trim()) text += `• ${e.trim()} - Fora do sistema do Despacho.\n`;
+        if (e.trim()) text += `${e.trim()} - Fora do sistema do Despacho.\n`;
       });
       text += `\n`;
     }
 
-    text += `✅ _Todos os demais equipamentos com status verde estão operando normalmente e com GPS._`;
+    text += `Todos os demais equipamentos com status verde no gráfico estão operando normalmente e com GPS.`;
 
     return text;
   };
