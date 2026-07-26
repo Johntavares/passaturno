@@ -17,16 +17,16 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({ incidents }) => 
   // 1. Atividades do dia (Total de atendimentos registrados)
   const atividadesDoDia = incidents.length;
 
-  // 2. Veio do turno passado (Pendências herdadas não finalizadas)
+  // 2. Veio do turno passado (Pendências herdadas não finalizadas ou retroagidas)
   const vindoTurnoPassado = incidents.filter(
-    (i) => i.isPendenciaHerdada && i.status !== 'FINALIZADO'
+    (i) => i.isPendenciaHerdada && i.status !== 'FINALIZADO' && i.status !== 'RETROAGIDO'
   ).length;
 
   // 3. Em Andamento (Atendimentos atualmente em intervenção)
   const emAndamento = incidents.filter((i) => i.status === 'EM_ANDAMENTO').length;
 
-  // 4. Já Liberados (Atendimentos concluídos/finalizados)
-  const jaLiberados = incidents.filter((i) => i.status === 'FINALIZADO').length;
+  // 4. Já Liberados / Retroagidos (Atendimentos concluídos ou retroagidos)
+  const jaLiberados = incidents.filter((i) => i.status === 'FINALIZADO' || i.status === 'RETROAGIDO').length;
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">

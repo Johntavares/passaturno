@@ -224,7 +224,7 @@ export default function Home() {
       i.prioridade === 'CRITICA' ||
       i.prioridade === 'ALTA';
 
-    const isNotYetAccepted = i.status !== 'FINALIZADO' && i.status !== 'EM_ANDAMENTO';
+    const isNotYetAccepted = i.status !== 'FINALIZADO' && i.status !== 'RETROAGIDO' && i.status !== 'EM_ANDAMENTO';
 
     return isPriorityOrInherited && isNotYetAccepted;
   }).length;
