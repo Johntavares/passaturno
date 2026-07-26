@@ -18,6 +18,7 @@ import { CommentModal } from '@/components/CommentModal';
 import { LoginModal } from '@/components/LoginModal';
 import { OneNoteRoutineModal } from '@/components/OneNoteRoutineModal';
 import { TwoHourReportModal } from '@/components/TwoHourReportModal';
+import { GpsDiagnosticModal } from '@/components/GpsDiagnosticModal';
 
 export default function Home() {
   const [incidents, setIncidents] = useState<IncidentType[]>([]);
@@ -33,6 +34,7 @@ export default function Home() {
   const [isEquipmentManagerOpen, setIsEquipmentManagerOpen] = useState(false);
   const [isOneNoteRoutineOpen, setIsOneNoteRoutineOpen] = useState(false);
   const [isTwoHourReportOpen, setIsTwoHourReportOpen] = useState(false);
+  const [isGpsDiagnosticOpen, setIsGpsDiagnosticOpen] = useState(false);
 
   const [selectedTimelineIncident, setSelectedTimelineIncident] = useState<IncidentType | null>(null);
   const [isTimelineOpen, setIsTimelineOpen] = useState(false);
@@ -315,6 +317,7 @@ export default function Home() {
         onOpenEquipmentManager={() => setIsEquipmentManagerOpen(true)}
         onOpenOneNoteRoutine={() => setIsOneNoteRoutineOpen(true)}
         onOpenTwoHourReport={() => setIsTwoHourReportOpen(true)}
+        onOpenGpsDiagnostic={() => setIsGpsDiagnosticOpen(true)}
         onRefreshData={loadData}
         isRefreshing={isRefreshing}
         unacceptedCount={unacceptedCount}
@@ -530,6 +533,13 @@ export default function Home() {
         isOpen={isTwoHourReportOpen}
         onClose={() => setIsTwoHourReportOpen(false)}
         incidents={incidents}
+        activeShift={activeShift}
+      />
+
+      {/* Modal Reporte de Diagnóstico de GPS */}
+      <GpsDiagnosticModal
+        isOpen={isGpsDiagnosticOpen}
+        onClose={() => setIsGpsDiagnosticOpen(false)}
         activeShift={activeShift}
       />
 

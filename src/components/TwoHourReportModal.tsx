@@ -33,6 +33,11 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
 }) => {
   const [copied, setCopied] = useState(false);
   const [lastSentTime, setLastSentTime] = useState<string | null>(null);
+  // Estados da Carteira de Incidentes (Editáveis pelo operador)
+  const [carteiraTotal, setCarteiraTotal] = useState('23');
+  const [carteiraAndamento, setCarteiraAndamento] = useState('17');
+  const [carteiraAberto, setCarteiraAberto] = useState('06');
+  const [carteiraPendente, setCarteiraPendente] = useState('00');
 
   // Estados personalizáveis de GPS e Despacho
   const [equipSemDespacho, setEquipSemDespacho] = useState('EC10, PZ15, PZ20, PZ21, PZ42, PZ43, TT52, TT53, TT81, TT84');
@@ -44,6 +49,16 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
   const [equipeSonda, setEquipeSonda] = useState('Valdenir / Vitor / Gustavo');
   const [liderVale, setLiderVale] = useState('Vinicius');
   const [ausencia, setAusencia] = useState('Baia (férias)');
+
+  useEffect(() => {
+    if (incidents.length > 0) {
+      const pad = (n: number) => String(n).padStart(2, '0');
+      setCarteiraTotal(pad(incidents.length));
+      setCarteiraAndamento(pad(incidents.filter(i => i.status === 'EM_ANDAMENTO').length));
+      setCarteiraAberto(pad(incidents.filter(i => i.status === 'AGUARDANDO').length));
+      setCarteiraPendente(pad(incidents.filter(i => i.status === 'PENDENCIA_PROXIMO_TURNO').length));
+    }
+  }, [incidents]);
 
   useEffect(() => {
     if (activeShift) {
@@ -58,12 +73,6 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
   }, [activeShift]);
 
   if (!isOpen) return null;
-
-  // Cálculo de estatísticas da carteira de atendimentos
-  const totalCarteira = incidents.length;
-  const emAndamento = incidents.filter(i => i.status === 'EM_ANDAMENTO').length;
-  const emAberto = incidents.filter(i => i.status === 'AGUARDANDO').length;
-  const concluídos = incidents.filter(i => i.status === 'FINALIZADO').length;
 
   const activeIncidents = incidents.filter(i => i.status !== 'FINALIZADO');
 
@@ -82,10 +91,10 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
     if (ausencia) text += `AUSÊNCIA: ${ausencia}\n`;
     text += `\n`;
 
-    text += `${pad(totalCarteira)} - INCIDENTES NA CARTEIRA\n`;
-    text += `${pad(emAndamento)} - EM ANDAMENTO\n`;
-    text += `${pad(emAberto)} - EM ABERTO\n`;
-    text += `${pad(concluídos)} - PENDENTE\n\n`;
+    text += `${carteiraTotal} - INCIDENTES NA CARTEIRA\n`;
+    text += `${carteiraAndamento} - EM ANDAMENTO\n`;
+    text += `${carteiraAberto} - EM ABERTO\n`;
+    text += `${carteiraPendente} - PENDENTE\n\n`;
 
     text += `${pad(activeIncidents.length)} - EQUIPAMENTO CÓDIGO DA AUTOMAÇÃO\n\n`;
     if (activeIncidents.length === 0) {
@@ -202,41 +211,51 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
           </div>
         </div>
 
-        {/* Configurações Rápida de GPS / Manutenção para o Relatório */}
-        <div className="mt-4 p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-3">
+        {/* Configuração Editável dos Números da Carteira de Incidentes */}
+        <div className="mt-4 p-3 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2">
           <span className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-            <Radio className="w-3.5 h-3.5 text-sky-600" />
-            Ajuste Rápido de Diagnósticos (Incluso no Relatório):
+            <FileText className="w-3.5 h-3.5 text-sky-600" />
+            Editar Números da Carteira (Chamados para Tratar):
           </span>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
             <div>
-              <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">⚠️ Falha de GPS</label>
+              <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-0.5">Total Carteira</label>
               <input
                 type="text"
-                value={equipSemGps}
-                onChange={(e) => setEquipSemGps(e.target.value)}
-                className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1 text-xs text-slate-800 dark:text-white"
+                value={carteiraTotal}
+                onChange={(e) => setCarteiraTotal(e.target.value)}
+                className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1 text-xs text-slate-900 dark:text-white font-mono font-bold text-center"
               />
             </div>
 
             <div>
-              <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">⚙️ Em Preventiva</label>
+              <label className="block text-[10px] font-bold text-rose-600 dark:text-rose-400 mb-0.5">Em Andamento</label>
               <input
                 type="text"
-                value={equipPreventiva}
-                onChange={(e) => setEquipPreventiva(e.target.value)}
-                className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1 text-xs text-slate-800 dark:text-white"
+                value={carteiraAndamento}
+                onChange={(e) => setCarteiraAndamento(e.target.value)}
+                className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1 text-xs text-rose-700 dark:text-rose-300 font-mono font-bold text-center"
               />
             </div>
 
             <div>
-              <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">🛠️ Em Manutenção</label>
+              <label className="block text-[10px] font-bold text-amber-600 dark:text-amber-400 mb-0.5">Em Aberto</label>
               <input
                 type="text"
-                value={equipManutencao}
-                onChange={(e) => setEquipManutencao(e.target.value)}
-                className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1 text-xs text-slate-800 dark:text-white"
+                value={carteiraAberto}
+                onChange={(e) => setCarteiraAberto(e.target.value)}
+                className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1 text-xs text-amber-700 dark:text-amber-300 font-mono font-bold text-center"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-bold text-sky-600 dark:text-sky-400 mb-0.5">Pendente</label>
+              <input
+                type="text"
+                value={carteiraPendente}
+                onChange={(e) => setCarteiraPendente(e.target.value)}
+                className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1 text-xs text-sky-700 dark:text-sky-300 font-mono font-bold text-center"
               />
             </div>
           </div>

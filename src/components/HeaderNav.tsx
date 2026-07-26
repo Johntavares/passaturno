@@ -18,7 +18,8 @@ import {
   Sun,
   Moon,
   Sparkles,
-  LogOut
+  LogOut,
+  Radio
 } from 'lucide-react';
 
 export type ThemeMode = 'light' | 'dark' | 'mina';
@@ -40,6 +41,7 @@ interface HeaderNavProps {
   onOpenEquipmentManager: () => void;
   onOpenOneNoteRoutine?: () => void;
   onOpenTwoHourReport?: () => void;
+  onOpenGpsDiagnostic?: () => void;
   onRefreshData: () => void;
   isRefreshing?: boolean;
   unacceptedCount?: number;
@@ -58,6 +60,7 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
   onOpenEquipmentManager,
   onOpenOneNoteRoutine,
   onOpenTwoHourReport,
+  onOpenGpsDiagnostic,
   onRefreshData,
   isRefreshing = false,
   unacceptedCount = 0,
@@ -231,6 +234,17 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
                 >
                   <Clock className="w-3.5 h-3.5 mr-1.5 stroke-[2.5]" />
                   Boletim de 2h
+                </button>
+              )}
+
+              {onOpenGpsDiagnostic && (
+                <button
+                  onClick={onOpenGpsDiagnostic}
+                  title="Gerar e enviar Reporte de Diagnóstico de GPS e Frota"
+                  className="inline-flex items-center px-3 py-1.5 bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold rounded-lg shadow-sm transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+                >
+                  <Radio className="w-3.5 h-3.5 mr-1.5 stroke-[2.5]" />
+                  Diagnóstico GPS
                 </button>
               )}
 

@@ -336,15 +336,6 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                   )}
                 </button>
 
-                {/* Botão WhatsApp */}
-                <button
-                  onClick={() => onOpenWhatsapp(item)}
-                  title="Gerar Resumo WhatsApp"
-                  className="p-1 bg-sky-50 hover:bg-sky-100 text-sky-700 rounded-lg border border-sky-200 transition-colors"
-                >
-                  <Send className="w-3.5 h-3.5" />
-                </button>
-
                 {/* Botão Histórico / Linha do Tempo */}
                 <button
                   onClick={() => onOpenTimeline(item)}
