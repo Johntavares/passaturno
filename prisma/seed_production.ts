@@ -148,36 +148,12 @@ async function prepareProduction() {
   // 2. Criar Usuários Oficiais de Produção
   const users = [
     {
-      nome: 'Silva Santos',
-      email: 'silva@passaturno.com',
+      nome: 'John Tavares',
+      email: 'john.tavares@passaturno.com',
       matricula: '1001',
       senha: 'passaturno2026',
-      equipe: 'Automação A',
+      equipe: 'Automação & CCO',
       cargo: 'Engenheiro de Automação',
-    },
-    {
-      nome: 'John Doe',
-      email: 'john@passaturno.com',
-      matricula: '1002',
-      senha: 'passaturno2026',
-      equipe: 'Automação B',
-      cargo: 'Técnico de Automação Senior',
-    },
-    {
-      nome: 'Carlos Oliveira',
-      email: 'carlos@passaturno.com',
-      matricula: '1003',
-      senha: 'passaturno2026',
-      equipe: 'Automação C',
-      cargo: 'Técnico de Automação',
-    },
-    {
-      nome: 'Administrador CCO',
-      email: 'admin@passaturno.com',
-      matricula: 'admin',
-      senha: 'passaturno2026',
-      equipe: 'CCO Automação',
-      cargo: 'Supervisor de Automação',
     },
   ];
 
@@ -185,7 +161,7 @@ async function prepareProduction() {
     await prisma.user.create({ data: u });
   }
 
-  console.log('✅ Usuários e Operadores de Produção criados com sucesso');
+  console.log('✅ Usuário John Tavares criado com sucesso');
 
   // 3. Cadastrar Matriz da Frota da Mina (168 equipamentos reais e repetidoras RPT)
   let count = 0;

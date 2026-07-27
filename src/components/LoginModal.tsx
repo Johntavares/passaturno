@@ -17,16 +17,13 @@ interface LoginModalProps {
 }
 
 export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess }) => {
-  const [loginInput, setLoginInput] = useState('');
+  const [loginInput, setLoginInput] = useState('1001');
   const [senhaInput, setSenhaInput] = useState('passaturno2026');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
   const operatorPresets = [
-    { nome: 'Silva Santos', matricula: '1001', equipe: 'Automação A', cargo: 'Eng. Automação' },
-    { nome: 'John Doe', matricula: '1002', equipe: 'Automação B', cargo: 'Téc. Automação Sr.' },
-    { nome: 'Carlos Oliveira', matricula: '1003', equipe: 'Automação C', cargo: 'Téc. Automação' },
-    { nome: 'Supervisor CCO', matricula: 'admin', equipe: 'CCO Automação', cargo: 'Supervisor' },
+    { nome: 'John Tavares', matricula: '1001', equipe: 'Automação & CCO', cargo: 'Engenheiro de Automação' },
   ];
 
   const handleSelectPreset = (matricula: string) => {
@@ -148,7 +145,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess }) => {
             <span className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-2">
               Acesso Rápido por Operador / Matrícula:
             </span>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 gap-2">
               {operatorPresets.map((op) => (
                 <button
                   key={op.matricula}

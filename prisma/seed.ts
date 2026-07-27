@@ -139,15 +139,21 @@ async function main() {
   // 1. Criar Usuários
   await prisma.user.upsert({
     where: { id: 'usr-1' },
-    update: {},
+    update: {
+      nome: 'John Tavares',
+      email: 'john.tavares@passaturno.com',
+      matricula: '1001',
+      equipe: 'Automação & CCO',
+      cargo: 'Engenheiro de Automação',
+    },
     create: {
       id: 'usr-1',
-      nome: 'John Doe',
-      email: 'john@passaturno.com',
-      matricula: '1002',
+      nome: 'John Tavares',
+      email: 'john.tavares@passaturno.com',
+      matricula: '1001',
       senha: 'passaturno2026',
-      equipe: 'Automação A',
-      cargo: 'Técnico de Automação Senior',
+      equipe: 'Automação & CCO',
+      cargo: 'Engenheiro de Automação',
     },
   });
 

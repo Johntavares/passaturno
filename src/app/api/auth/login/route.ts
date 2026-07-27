@@ -1,6 +1,19 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
+// Usuário único oficial do PASSATURNO
+const OFFICIAL_USER = {
+  id: 'usr-john-tavares',
+  nome: 'John Tavares',
+  email: 'john.tavares@passaturno.com',
+  matricula: '1001',
+  senha: 'passaturno2026',
+  equipe: 'Automação & CCO',
+  cargo: 'Engenheiro de Automação',
+};
+
+const DEFAULT_USERS = [OFFICIAL_USER];
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -11,20 +24,44 @@ export async function POST(request: Request) {
     }
 
     const cleanLogin = login.trim().toLowerCase();
+    let user: any = null;
 
-    // Procurar por e-mail, matrícula ou nome
-    const user = await prisma.user.findFirst({
-      where: {
-        OR: [
-          { email: { equals: cleanLogin } },
-          { matricula: { equals: cleanLogin } },
-          { nome: { equals: login.trim() } },
-        ],
-      },
-    });
+    // 1. Tentar buscar no banco de dados Prisma
+    try {
+      user = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { email: { equals: cleanLogin } },
+            { matricula: { equals: cleanLogin } },
+            { nome: { equals: login.trim() } },
+          ],
+        },
+      });
+    } catch (dbError) {
+      console.warn('Erro ao consultar banco de dados Prisma no login, recorrendo ao fallback:', dbError);
+    }
+
+    // 2. Se não encontrar no banco ou se o banco estiver indisponível no serverless, aceitar credenciais do John Tavares
+    if (!user) {
+      const isMatch =
+        cleanLogin === '1001' ||
+        cleanLogin === 'admin' ||
+        cleanLogin === 'john' ||
+        cleanLogin === 'john.tavares' ||
+        cleanLogin === 'john tavares' ||
+        cleanLogin === 'john.tavares@passaturno.com' ||
+        cleanLogin === 'john@passaturno.com';
+
+      if (isMatch) {
+        user = OFFICIAL_USER;
+      }
+    }
 
     if (!user) {
-      return NextResponse.json({ error: 'Usuário ou matrícula não cadastrado no PASSATURNO' }, { status: 404 });
+      return NextResponse.json(
+        { error: 'Usuário não cadastrado. Utilize a matrícula 1001 ou o e-mail john.tavares@passaturno.com.' },
+        { status: 404 }
+      );
     }
 
     if (user.senha !== senha) {
@@ -47,3 +84,4 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Erro interno ao realizar autenticação' }, { status: 500 });
   }
 }
+
