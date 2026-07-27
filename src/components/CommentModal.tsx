@@ -9,7 +9,7 @@ interface CommentModalProps {
   incident: IncidentType | null;
   isOpen: boolean;
   onClose: () => void;
-  onCommentSaved: () => void;
+  onSaveComment: (incidentId: string, commentText: string, authorName: string) => void;
   currentUserName?: string;
 }
 
@@ -17,48 +17,28 @@ export const CommentModal: React.FC<CommentModalProps> = ({
   incident,
   isOpen,
   onClose,
-  onCommentSaved,
-  currentUserName = 'Técnico Automação',
+  onSaveComment,
+  currentUserName = 'John Tavares',
 }) => {
   const [commentText, setCommentText] = useState('');
   const [authorName, setAuthorName] = useState(currentUserName);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (incident) {
-      setAuthorName(currentUserName || incident.responsavel || 'Técnico Automação');
+      setAuthorName(currentUserName || incident.responsavel || 'John Tavares');
       setCommentText('');
     }
   }, [incident, currentUserName]);
 
   if (!isOpen || !incident) return null;
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!commentText.trim()) return;
 
-    setIsSubmitting(true);
-    try {
-      const res = await fetch(`/api/atendimentos/${incident.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          observacao: commentText.trim(),
-          logDescription: `Anotação do Turno: ${commentText.trim()}`,
-          logUsuario: authorName || 'Técnico Automação',
-        }),
-      });
-
-      if (!res.ok) throw new Error('Erro ao salvar comentário');
-
-      setCommentText('');
-      onCommentSaved();
-      onClose();
-    } catch (err) {
-      console.error('Erro ao adicionar comentário:', err);
-    } finally {
-      setIsSubmitting(false);
-    }
+    onSaveComment(incident.id, commentText.trim(), authorName);
+    setCommentText('');
+    onClose();
   };
 
   // Filtrar histórico relevante de anotações e atualizações
@@ -181,8 +161,8 @@ export const CommentModal: React.FC<CommentModalProps> = ({
 
               <button
                 type="submit"
-                disabled={isSubmitting || !commentText.trim()}
-                className="px-4 py-1.5 bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 disabled:opacity-50"
+                disabled={!commentText.trim()}
+                className="px-4 py-1.5 bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
               >
                 <Send className="w-3.5 h-3.5" />
                 <span>Salvar Anotação</span>

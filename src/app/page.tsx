@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { IncidentType, EquipmentType, ShiftType, IncidentStatusType, PriorityLevel } from '@/types';
+import { IncidentType, EquipmentType, ShiftType, IncidentStatusType, PriorityLevel, IncidentHistoryType } from '@/types';
 import { HeaderNav, UserSession } from '@/components/HeaderNav';
 import { DashboardStats } from '@/components/DashboardStats';
 import { DailySummarySection } from '@/components/DailySummarySection';
@@ -287,6 +287,54 @@ export default function Home() {
     }
   };
 
+  // Adicionar Anotação / Observação no Atendimento
+  const handleSaveComment = async (incidentId: string, commentText: string, authorName: string) => {
+    const nowIso = new Date().toISOString();
+    const newLogItem: IncidentHistoryType = {
+      id: `hist-${Date.now()}`,
+      incidentId,
+      tipoEvento: 'ATUALIZACAO',
+      descricao: `Anotação do Turno: ${commentText}`,
+      usuario: authorName || 'John Tavares',
+      dataHora: nowIso,
+    };
+
+    // 1. Fechar o modal imediatamente (resposta instantânea sem travar)
+    setIsCommentOpen(false);
+    setSelectedCommentIncident(null);
+
+    // 2. Atualizar estado local + localStorage (garante atualização imediata do card)
+    updateIncidentsState((prev) =>
+      prev.map((item) => {
+        if (item.id === incidentId) {
+          const currentHist = item.historico || [];
+          return {
+            ...item,
+            observacao: commentText,
+            atualizadoEm: nowIso,
+            historico: [newLogItem, ...currentHist],
+          };
+        }
+        return item;
+      })
+    );
+
+    // 3. Persistir na API em segundo plano
+    try {
+      await fetch(`/api/atendimentos/${incidentId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          observacao: commentText,
+          logDescription: `Anotação do Turno: ${commentText}`,
+          logUsuario: authorName || 'John Tavares',
+        }),
+      });
+    } catch (err) {
+      console.error('Erro ao salvar anotação:', err);
+    }
+  };
+
   // Excluir Atendimento permanentemente
   const handleDeleteIncident = async (id: string) => {
     const targetIncident = incidents.find((i) => i.id === id);
@@ -563,8 +611,8 @@ export default function Home() {
           setIsCommentOpen(false);
           setSelectedCommentIncident(null);
         }}
-        onCommentSaved={loadData}
-        currentUserName={activeShift?.responsavelNome || 'Técnico Automação'}
+        onSaveComment={handleSaveComment}
+        currentUserName={activeShift?.responsavelNome || 'John Tavares'}
       />
 
       {/* Quick Edit Incident Modal */}
