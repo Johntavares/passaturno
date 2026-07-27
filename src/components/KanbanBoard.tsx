@@ -258,15 +258,19 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   // Renderizador do Card do Atendimento (Minimizado por padrão)
   function renderCard(item: IncidentType) {
     const paradaDate = new Date(item.dataHoraParada);
+    const downtimeMins = differenceInMinutes(new Date(), paradaDate);
     const downtimeStr = calculateDowntime(item.dataHoraParada, item.dataHoraLiberacao);
-    const isFinished = item.status === 'FINALIZADO';
+    const isFinished = item.status === 'FINALIZADO' || item.status === 'RETROAGIDO';
     const isExpanded = !!expandedCards[item.id];
+    const isOver2HoursInIntervention = item.status === 'EM_ANDAMENTO' && downtimeMins >= 120;
 
     return (
       <div
         key={item.id}
-        className={`bg-white border rounded-xl p-2.5 shadow-2xs transition-all hover:shadow-xs space-y-2 ${
-          item.prioridade === 'CRITICA' && !isFinished
+        className={`bg-white border rounded-xl p-2.5 shadow-2xs transition-all hover:shadow-xs space-y-2 relative ${
+          isOver2HoursInIntervention
+            ? 'ring-2 ring-rose-500 border-rose-400 shadow-[0_0_18px_rgba(244,63,94,0.4)] animate-pulse'
+            : item.prioridade === 'CRITICA' && !isFinished
             ? 'border-rose-300 ring-1 ring-rose-100'
             : 'border-slate-200/80'
         }`}
@@ -295,6 +299,19 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
             )}
           </div>
         </div>
+
+        {/* ALERTA DE SEGUNDA HORA: Mais de 2h em intervenção (Solicitação de Ajuda Técnica) */}
+        {isOver2HoursInIntervention && (
+          <div className="bg-rose-50 border border-rose-300 rounded-lg p-1.5 flex items-center justify-between text-rose-800 text-[10px] font-extrabold">
+            <span className="flex items-center gap-1">
+              <AlertCircle className="w-3.5 h-3.5 text-rose-600 animate-bounce flex-shrink-0" />
+              <span>⏱️ 2h+ em Atendimento ({Math.floor(downtimeMins / 60)}h {downtimeMins % 60}m)</span>
+            </span>
+            <span className="bg-rose-600 text-white px-1.5 py-0.5 rounded text-[9px] uppercase font-bold tracking-tight shadow-xs">
+              Ajuda Técnica
+            </span>
+          </div>
+        )}
 
         {/* MODO MINIMIZADO (Informações essenciais: Status + Hora da Parada + Ações) */}
         {!isExpanded ? (
