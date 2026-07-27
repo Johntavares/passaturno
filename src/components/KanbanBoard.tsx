@@ -300,24 +300,28 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
         {!isExpanded ? (
           <div className="space-y-2 pt-1 border-t border-slate-100">
             {/* Status, Tempo Parado e Previsão de Liberação */}
-            <div className="flex items-center justify-between gap-2 pt-1">
+            <div className="flex flex-col gap-1.5 pt-1">
               <select
                 value={item.status}
                 onChange={(e) => onStatusChange(item.id, e.target.value as IncidentStatusType)}
-                className="flex-1 bg-slate-50 text-xs font-bold text-slate-800 border border-slate-200 rounded-xl px-2.5 py-1 focus:outline-none focus:bg-white focus:border-sky-500 cursor-pointer shadow-2xs"
+                className="w-full bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-1 focus:outline-none focus:bg-white focus:border-sky-500 cursor-pointer shadow-2xs"
                 title="Alterar status do atendimento"
               >
                 <option value="EM_ANDAMENTO">🔴 Em Andamento</option>
                 <option value="AGUARDANDO">🟡 Aguardando</option>
                 <option value="FINALIZADO">🟢 Concluído</option>
-                <option value="RETROAGIDO">🟣 Retroagido</option>
+                <option value="RETROAGIDO">🟣 Retroagido (Não era Automação)</option>
                 <option value="PENDENCIA_PROXIMO_TURNO">🔵 Pendência Herdada</option>
               </select>
 
-              <div className="flex items-center gap-1.5 text-[11px] flex-shrink-0">
-                <span className="font-semibold text-slate-600 flex items-center gap-1" title={format(paradaDate, 'dd/MM/yyyy HH:mm')}>
+              <div className="flex items-center justify-between text-[11px] text-slate-600 dark:text-slate-300">
+                <span className="font-semibold flex items-center gap-1" title={format(paradaDate, 'dd/MM/yyyy HH:mm')}>
                   <Clock className="w-3.5 h-3.5 text-slate-400" />
                   Parado: <strong>{downtimeStr}</strong>
+                </span>
+
+                <span className="font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
+                  Prev: <strong>{item.previsaoLiberacao || '---'}</strong>
                 </span>
               </div>
             </div>
@@ -434,37 +438,47 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
               </div>
             </div>
 
-            {/* Linha de Seleção de Status & Prioridade (Espaçosa e Legível) */}
-            <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
-              <select
-                value={item.status}
-                onChange={(e) => onStatusChange(item.id, e.target.value as IncidentStatusType)}
-                className="flex-1 bg-slate-50 text-xs font-bold text-slate-800 border border-slate-200 rounded-xl px-2.5 py-1.5 focus:outline-none focus:bg-white focus:border-sky-500 cursor-pointer shadow-2xs"
-                title="Alterar status do atendimento"
-              >
-                <option value="EM_ANDAMENTO">🔴 Em Andamento</option>
-                <option value="AGUARDANDO">🟡 Aguardando</option>
-                <option value="FINALIZADO">🟢 Concluído</option>
-                <option value="RETROAGIDO">🟣 Retroagido (Não era Automação)</option>
-                <option value="PENDENCIA_PROXIMO_TURNO">🔵 Pendência Herdada</option>
-              </select>
+            {/* Linha de Seleção de Status & Prioridade (100% Responsivo) */}
+            <div className="flex flex-col gap-2 pt-2 border-t border-slate-100 w-full">
+              <div className="w-full">
+                <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">
+                  Status do Atendimento
+                </label>
+                <select
+                  value={item.status}
+                  onChange={(e) => onStatusChange(item.id, e.target.value as IncidentStatusType)}
+                  className="w-full bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-1.5 focus:outline-none focus:bg-white focus:border-sky-500 cursor-pointer shadow-2xs"
+                  title="Alterar status do atendimento"
+                >
+                  <option value="EM_ANDAMENTO">🔴 Em Andamento</option>
+                  <option value="AGUARDANDO">🟡 Aguardando</option>
+                  <option value="FINALIZADO">🟢 Concluído</option>
+                  <option value="RETROAGIDO">🟣 Retroagido (Não era Automação)</option>
+                  <option value="PENDENCIA_PROXIMO_TURNO">🔵 Pendência Herdada</option>
+                </select>
+              </div>
 
               {!isFinished && (
-                <select
-                  value={item.prioridade}
-                  onChange={(e) => onPriorityChange(item.id, e.target.value as PriorityLevel)}
-                  title="Alterar prioridade do atendimento"
-                  className={`text-xs font-extrabold border rounded-xl px-2 py-1.5 focus:outline-none cursor-pointer flex-shrink-0 shadow-2xs ${
-                    item.prioridade === 'CRITICA' || item.prioridade === 'ALTA'
-                      ? 'bg-rose-50 text-rose-700 border-rose-200 font-extrabold'
-                      : 'bg-slate-50 text-slate-700 border-slate-200'
-                  }`}
-                >
-                  <option value="BAIXA">⚪ Baixa</option>
-                  <option value="MEDIA">🔵 Média</option>
-                  <option value="ALTA">🟠 Alta</option>
-                  <option value="CRITICA">🔴 Crítica</option>
-                </select>
+                <div className="w-full">
+                  <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">
+                    Nível de Prioridade
+                  </label>
+                  <select
+                    value={item.prioridade}
+                    onChange={(e) => onPriorityChange(item.id, e.target.value as PriorityLevel)}
+                    title="Alterar prioridade do atendimento"
+                    className={`w-full text-xs font-extrabold border rounded-xl px-2.5 py-1.5 focus:outline-none cursor-pointer shadow-2xs ${
+                      item.prioridade === 'CRITICA' || item.prioridade === 'ALTA'
+                        ? 'bg-rose-50 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800 font-extrabold'
+                        : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700'
+                    }`}
+                  >
+                    <option value="BAIXA">⚪ Prioridade Baixa</option>
+                    <option value="MEDIA">🔵 Prioridade Média</option>
+                    <option value="ALTA">🟠 Prioridade Alta (Prioritário)</option>
+                    <option value="CRITICA">🔴 Prioridade Crítica</option>
+                  </select>
+                </div>
               )}
             </div>
 
