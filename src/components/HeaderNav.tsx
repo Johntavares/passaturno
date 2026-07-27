@@ -31,6 +31,7 @@ export interface UserSession {
   matricula: string | null;
   equipe: string;
   cargo: string;
+  turma?: string;
 }
 
 export interface HeaderNavProps {
@@ -43,6 +44,7 @@ export interface HeaderNavProps {
   onOpenTwoHourReport?: () => void;
   onOpenGpsDiagnostic?: () => void;
   onOpenHistoryTab?: () => void;
+  onOpenLiderTurma?: () => void;
   onRefreshData: () => void;
   isRefreshing?: boolean;
   unacceptedCount?: number;
@@ -63,6 +65,7 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
   onOpenTwoHourReport,
   onOpenGpsDiagnostic,
   onOpenHistoryTab,
+  onOpenLiderTurma,
   onRefreshData,
   isRefreshing = false,
   unacceptedCount = 0,
@@ -231,6 +234,17 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
               >
                 <Activity className="w-4 h-4 mr-1.5 text-sky-600 stroke-[2.5]" />
                 Histórico de Atendimentos
+              </button>
+            )}
+
+            {onOpenLiderTurma && (
+              <button
+                onClick={onOpenLiderTurma}
+                title="Painel de Acompanhamento do Líder da Turma (Todas as Letras A, B, C, D)"
+                className="inline-flex items-center px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-white font-black text-xs rounded-xl shadow-md shadow-amber-500/20 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+              >
+                <ShieldCheck className="w-4 h-4 mr-1.5 stroke-[2.5]" />
+                Líder da Turma
               </button>
             )}
 

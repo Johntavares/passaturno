@@ -44,6 +44,7 @@ export interface InMemoryIncident {
   localizacaoAtualOpcional?: string | null;
   observacao?: string | null;
   shiftId?: string | null;
+  turma?: string | null;
   isPendenciaHerdada: boolean;
   historico: InMemoryIncidentHistory[];
   criadoEm: string;
@@ -247,6 +248,7 @@ if (!globalStore.inMemoryIncidents || globalStore.inMemoryIncidents.length === 0
       responsavel: 'John Tavares',
       solucao: 'Constatado problema mecânico na chave do veículo. Atendimento retroagido.',
       shiftId: 'shift-active-1',
+      turma: 'A',
       isPendenciaHerdada: false,
       criadoEm: pastOneHour,
       atualizadoEm: nowIso,
@@ -288,6 +290,7 @@ if (!globalStore.inMemoryIncidents || globalStore.inMemoryIncidents.length === 0
       responsavel: 'John Tavares',
       solucao: 'Reaperto do conector M12 e limpeza do conector da antena RPT.',
       shiftId: 'shift-active-1',
+      turma: 'B',
       isPendenciaHerdada: false,
       criadoEm: pastTwoHours,
       atualizadoEm: pastOneHour,

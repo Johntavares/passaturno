@@ -72,12 +72,14 @@ export const CriticalPriorities: React.FC<CriticalPrioritiesProps> = ({
     }
   };
 
-  // Apenas itens de passagem de turno pendentes de aceite pelo novo operador
+  // Apenas itens herdados da turma anterior (isPendenciaHerdada = true).
+  // Itens que o operador ATUAL marcou como PENDENCIA_PROXIMO_TURNO NÃO devem alarmar para ele,
+  // apenas para o PRÓXIMO turno que assumir (quando isPendenciaHerdada ficará true).
   const allUnacceptedItems = incidents.filter((i) => {
-    const isShiftHandoffPending = i.isPendenciaHerdada || i.status === 'PENDENCIA_PROXIMO_TURNO';
-    const isNotYetAccepted = i.status !== 'FINALIZADO' && i.status !== 'RETROAGIDO' && i.status !== 'EM_ANDAMENTO';
-
-    return isShiftHandoffPending && isNotYetAccepted;
+    return i.isPendenciaHerdada
+      && i.status !== 'FINALIZADO'
+      && i.status !== 'RETROAGIDO'
+      && i.status !== 'EM_ANDAMENTO';
   });
 
   // Itens visíveis (que não foram dispensados individualmente)

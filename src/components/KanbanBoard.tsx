@@ -293,6 +293,9 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
           </div>
 
           <div className="flex items-center space-x-1">
+            <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 font-mono">
+              Turma {item.turma || 'A'}
+            </span>
             {!isFinished && (
               <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${getPriorityBadge(item.prioridade)}`}>
                 {item.prioridade}

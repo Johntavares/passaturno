@@ -1,18 +1,58 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-// Usuário único oficial do PASSATURNO
-const OFFICIAL_USER = {
-  id: 'usr-john-tavares',
-  nome: 'John Tavares',
-  email: 'john.tavares@passaturno.com',
-  matricula: '1001',
-  senha: 'passaturno2026',
-  equipe: 'Automação & CCO',
-  cargo: 'Engenheiro de Automação',
-};
-
-const DEFAULT_USERS = [OFFICIAL_USER];
+const ALL_PRESET_USERS = [
+  {
+    id: 'usr-john-tavares',
+    nome: 'John Tavares',
+    email: 'john.tavares@passaturno.com',
+    matricula: '1001',
+    senha: 'passaturno2026',
+    equipe: 'Automação & CCO (Turma A)',
+    cargo: 'Engenheiro de Automação',
+    turma: 'A',
+  },
+  {
+    id: 'usr-turma-b',
+    nome: 'Operador Turma B',
+    email: 'turma.b@passaturno.com',
+    matricula: '1002',
+    senha: 'passaturno2026',
+    equipe: 'Automação & CCO (Turma B)',
+    cargo: 'Técnico de Automação',
+    turma: 'B',
+  },
+  {
+    id: 'usr-turma-c',
+    nome: 'Operador Turma C',
+    email: 'turma.c@passaturno.com',
+    matricula: '1003',
+    senha: 'passaturno2026',
+    equipe: 'Automação & CCO (Turma C)',
+    cargo: 'Técnico de Automação',
+    turma: 'C',
+  },
+  {
+    id: 'usr-turma-d',
+    nome: 'Operador Turma D',
+    email: 'turma.d@passaturno.com',
+    matricula: '1004',
+    senha: 'passaturno2026',
+    equipe: 'Automação & CCO (Turma D)',
+    cargo: 'Técnico de Automação',
+    turma: 'D',
+  },
+  {
+    id: 'usr-lider-turma',
+    nome: 'Líder da Turma',
+    email: 'lider.turma@passaturno.com',
+    matricula: '9001',
+    senha: 'passaturno2026',
+    equipe: 'Gestão Multiturmas (A, B, C, D)',
+    cargo: 'LÍDER DE TURMA',
+    turma: 'GERAL',
+  },
+];
 
 export async function POST(request: Request) {
   try {
@@ -41,25 +81,24 @@ export async function POST(request: Request) {
       console.warn('Erro ao consultar banco de dados Prisma no login, recorrendo ao fallback:', dbError);
     }
 
-    // 2. Se não encontrar no banco ou se o banco estiver indisponível no serverless, aceitar credenciais do John Tavares
+    // 2. Fallback de Usuários Pré-cadastrados (Turmas A, B, C, D e Líder)
     if (!user) {
-      const isMatch =
-        cleanLogin === '1001' ||
-        cleanLogin === 'admin' ||
-        cleanLogin === 'john' ||
-        cleanLogin === 'john.tavares' ||
-        cleanLogin === 'john tavares' ||
-        cleanLogin === 'john.tavares@passaturno.com' ||
-        cleanLogin === 'john@passaturno.com';
-
-      if (isMatch) {
-        user = OFFICIAL_USER;
-      }
+      user = ALL_PRESET_USERS.find(
+        (u) =>
+          u.matricula === cleanLogin ||
+          u.email.toLowerCase() === cleanLogin ||
+          u.nome.toLowerCase().includes(cleanLogin) ||
+          (cleanLogin === 'a' && u.turma === 'A') ||
+          (cleanLogin === 'b' && u.turma === 'B') ||
+          (cleanLogin === 'c' && u.turma === 'C') ||
+          (cleanLogin === 'd' && u.turma === 'D') ||
+          (cleanLogin === 'lider' && u.cargo === 'LÍDER DE TURMA')
+      );
     }
 
     if (!user) {
       return NextResponse.json(
-        { error: 'Usuário não cadastrado. Utilize a matrícula 1001 ou o e-mail john.tavares@passaturno.com.' },
+        { error: 'Usuário não cadastrado. Utilize as matrículas 1001 (Turma A), 1002 (B), 1003 (C), 1004 (D) ou 9001 (Líder).' },
         { status: 404 }
       );
     }
@@ -77,6 +116,7 @@ export async function POST(request: Request) {
         matricula: user.matricula,
         equipe: user.equipe,
         cargo: user.cargo,
+        turma: user.turma,
       },
     });
   } catch (error) {

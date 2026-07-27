@@ -21,6 +21,9 @@ import { TwoHourReportModal } from '@/components/TwoHourReportModal';
 import { GpsDiagnosticModal } from '@/components/GpsDiagnosticModal';
 import { IncidentHistoryTabModal } from '@/components/IncidentHistoryTabModal';
 import { DesktopAdBanner } from '@/components/DesktopAdBanner';
+import { LiderTurmaModal } from '@/components/LiderTurmaModal';
+import { LiderDashboardView } from '@/components/LiderDashboardView';
+import { LeaderMessageNotification } from '@/components/LeaderMessageNotification';
 
 export default function Home() {
   const [incidents, setIncidents] = useState<IncidentType[]>([]);
@@ -38,6 +41,8 @@ export default function Home() {
   const [isTwoHourReportOpen, setIsTwoHourReportOpen] = useState(false);
   const [isGpsDiagnosticOpen, setIsGpsDiagnosticOpen] = useState(false);
   const [isHistoryTabOpen, setIsHistoryTabOpen] = useState(false);
+  const [isLiderTurmaOpen, setIsLiderTurmaOpen] = useState(false);
+  const [selectedTurmaFilter, setSelectedTurmaFilter] = useState<string>('TODAS');
 
   const [selectedTimelineIncident, setSelectedTimelineIncident] = useState<IncidentType | null>(null);
   const [isTimelineOpen, setIsTimelineOpen] = useState(false);
@@ -390,12 +395,13 @@ export default function Home() {
     }
   };
 
-  // Contagem de itens de prioridade da passagem de turno pendentes de aceite (apenas pendências herdadas / próximo turno)
+  // Contagem de itens herdados da turma anterior pendentes de aceite pelo NOVO operador.
+  // Itens que o operador ATUAL enviou para o próximo turno (isPendenciaHerdada = false) NÃO contam.
   const unacceptedCount = incidents.filter((i) => {
-    const isShiftHandoffPending = i.isPendenciaHerdada || i.status === 'PENDENCIA_PROXIMO_TURNO';
-    const isNotYetAccepted = i.status !== 'FINALIZADO' && i.status !== 'RETROAGIDO' && i.status !== 'EM_ANDAMENTO';
-
-    return isShiftHandoffPending && isNotYetAccepted;
+    return i.isPendenciaHerdada
+      && i.status !== 'FINALIZADO'
+      && i.status !== 'RETROAGIDO'
+      && i.status !== 'EM_ANDAMENTO';
   }).length;
 
   const handleRestoreNotifications = () => {
@@ -469,6 +475,26 @@ export default function Home() {
     applyTheme(newTheme);
   };
 
+  if (currentUser?.cargo === 'LÍDER DE TURMA') {
+    return (
+      <LiderDashboardView
+        incidents={incidents}
+        activeShift={activeShift}
+        currentUser={currentUser}
+        onLogout={handleLogout}
+        onOpenTimeline={(inc) => {
+          setSelectedTimelineIncident(inc);
+          setIsTimelineOpen(true);
+        }}
+        onOpenCommentModal={(inc) => {
+          setSelectedCommentIncident(inc);
+          setIsCommentOpen(true);
+        }}
+        onDeleteIncident={handleDeleteIncident}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)] flex flex-col selection:bg-sky-500 selection:text-white transition-colors duration-300">
       
@@ -488,6 +514,7 @@ export default function Home() {
         onOpenTwoHourReport={() => setIsTwoHourReportOpen(true)}
         onOpenGpsDiagnostic={() => setIsGpsDiagnosticOpen(true)}
         onOpenHistoryTab={() => setIsHistoryTabOpen(true)}
+        onOpenLiderTurma={() => setIsLiderTurmaOpen(true)}
         onRefreshData={loadData}
         isRefreshing={isRefreshing}
         unacceptedCount={unacceptedCount}
@@ -506,14 +533,23 @@ export default function Home() {
             <div className="w-10 h-10 border-3 border-sky-600 border-t-transparent rounded-full animate-spin mb-4"></div>
             <p className="text-xs font-semibold text-slate-500 tracking-wider">CARREGANDO AUTOMATION CONTROL...</p>
           </div>
-        ) : (
+        ) : (() => {
+          const displayedIncidents = incidents.filter((item) => {
+            if (selectedTurmaFilter === 'TODAS') return true;
+            return (item.turma || 'A').toUpperCase().trim() === selectedTurmaFilter;
+          });
+
+          return (
           <>
+            {/* 0. Notificações / Orientações enviadas pela Liderança da Turma */}
+            <LeaderMessageNotification userTurma={activeShift?.turma || 'A'} />
+
             {/* 1. Dashboard Stats */}
-            <DashboardStats incidents={incidents} />
+            <DashboardStats incidents={displayedIncidents} />
 
             {/* 2. Prioridades Críticas / Notificação da Passagem de Turno */}
             <CriticalPriorities
-              incidents={incidents}
+              incidents={displayedIncidents}
               onOpenWhatsapp={(inc) => {
                 setSelectedWhatsappIncident(inc);
                 setIsWhatsappOpen(true);
@@ -527,7 +563,7 @@ export default function Home() {
 
             {/* 3. Quadro Kanban Estilo Trello */}
             <KanbanBoard
-              incidents={incidents}
+              incidents={displayedIncidents}
               onStatusChange={handleStatusChange}
               onPriorityChange={handlePriorityChange}
               onOpenWhatsapp={(inc) => {
@@ -561,7 +597,8 @@ export default function Home() {
             {/* 4. Resumo dos Atendimentos Diários & Passagem de Turno (Posicionado na parte inferior) */}
             <DailySummarySection incidents={incidents} activeShift={activeShift} />
           </>
-        )}
+          );
+        })()}
 
       </main>
 
@@ -637,6 +674,15 @@ export default function Home() {
         }}
         onSaveComment={handleSaveComment}
         currentUserName={activeShift?.responsavelNome || 'John Tavares'}
+      />
+
+      <LiderTurmaModal
+        isOpen={isLiderTurmaOpen}
+        onClose={() => setIsLiderTurmaOpen(false)}
+        incidents={incidents}
+        activeShift={activeShift}
+        selectedTurmaFilter={selectedTurmaFilter}
+        onSelectTurmaFilter={setSelectedTurmaFilter}
       />
 
       {/* Quick Edit Incident Modal */}
