@@ -222,8 +222,95 @@ if (!globalStore.inMemoryEquipments) {
   globalStore.inMemoryEquipments = initialFleetData;
 }
 
-if (!globalStore.inMemoryIncidents) {
-  globalStore.inMemoryIncidents = [];
+if (!globalStore.inMemoryIncidents || globalStore.inMemoryIncidents.length === 0) {
+  const nowIso = new Date().toISOString();
+  const pastOneHour = new Date(Date.now() - 3600000).toISOString();
+  const pastTwoHours = new Date(Date.now() - 7200000).toISOString();
+
+  globalStore.inMemoryIncidents = [
+    {
+      id: 'inc-demo-306',
+      equipmentId: 'eq-ca797-5',
+      equipment: null,
+      tag: 'CA306',
+      equipamentoNome: 'Caminhão Fora de Estrada CAT 797',
+      area: 'Frota Mina',
+      tipoFalha: 'Comunicação',
+      falha: 'PTX TRAVADO',
+      sintoma: 'Dispositivo PTX travado no painel da cabine',
+      dataHoraParada: pastOneHour,
+      dataHoraAcionamento: pastOneHour,
+      previsaoLiberacao: '15:30',
+      dataHoraLiberacao: nowIso,
+      prioridade: 'MEDIA',
+      status: 'RETROAGIDO',
+      responsavel: 'John Tavares',
+      solucao: 'Constatado problema mecânico na chave do veículo. Atendimento retroagido.',
+      shiftId: 'shift-active-1',
+      isPendenciaHerdada: false,
+      criadoEm: pastOneHour,
+      atualizadoEm: nowIso,
+      historico: [
+        {
+          id: 'hist-306-1',
+          incidentId: 'inc-demo-306',
+          tipoEvento: 'ABERTURA',
+          descricao: 'Ocorrência iniciada por John Tavares. Falha: PTX TRAVADO',
+          usuario: 'John Tavares',
+          dataHora: pastOneHour,
+        },
+        {
+          id: 'hist-306-2',
+          incidentId: 'inc-demo-306',
+          tipoEvento: 'RETROACAO',
+          descricao: 'Atendimento retroagido por John Tavares (Constatado que não era falha de automação).',
+          usuario: 'John Tavares',
+          dataHora: nowIso,
+        },
+      ],
+    },
+    {
+      id: 'inc-demo-101',
+      equipmentId: 'eq-ca793-0',
+      equipment: null,
+      tag: 'CA101',
+      equipamentoNome: 'Caminhão Fora de Estrada CAT 793',
+      area: 'Frota Mina',
+      tipoFalha: 'Rede Industrial',
+      falha: 'Oscilação no Sinal de Rádio/GPS',
+      sintoma: 'Perda temporária de pacotes na telemetria',
+      dataHoraParada: pastTwoHours,
+      dataHoraAcionamento: pastTwoHours,
+      previsaoLiberacao: 'Concluído',
+      dataHoraLiberacao: pastOneHour,
+      prioridade: 'ALTA',
+      status: 'FINALIZADO',
+      responsavel: 'John Tavares',
+      solucao: 'Reaperto do conector M12 e limpeza do conector da antena RPT.',
+      shiftId: 'shift-active-1',
+      isPendenciaHerdada: false,
+      criadoEm: pastTwoHours,
+      atualizadoEm: pastOneHour,
+      historico: [
+        {
+          id: 'hist-101-1',
+          incidentId: 'inc-demo-101',
+          tipoEvento: 'ABERTURA',
+          descricao: 'Ocorrência iniciada por John Tavares. Falha: Oscilação no Sinal de Rádio/GPS',
+          usuario: 'John Tavares',
+          dataHora: pastTwoHours,
+        },
+        {
+          id: 'hist-101-2',
+          incidentId: 'inc-demo-101',
+          tipoEvento: 'SOLUCAO',
+          descricao: 'Solução aplicada: Reaperto do conector M12 e limpeza do conector da antena RPT.',
+          usuario: 'John Tavares',
+          dataHora: pastOneHour,
+        },
+      ],
+    },
+  ];
 }
 
 if (!globalStore.inMemoryShift) {

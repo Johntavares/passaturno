@@ -33,7 +33,7 @@ export interface UserSession {
   cargo: string;
 }
 
-interface HeaderNavProps {
+export interface HeaderNavProps {
   activeShift: ShiftType | null;
   onOpenNewIncident: () => void;
   onOpenAssumeShift: () => void;
@@ -42,6 +42,7 @@ interface HeaderNavProps {
   onOpenOneNoteRoutine?: () => void;
   onOpenTwoHourReport?: () => void;
   onOpenGpsDiagnostic?: () => void;
+  onOpenHistoryTab?: () => void;
   onRefreshData: () => void;
   isRefreshing?: boolean;
   unacceptedCount?: number;
@@ -61,6 +62,7 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
   onOpenOneNoteRoutine,
   onOpenTwoHourReport,
   onOpenGpsDiagnostic,
+  onOpenHistoryTab,
   onRefreshData,
   isRefreshing = false,
   unacceptedCount = 0,
@@ -220,6 +222,17 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
               <Plus className="w-4 h-4 mr-1.5 stroke-[2.5]" />
               Novo Atendimento
             </button>
+
+            {onOpenHistoryTab && (
+              <button
+                onClick={onOpenHistoryTab}
+                title="Abrir Histórico Geral de Atendimentos e Ocorrências"
+                className="inline-flex items-center px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl border border-slate-200 transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+              >
+                <Activity className="w-4 h-4 mr-1.5 text-sky-600 stroke-[2.5]" />
+                Histórico de Atendimentos
+              </button>
+            )}
 
             {/* Separador */}
             <div className="h-6 w-px bg-slate-200/80 dark:bg-slate-700 hidden sm:block" />

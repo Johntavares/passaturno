@@ -19,6 +19,7 @@ import { LoginModal } from '@/components/LoginModal';
 import { OneNoteRoutineModal } from '@/components/OneNoteRoutineModal';
 import { TwoHourReportModal } from '@/components/TwoHourReportModal';
 import { GpsDiagnosticModal } from '@/components/GpsDiagnosticModal';
+import { IncidentHistoryTabModal } from '@/components/IncidentHistoryTabModal';
 
 export default function Home() {
   const [incidents, setIncidents] = useState<IncidentType[]>([]);
@@ -35,6 +36,7 @@ export default function Home() {
   const [isOneNoteRoutineOpen, setIsOneNoteRoutineOpen] = useState(false);
   const [isTwoHourReportOpen, setIsTwoHourReportOpen] = useState(false);
   const [isGpsDiagnosticOpen, setIsGpsDiagnosticOpen] = useState(false);
+  const [isHistoryTabOpen, setIsHistoryTabOpen] = useState(false);
 
   const [selectedTimelineIncident, setSelectedTimelineIncident] = useState<IncidentType | null>(null);
   const [isTimelineOpen, setIsTimelineOpen] = useState(false);
@@ -368,6 +370,7 @@ export default function Home() {
         onOpenOneNoteRoutine={() => setIsOneNoteRoutineOpen(true)}
         onOpenTwoHourReport={() => setIsTwoHourReportOpen(true)}
         onOpenGpsDiagnostic={() => setIsGpsDiagnosticOpen(true)}
+        onOpenHistoryTab={() => setIsHistoryTabOpen(true)}
         onRefreshData={loadData}
         isRefreshing={isRefreshing}
         unacceptedCount={unacceptedCount}
@@ -592,6 +595,17 @@ export default function Home() {
         isOpen={isGpsDiagnosticOpen}
         onClose={() => setIsGpsDiagnosticOpen(false)}
         activeShift={activeShift}
+      />
+
+      {/* Modal / Aba de Histórico Geral de Atendimentos */}
+      <IncidentHistoryTabModal
+        isOpen={isHistoryTabOpen}
+        onClose={() => setIsHistoryTabOpen(false)}
+        incidents={incidents}
+        onOpenTimeline={(inc) => {
+          setSelectedTimelineIncident(inc);
+          setIsTimelineOpen(true);
+        }}
       />
 
     </div>
