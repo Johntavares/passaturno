@@ -53,9 +53,34 @@ export default function Home() {
   const [editSolucao, setEditSolucao] = useState('');
   const [editStatus, setEditStatus] = useState<IncidentStatusType>('EM_ANDAMENTO');
 
-  // Buscar todos os dados
+  // Função auxiliar para atualizar o estado de atendimentos e persistir no localStorage
+  const updateIncidentsState = (updater: (prev: IncidentType[]) => IncidentType[]) => {
+    setIncidents((prev) => {
+      const updated = updater(prev);
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('passaturno-incidents-v2', JSON.stringify(updated));
+        } catch (e) {
+          console.error('Erro ao persistir no localStorage:', e);
+        }
+      }
+      return updated;
+    });
+  };
+
+  // Buscar todos os dados com fusão e persistência resiliente no localStorage
   const loadData = useCallback(async () => {
     setIsRefreshing(true);
+    let localSaved: IncidentType[] = [];
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('passaturno-incidents-v2');
+        if (saved) localSaved = JSON.parse(saved);
+      } catch (e) {
+        console.error('Erro ao ler atendimentos salvos:', e);
+      }
+    }
+
     try {
       const [incRes, eqRes, shiftRes] = await Promise.all([
         fetch('/api/atendimentos'),
@@ -64,8 +89,33 @@ export default function Home() {
       ]);
 
       if (incRes.ok) {
-        const incData = await incRes.json();
-        setIncidents(incData);
+        const incData: IncidentType[] = await incRes.json();
+        const mergedMap = new Map<string, IncidentType>();
+        
+        (incData || []).forEach((item) => mergedMap.set(item.id, item));
+        localSaved.forEach((item) => {
+          if (!mergedMap.has(item.id)) {
+            mergedMap.set(item.id, item);
+          } else {
+            const serverItem = mergedMap.get(item.id)!;
+            const localTime = new Date(item.atualizadoEm || item.criadoEm).getTime();
+            const serverTime = new Date(serverItem.atualizadoEm || serverItem.criadoEm).getTime();
+            if (localTime > serverTime) {
+              mergedMap.set(item.id, item);
+            }
+          }
+        });
+
+        const mergedArray = Array.from(mergedMap.values()).sort(
+          (a, b) => new Date(b.criadoEm).getTime() - new Date(a.criadoEm).getTime()
+        );
+
+        setIncidents(mergedArray);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('passaturno-incidents-v2', JSON.stringify(mergedArray));
+        }
+      } else if (localSaved.length > 0) {
+        setIncidents(localSaved);
       }
 
       if (eqRes.ok) {
@@ -79,6 +129,7 @@ export default function Home() {
       }
     } catch (err) {
       console.error('Error loading CCO data:', err);
+      if (localSaved.length > 0) setIncidents(localSaved);
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -91,8 +142,8 @@ export default function Home() {
 
   // Alterar status diretamente no Kanban
   const handleStatusChange = async (id: string, newStatus: IncidentStatusType) => {
-    setIncidents((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, status: newStatus } : item))
+    updateIncidentsState((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, status: newStatus, atualizadoEm: new Date().toISOString() } : item))
     );
 
     try {
@@ -102,24 +153,21 @@ export default function Home() {
         body: JSON.stringify({ status: newStatus }),
       });
 
-      if (!res.ok) {
-        loadData();
-      } else {
+      if (res.ok) {
         const updated = await res.json();
-        setIncidents((prev) =>
+        updateIncidentsState((prev) =>
           prev.map((item) => (item.id === id ? updated : item))
         );
       }
     } catch (err) {
       console.error(err);
-      loadData();
     }
   };
 
   // Alterar prioridade diretamente no Kanban
   const handlePriorityChange = async (id: string, newPriority: PriorityLevel) => {
-    setIncidents((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, prioridade: newPriority } : item))
+    updateIncidentsState((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, prioridade: newPriority, atualizadoEm: new Date().toISOString() } : item))
     );
 
     try {
@@ -129,17 +177,14 @@ export default function Home() {
         body: JSON.stringify({ prioridade: newPriority }),
       });
 
-      if (!res.ok) {
-        loadData();
-      } else {
+      if (res.ok) {
         const updated = await res.json();
-        setIncidents((prev) =>
+        updateIncidentsState((prev) =>
           prev.map((item) => (item.id === id ? updated : item))
         );
       }
     } catch (err) {
       console.error(err);
-      loadData();
     }
   };
 
@@ -150,8 +195,7 @@ export default function Home() {
         ? incident.prioridade
         : 'ALTA';
 
-    // Atualização otimista no estado local
-    setIncidents((prev) =>
+    updateIncidentsState((prev) =>
       prev.map((item) =>
         item.id === incident.id
           ? {
@@ -159,6 +203,7 @@ export default function Home() {
               status: 'EM_ANDAMENTO',
               prioridade: targetPriority,
               isPendenciaHerdada: false,
+              atualizadoEm: new Date().toISOString(),
             }
           : item
       )
@@ -172,21 +217,18 @@ export default function Home() {
           status: 'EM_ANDAMENTO',
           prioridade: targetPriority,
           logDescription: `Notificação de prioridade da passagem de turno aceita. Atendimento movido para a fila de Em Andamento com status de Prioridade ${targetPriority}.`,
-          logUsuario: activeShift?.responsavelNome || 'Operador CCO',
+          logUsuario: activeShift?.responsavelNome || 'John Tavares',
         }),
       });
 
-      if (!res.ok) {
-        loadData();
-      } else {
+      if (res.ok) {
         const updated = await res.json();
-        setIncidents((prev) =>
+        updateIncidentsState((prev) =>
           prev.map((item) => (item.id === incident.id ? updated : item))
         );
       }
     } catch (err) {
       console.error('Erro ao aceitar atendimento:', err);
-      loadData();
     }
   };
 
@@ -194,6 +236,14 @@ export default function Home() {
   const handleSaveEditIncident = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedEditIncident) return;
+
+    updateIncidentsState((prev) =>
+      prev.map((item) =>
+        item.id === selectedEditIncident.id
+          ? { ...item, status: editStatus, solucao: editSolucao, atualizadoEm: new Date().toISOString() }
+          : item
+      )
+    );
 
     try {
       const res = await fetch(`/api/atendimentos/${selectedEditIncident.id}`, {
