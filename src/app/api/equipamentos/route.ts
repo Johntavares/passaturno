@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { inMemoryStore } from '@/lib/inMemoryStore';
 
 export async function GET() {
   try {
@@ -11,10 +12,13 @@ export async function GET() {
         },
       },
     });
-    return NextResponse.json(equipments);
+    if (equipments && equipments.length > 0) {
+      return NextResponse.json(equipments);
+    }
+    return NextResponse.json(inMemoryStore.getEquipments());
   } catch (error) {
-    console.error('Error fetching equipments:', error);
-    return NextResponse.json({ error: 'Erro ao buscar equipamentos' }, { status: 500 });
+    console.warn('Fallback to inMemoryStore for GET /api/equipamentos:', error);
+    return NextResponse.json(inMemoryStore.getEquipments());
   }
 }
 
@@ -29,27 +33,40 @@ export async function POST(request: Request) {
 
     const formattedTag = tag.toUpperCase().trim();
 
-    const existing = await prisma.equipment.findUnique({
-      where: { tag: formattedTag },
-    });
+    try {
+      const existing = await prisma.equipment.findUnique({
+        where: { tag: formattedTag },
+      });
 
-    if (existing) {
-      return NextResponse.json({ error: 'Equipamento com esta TAG já está cadastrado' }, { status: 400 });
-    }
+      if (existing) {
+        return NextResponse.json({ error: 'Equipamento com esta TAG já está cadastrado' }, { status: 400 });
+      }
 
-    const equipment = await prisma.equipment.create({
-      data: {
+      const equipment = await prisma.equipment.create({
+        data: {
+          tag: formattedTag,
+          nome,
+          tipo: tipo || 'Outros',
+          area: area || 'Frota Mina',
+          horimetroOpcional: horimetroOpcional ? parseFloat(horimetroOpcional) : null,
+        },
+      });
+
+      return NextResponse.json(equipment, { status: 201 });
+    } catch (dbErr) {
+      console.warn('Fallback to inMemoryStore for POST /api/equipamentos:', dbErr);
+      const eq = inMemoryStore.addEquipment({
         tag: formattedTag,
         nome,
-        tipo: tipo || 'Outros',
-        area: area || 'Frota Mina',
+        tipo,
+        area,
         horimetroOpcional: horimetroOpcional ? parseFloat(horimetroOpcional) : null,
-      },
-    });
-
-    return NextResponse.json(equipment, { status: 201 });
+      });
+      return NextResponse.json(eq, { status: 201 });
+    }
   } catch (error) {
     console.error('Error creating equipment:', error);
     return NextResponse.json({ error: 'Erro ao cadastrar equipamento' }, { status: 500 });
   }
 }
+

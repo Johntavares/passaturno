@@ -31,7 +31,7 @@ export const NewIncidentModal: React.FC<NewIncidentModalProps> = ({
   );
   const [prioridade, setPrioridade] = useState<PriorityLevel>('MEDIA');
   const [status, setStatus] = useState<IncidentStatusType>('EM_ANDAMENTO');
-  const [responsavel, setResponsavel] = useState('John Doe');
+  const [responsavel, setResponsavel] = useState('John Tavares');
   const [motivoEspera, setMotivoEspera] = useState('');
   const [proximaAcao, setProximaAcao] = useState('');
   const [observacao, setObservacao] = useState('');
@@ -76,10 +76,13 @@ export const NewIncidentModal: React.FC<NewIncidentModalProps> = ({
 
   const [previsaoLiberacao, setPrevisaoLiberacao] = useState('');
 
-  // Ao digitar a TAG, auto-completar os dados se o equipamento já existir na frota
+  // Ao digitar a TAG, auto-completar os dados se o equipamento já existir na frota (ex: '306' encontra 'CA306')
   useEffect(() => {
     if (!tag) return;
-    const found = equipments.find((e) => e.tag.toUpperCase().trim() === tag.toUpperCase().trim());
+    const cleanInput = tag.toUpperCase().trim();
+    const found = equipments.find(
+      (e) => e.tag.toUpperCase().trim() === cleanInput || e.tag.toUpperCase().trim().endsWith(cleanInput)
+    );
     if (found) {
       setEquipamentoNome(found.nome);
       setArea(found.area);

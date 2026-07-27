@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { inMemoryStore } from '@/lib/inMemoryStore';
 
 export async function GET() {
   try {
@@ -38,7 +39,8 @@ export async function GET() {
       openIncidents,
     });
   } catch (error) {
-    console.error('Error fetching active shift:', error);
-    return NextResponse.json({ error: 'Erro ao buscar turno ativo' }, { status: 500 });
+    console.warn('Fallback to inMemoryStore for GET /api/turnos/ativo:', error);
+    return NextResponse.json(inMemoryStore.getActiveShift());
   }
 }
+

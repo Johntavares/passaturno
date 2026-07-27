@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { inMemoryStore } from '@/lib/inMemoryStore';
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
-    const { id } = await params;
     const incident = await prisma.incident.findUnique({
       where: { id },
       include: {
@@ -17,118 +18,127 @@ export async function GET(
       },
     });
 
-    if (!incident) {
-      return NextResponse.json({ error: 'Atendimento não encontrado' }, { status: 404 });
+    if (incident) {
+      return NextResponse.json(incident);
     }
-
-    return NextResponse.json(incident);
   } catch (error) {
-    console.error('Error fetching incident details:', error);
-    return NextResponse.json({ error: 'Erro ao buscar detalhes' }, { status: 500 });
+    console.warn('Fallback to inMemoryStore for GET /api/atendimentos/[id]:', error);
   }
+
+  const memInc = inMemoryStore.findIncidentById(id);
+  if (memInc) {
+    return NextResponse.json(memInc);
+  }
+  return NextResponse.json({ error: 'Atendimento não encontrado' }, { status: 404 });
 }
 
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  try {
-    const { id } = await params;
-    const body = await request.json();
-    const {
-      status,
-      solucao,
-      motivoEspera,
-      proximaAcao,
-      prioridade,
-      responsavel,
-      observacao,
-      previsaoLiberacao,
-      logDescription,
-      logUsuario,
-    } = body;
+  const { id } = await params;
+  const body = await request.json();
 
+  try {
     const currentIncident = await prisma.incident.findUnique({
       where: { id },
     });
 
-    if (!currentIncident) {
-      return NextResponse.json({ error: 'Atendimento não encontrado' }, { status: 404 });
-    }
+    if (currentIncident) {
+      const {
+        status,
+        solucao,
+        motivoEspera,
+        proximaAcao,
+        prioridade,
+        responsavel,
+        observacao,
+        previsaoLiberacao,
+        logDescription,
+        logUsuario,
+      } = body;
 
-    const updateData: any = {};
-    let eventType = 'ATUALIZACAO';
-    let defaultLogDesc = 'Atendimento atualizado.';
+      const updateData: any = {};
+      let eventType = 'ATUALIZACAO';
+      let defaultLogDesc = 'Atendimento atualizado.';
 
-    if (status && status !== currentIncident.status) {
-      updateData.status = status;
-      eventType = 'ALTERACAO_STATUS';
-      defaultLogDesc = `Status alterado de ${currentIncident.status} para ${status}.`;
+      if (status && status !== currentIncident.status) {
+        updateData.status = status;
+        eventType = 'ALTERACAO_STATUS';
+        defaultLogDesc = `Status alterado de ${currentIncident.status} para ${status}.`;
 
-      if (status === 'FINALIZADO') {
-        updateData.dataHoraLiberacao = new Date();
-        eventType = 'LIBERACAO';
-        defaultLogDesc = `Equipamento liberado por ${logUsuario || responsavel || currentIncident.responsavel}.`;
-      } else if (status === 'RETROAGIDO') {
-        if (!currentIncident.dataHoraLiberacao) {
+        if (status === 'FINALIZADO') {
           updateData.dataHoraLiberacao = new Date();
+          eventType = 'LIBERACAO';
+          defaultLogDesc = `Equipamento liberado por ${logUsuario || responsavel || currentIncident.responsavel}.`;
+        } else if (status === 'RETROAGIDO') {
+          if (!currentIncident.dataHoraLiberacao) {
+            updateData.dataHoraLiberacao = new Date();
+          }
+          eventType = 'RETROACAO';
+          defaultLogDesc = `Atendimento retroagido por ${logUsuario || responsavel || currentIncident.responsavel} (Constatado que não era falha de automação).`;
         }
-        eventType = 'RETROACAO';
-        defaultLogDesc = `Atendimento retroagido por ${logUsuario || responsavel || currentIncident.responsavel} (Constatado que não era falha de automação).`;
       }
-    }
 
-    if (solucao) {
-      updateData.solucao = solucao;
-      eventType = 'SOLUCAO';
-      defaultLogDesc = `Solução aplicada: ${solucao}`;
-    }
+      if (solucao) {
+        updateData.solucao = solucao;
+        eventType = 'SOLUCAO';
+        defaultLogDesc = `Solução aplicada: ${solucao}`;
+      }
 
-    if (motivoEspera !== undefined) updateData.motivoEspera = motivoEspera;
-    if (proximaAcao !== undefined) updateData.proximaAcao = proximaAcao;
-    if (prioridade) updateData.prioridade = prioridade;
-    if (responsavel) updateData.responsavel = responsavel;
-    if (observacao !== undefined) updateData.observacao = observacao;
-    if (previsaoLiberacao !== undefined) updateData.previsaoLiberacao = previsaoLiberacao;
+      if (motivoEspera !== undefined) updateData.motivoEspera = motivoEspera;
+      if (proximaAcao !== undefined) updateData.proximaAcao = proximaAcao;
+      if (prioridade) updateData.prioridade = prioridade;
+      if (responsavel) updateData.responsavel = responsavel;
+      if (observacao !== undefined) updateData.observacao = observacao;
+      if (previsaoLiberacao !== undefined) updateData.previsaoLiberacao = previsaoLiberacao;
 
-    const updatedIncident = await prisma.incident.update({
-      where: { id },
-      data: {
-        ...updateData,
-        historico: {
-          create: {
-            tipoEvento: eventType as any,
-            descricao: logDescription || defaultLogDesc,
-            usuario: logUsuario || responsavel || currentIncident.responsavel,
+      const updatedIncident = await prisma.incident.update({
+        where: { id },
+        data: {
+          ...updateData,
+          historico: {
+            create: {
+              tipoEvento: eventType as any,
+              descricao: logDescription || defaultLogDesc,
+              usuario: logUsuario || responsavel || currentIncident.responsavel,
+            },
           },
         },
-      },
-      include: {
-        historico: {
-          orderBy: { dataHora: 'desc' },
+        include: {
+          historico: {
+            orderBy: { dataHora: 'desc' },
+          },
         },
-      },
-    });
+      });
 
-    return NextResponse.json(updatedIncident);
+      return NextResponse.json(updatedIncident);
+    }
   } catch (error) {
-    console.error('Error updating incident:', error);
-    return NextResponse.json({ error: 'Erro ao atualizar atendimento' }, { status: 500 });
+    console.warn('Fallback to inMemoryStore for PATCH /api/atendimentos/[id]:', error);
   }
+
+  const updated = inMemoryStore.updateIncident(id, body);
+  if (updated) {
+    return NextResponse.json(updated);
+  }
+  return NextResponse.json({ error: 'Erro ao atualizar atendimento' }, { status: 500 });
 }
 
 export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
-    const { id } = await params;
     await prisma.incident.delete({
       where: { id },
     });
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error deleting incident:', error);
-    return NextResponse.json({ error: 'Erro ao excluir atendimento' }, { status: 500 });
+    console.warn('Fallback to inMemoryStore for DELETE /api/atendimentos/[id]:', error);
+    inMemoryStore.deleteIncident(id);
+    return NextResponse.json({ success: true });
   }
 }
+

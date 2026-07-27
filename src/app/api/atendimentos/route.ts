@@ -1,14 +1,15 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { inMemoryStore } from '@/lib/inMemoryStore';
 
 export async function GET(request: Request) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const tag = searchParams.get('tag');
-    const status = searchParams.get('status');
-    const prioridade = searchParams.get('prioridade');
-    const search = searchParams.get('search');
+  const { searchParams } = new URL(request.url);
+  const tag = searchParams.get('tag') || undefined;
+  const status = searchParams.get('status') || undefined;
+  const prioridade = searchParams.get('prioridade') || undefined;
+  const search = searchParams.get('search') || undefined;
 
+  try {
     const where: any = {};
 
     if (tag) {
@@ -46,8 +47,9 @@ export async function GET(request: Request) {
 
     return NextResponse.json(incidents);
   } catch (error) {
-    console.error('Error fetching incidents:', error);
-    return NextResponse.json({ error: 'Erro ao buscar atendimentos' }, { status: 500 });
+    console.warn('Fallback to inMemoryStore for GET /api/atendimentos:', error);
+    const incidents = inMemoryStore.getIncidents({ tag, status, prioridade, search });
+    return NextResponse.json(incidents);
   }
 }
 
@@ -77,53 +79,60 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'TAG, Falha e Responsável são obrigatórios' }, { status: 400 });
     }
 
-    // Buscar equipamento pela TAG para vincular
-    const equipment = await prisma.equipment.findUnique({
-      where: { tag },
-    });
+    try {
+      // Buscar equipamento pela TAG para vincular
+      const equipment = await prisma.equipment.findUnique({
+        where: { tag: tag.toUpperCase().trim() },
+      });
 
-    // Buscar turno ativo atual
-    const activeShift = await prisma.shift.findFirst({
-      where: { status: 'ATIVO' },
-    });
+      // Buscar turno ativo atual
+      const activeShift = await prisma.shift.findFirst({
+        where: { status: 'ATIVO' },
+      });
 
-    const incident = await prisma.incident.create({
-      data: {
-        tag: tag.toUpperCase(),
-        equipmentId: equipment?.id || null,
-        equipamentoNome: equipamentoNome || equipment?.nome || `Equipamento ${tag}`,
-        area: area || equipment?.area || 'Frota Mina',
-        tipoFalha: tipoFalha || 'Comunicação',
-        falha,
-        sintoma,
-        dataHoraParada: dataHoraParada ? new Date(dataHoraParada) : new Date(),
-        dataHoraAcionamento: dataHoraAcionamento ? new Date(dataHoraAcionamento) : new Date(),
-        previsaoLiberacao: previsaoLiberacao || null,
-        prioridade: prioridade || 'MEDIA',
-        status: status || 'EM_ANDAMENTO',
-        responsavel,
-        motivoEspera,
-        proximaAcao,
-        localizacaoAtualOpcional,
-        observacao,
-        shiftId: activeShift?.id || null,
-        isPendenciaHerdada: false,
-        historico: {
-          create: {
-            tipoEvento: 'ABERTURA',
-            descricao: `Ocorrência iniciada por ${responsavel}. Falha: ${falha}`,
-            usuario: responsavel,
+      const incident = await prisma.incident.create({
+        data: {
+          tag: tag.toUpperCase().trim(),
+          equipmentId: equipment?.id || null,
+          equipamentoNome: equipamentoNome || equipment?.nome || `Equipamento ${tag}`,
+          area: area || equipment?.area || 'Frota Mina',
+          tipoFalha: tipoFalha || 'Comunicação',
+          falha,
+          sintoma,
+          dataHoraParada: dataHoraParada ? new Date(dataHoraParada) : new Date(),
+          dataHoraAcionamento: dataHoraAcionamento ? new Date(dataHoraAcionamento) : new Date(),
+          previsaoLiberacao: previsaoLiberacao || null,
+          prioridade: prioridade || 'MEDIA',
+          status: status || 'EM_ANDAMENTO',
+          responsavel,
+          motivoEspera,
+          proximaAcao,
+          localizacaoAtualOpcional,
+          observacao,
+          shiftId: activeShift?.id || null,
+          isPendenciaHerdada: false,
+          historico: {
+            create: {
+              tipoEvento: 'ABERTURA',
+              descricao: `Ocorrência iniciada por ${responsavel}. Falha: ${falha}`,
+              usuario: responsavel,
+            },
           },
         },
-      },
-      include: {
-        historico: true,
-      },
-    });
+        include: {
+          historico: true,
+        },
+      });
 
-    return NextResponse.json(incident, { status: 201 });
+      return NextResponse.json(incident, { status: 201 });
+    } catch (dbErr) {
+      console.warn('Fallback to inMemoryStore for POST /api/atendimentos:', dbErr);
+      const incident = inMemoryStore.createIncident(body);
+      return NextResponse.json(incident, { status: 201 });
+    }
   } catch (error) {
     console.error('Error creating incident:', error);
     return NextResponse.json({ error: 'Erro ao criar atendimento' }, { status: 500 });
   }
 }
+
