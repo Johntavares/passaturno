@@ -20,6 +20,7 @@ import { OneNoteRoutineModal } from '@/components/OneNoteRoutineModal';
 import { TwoHourReportModal } from '@/components/TwoHourReportModal';
 import { GpsDiagnosticModal } from '@/components/GpsDiagnosticModal';
 import { IncidentHistoryTabModal } from '@/components/IncidentHistoryTabModal';
+import { DesktopAdBanner } from '@/components/DesktopAdBanner';
 
 export default function Home() {
   const [incidents, setIncidents] = useState<IncidentType[]>([]);
@@ -533,6 +534,9 @@ export default function Home() {
               }}
               onDeleteIncident={handleDeleteIncident}
             />
+
+            {/* Bloco de Anúncio Exclusivo para Desktop / Notebook */}
+            <DesktopAdBanner />
 
             {/* 4. Resumo dos Atendimentos Diários & Passagem de Turno (Posicionado na parte inferior) */}
             <DailySummarySection incidents={incidents} activeShift={activeShift} />
