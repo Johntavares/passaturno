@@ -134,11 +134,11 @@ export async function DELETE(
     await prisma.incident.delete({
       where: { id },
     });
-    return NextResponse.json({ success: true });
   } catch (error) {
     console.warn('Fallback to inMemoryStore for DELETE /api/atendimentos/[id]:', error);
-    inMemoryStore.deleteIncident(id);
-    return NextResponse.json({ success: true });
   }
+
+  inMemoryStore.deleteIncident(id);
+  return NextResponse.json({ success: true });
 }
 

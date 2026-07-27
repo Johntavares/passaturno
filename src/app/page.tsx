@@ -74,14 +74,26 @@ export default function Home() {
   const loadData = useCallback(async () => {
     setIsRefreshing(true);
     let localSaved: IncidentType[] = [];
+    const deletedIds = new Set<string>();
+
     if (typeof window !== 'undefined') {
       try {
         const saved = localStorage.getItem('passaturno-incidents-v2');
         if (saved) localSaved = JSON.parse(saved);
+
+        const savedDeleted = localStorage.getItem('passaturno-deleted-incidents-v2');
+        if (savedDeleted) {
+          (JSON.parse(savedDeleted) as string[]).forEach((d) => deletedIds.add(d.toUpperCase().trim()));
+        }
       } catch (e) {
         console.error('Erro ao ler atendimentos salvos:', e);
       }
     }
+
+    // Filtrar itens locais excluídos
+    localSaved = localSaved.filter(
+      (item) => !deletedIds.has(item.id.toUpperCase().trim()) && !deletedIds.has(item.tag.toUpperCase().trim())
+    );
 
     try {
       const [incRes, eqRes, shiftRes] = await Promise.all([
@@ -91,10 +103,14 @@ export default function Home() {
       ]);
 
       if (incRes.ok) {
-        const incData: IncidentType[] = await incRes.json();
+        const incDataRaw: IncidentType[] = await incRes.json();
+        const incData = (incDataRaw || []).filter(
+          (item) => !deletedIds.has(item.id.toUpperCase().trim()) && !deletedIds.has(item.tag.toUpperCase().trim())
+        );
+
         const mergedMap = new Map<string, IncidentType>();
         
-        (incData || []).forEach((item) => mergedMap.set(item.id, item));
+        incData.forEach((item) => mergedMap.set(item.id, item));
         localSaved.forEach((item) => {
           if (!mergedMap.has(item.id)) {
             mergedMap.set(item.id, item);
@@ -273,7 +289,29 @@ export default function Home() {
 
   // Excluir Atendimento permanentemente
   const handleDeleteIncident = async (id: string) => {
-    updateIncidentsState((prev) => prev.filter((item) => item.id !== id));
+    const targetIncident = incidents.find((i) => i.id === id);
+    const tagToDelete = targetIncident?.tag;
+
+    // Guardar ID e TAG no registro permanente de excluídos no localStorage
+    if (typeof window !== 'undefined') {
+      try {
+        const savedDeleted = JSON.parse(localStorage.getItem('passaturno-deleted-incidents-v2') || '[]');
+        const updatedDeleted = Array.from(
+          new Set([...savedDeleted, id, tagToDelete].filter(Boolean).map((x) => String(x).toUpperCase().trim()))
+        );
+        localStorage.setItem('passaturno-deleted-incidents-v2', JSON.stringify(updatedDeleted));
+      } catch (e) {
+        console.error('Erro ao guardar ID excluido:', e);
+      }
+    }
+
+    updateIncidentsState((prev) =>
+      prev.filter(
+        (item) =>
+          item.id !== id && (tagToDelete ? item.tag.toUpperCase().trim() !== tagToDelete.toUpperCase().trim() : true)
+      )
+    );
+
     try {
       await fetch(`/api/atendimentos/${id}`, {
         method: 'DELETE',

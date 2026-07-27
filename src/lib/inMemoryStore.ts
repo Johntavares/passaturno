@@ -498,8 +498,11 @@ export const inMemoryStore = {
     return updated;
   },
 
-  deleteIncident: (id: string) => {
-    globalStore.inMemoryIncidents = (globalStore.inMemoryIncidents || []).filter((i) => i.id !== id);
+  deleteIncident: (idOrTag: string) => {
+    const q = (idOrTag || '').toUpperCase().trim();
+    globalStore.inMemoryIncidents = (globalStore.inMemoryIncidents || []).filter(
+      (i) => i.id !== idOrTag && i.tag.toUpperCase().trim() !== q
+    );
     return true;
   },
 
