@@ -23,12 +23,20 @@ export const NewIncidentModal: React.FC<NewIncidentModalProps> = ({
   const [area, setArea] = useState('Frota Mina');
   const [saveNewToFleet, setSaveNewToFleet] = useState(true);
 
+  const getNowLocalDatetimeString = () => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
   const [tipoFalha, setTipoFalha] = useState('Comunicação');
   const [falha, setFalha] = useState('');
   const [sintoma, setSintoma] = useState('');
-  const [dataHoraParada, setDataHoraParada] = useState(
-    new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)
-  );
+  const [dataHoraParada, setDataHoraParada] = useState(getNowLocalDatetimeString());
   const [prioridade, setPrioridade] = useState<PriorityLevel>('MEDIA');
   const [status, setStatus] = useState<IncidentStatusType>('EM_ANDAMENTO');
   const [responsavel, setResponsavel] = useState('John Tavares');
@@ -75,6 +83,14 @@ export const NewIncidentModal: React.FC<NewIncidentModalProps> = ({
   ];
 
   const [previsaoLiberacao, setPrevisaoLiberacao] = useState('');
+
+  // Sempre que o modal abre, atualizar a data/hora da parada para a hora atual
+  useEffect(() => {
+    if (isOpen) {
+      setDataHoraParada(getNowLocalDatetimeString());
+      setErrorMsg('');
+    }
+  }, [isOpen]);
 
   // Ao digitar a TAG, auto-completar os dados se o equipamento já existir na frota (ex: '306' encontra 'CA306')
   useEffect(() => {
