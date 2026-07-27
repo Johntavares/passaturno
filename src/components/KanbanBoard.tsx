@@ -17,7 +17,8 @@ import {
   ChevronUp,
   Maximize2,
   Minimize2,
-  Trash2
+  Trash2,
+  CheckCircle2
 } from 'lucide-react';
 import { differenceInMinutes, format } from 'date-fns';
 
@@ -337,9 +338,16 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                   Parado: <strong>{downtimeStr}</strong>
                 </span>
 
-                <span className="font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
-                  Prev: <strong>{item.previsaoLiberacao || '---'}</strong>
-                </span>
+                {isFinished ? (
+                  <span className="font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950 px-2 py-0.5 rounded border border-emerald-300 dark:border-emerald-800 flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                    <span>Finalizado: <strong>{item.dataHoraLiberacao ? format(new Date(item.dataHoraLiberacao), 'HH:mm') : format(new Date(), 'HH:mm')}</strong></span>
+                  </span>
+                ) : (
+                  <span className="font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
+                    Prev: <strong>{item.previsaoLiberacao || '---'}</strong>
+                  </span>
+                )}
               </div>
             </div>
 

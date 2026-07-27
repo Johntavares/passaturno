@@ -161,8 +161,20 @@ export default function Home() {
 
   // Alterar status diretamente no Kanban
   const handleStatusChange = async (id: string, newStatus: IncidentStatusType) => {
+    const nowIso = new Date().toISOString();
+    const isFin = newStatus === 'FINALIZADO' || newStatus === 'RETROAGIDO';
+
     updateIncidentsState((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, status: newStatus, atualizadoEm: new Date().toISOString() } : item))
+      prev.map((item) =>
+        item.id === id
+          ? {
+              ...item,
+              status: newStatus,
+              dataHoraLiberacao: isFin ? (item.dataHoraLiberacao || nowIso) : item.dataHoraLiberacao,
+              atualizadoEm: nowIso,
+            }
+          : item
+      )
     );
 
     try {
@@ -259,6 +271,8 @@ export default function Home() {
     const incidentId = selectedEditIncident.id;
     const targetStatus = editStatus;
     const targetSolucao = editSolucao;
+    const nowIso = new Date().toISOString();
+    const isFin = targetStatus === 'FINALIZADO' || targetStatus === 'RETROAGIDO';
 
     // 1. Fechar o modal IMEDIATAMENTE (resposta instantânea na UI sem travar o operador)
     setIsEditIncidentOpen(false);
@@ -268,7 +282,13 @@ export default function Home() {
     updateIncidentsState((prev) =>
       prev.map((item) =>
         item.id === incidentId
-          ? { ...item, status: targetStatus, solucao: targetSolucao, atualizadoEm: new Date().toISOString() }
+          ? {
+              ...item,
+              status: targetStatus,
+              solucao: targetSolucao,
+              dataHoraLiberacao: isFin ? (item.dataHoraLiberacao || nowIso) : item.dataHoraLiberacao,
+              atualizadoEm: nowIso,
+            }
           : item
       )
     );
