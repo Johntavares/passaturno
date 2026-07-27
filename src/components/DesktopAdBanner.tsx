@@ -9,7 +9,7 @@ interface DesktopAdBannerProps {
 }
 
 export const DesktopAdBanner: React.FC<DesktopAdBannerProps> = ({
-  adClient = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID || 'ca-pub-XXXXXXXXXXXXXXXX',
+  adClient = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID || 'ca-pub-5140224476422289',
   adSlot = process.env.NEXT_PUBLIC_ADSENSE_SLOT_ID || 'YYYYYYYYYY',
   className = '',
 }) => {
