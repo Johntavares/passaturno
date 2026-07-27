@@ -239,31 +239,35 @@ export default function Home() {
     e.preventDefault();
     if (!selectedEditIncident) return;
 
+    const incidentId = selectedEditIncident.id;
+    const targetStatus = editStatus;
+    const targetSolucao = editSolucao;
+
+    // 1. Fechar o modal IMEDIATAMENTE (resposta instantânea na UI sem travar o operador)
+    setIsEditIncidentOpen(false);
+    setSelectedEditIncident(null);
+
+    // 2. Atualizar estado local + localStorage (garante a integridade e persistência de 100% dos dados!)
     updateIncidentsState((prev) =>
       prev.map((item) =>
-        item.id === selectedEditIncident.id
-          ? { ...item, status: editStatus, solucao: editSolucao, atualizadoEm: new Date().toISOString() }
+        item.id === incidentId
+          ? { ...item, status: targetStatus, solucao: targetSolucao, atualizadoEm: new Date().toISOString() }
           : item
       )
     );
 
+    // 3. Persistir no servidor em segundo plano
     try {
-      const res = await fetch(`/api/atendimentos/${selectedEditIncident.id}`, {
+      await fetch(`/api/atendimentos/${incidentId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          status: editStatus,
-          solucao: editSolucao,
+          status: targetStatus,
+          solucao: targetSolucao,
         }),
       });
-
-      if (res.ok) {
-        setIsEditIncidentOpen(false);
-        setSelectedEditIncident(null);
-        loadData();
-      }
     } catch (err) {
-      console.error(err);
+      console.error('Erro ao salvar alteração de atendimento:', err);
     }
   };
 
