@@ -304,12 +304,13 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
               <select
                 value={item.status}
                 onChange={(e) => onStatusChange(item.id, e.target.value as IncidentStatusType)}
-                className="bg-slate-50 text-[10px] font-semibold text-slate-700 border border-slate-200 rounded-lg px-2 py-0.5 focus:outline-none focus:bg-white focus:border-sky-500 cursor-pointer"
+                className="bg-slate-50 text-[10px] font-semibold text-slate-700 border border-slate-200 rounded-lg px-1.5 py-0.5 focus:outline-none focus:bg-white focus:border-sky-500 cursor-pointer max-w-[145px] truncate"
+                title="Alterar status do atendimento"
               >
                 <option value="EM_ANDAMENTO">🔴 Em Andamento</option>
                 <option value="AGUARDANDO">🟡 Aguardando</option>
                 <option value="FINALIZADO">🟢 Concluído</option>
-                <option value="RETROAGIDO">🟣 Retroagido (Não era Automação)</option>
+                <option value="RETROAGIDO">🟣 Retroagido</option>
                 <option value="PENDENCIA_PROXIMO_TURNO">🔵 Pendência Herdada</option>
               </select>
 
@@ -439,17 +440,18 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
             {/* Botões de Ação do Card Maximizado */}
             <div className="flex items-center justify-between pt-2 border-t border-slate-100 gap-1 flex-wrap">
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 max-w-[200px] flex-wrap">
                 {/* Seletor rápido de Status */}
                 <select
                   value={item.status}
                   onChange={(e) => onStatusChange(item.id, e.target.value as IncidentStatusType)}
-                  className="bg-slate-50 text-[10px] font-semibold text-slate-700 border border-slate-200 rounded-lg px-2 py-1 focus:outline-none focus:bg-white focus:border-sky-500 cursor-pointer"
+                  className="bg-slate-50 text-[10px] font-semibold text-slate-700 border border-slate-200 rounded-lg px-1.5 py-1 focus:outline-none focus:bg-white focus:border-sky-500 cursor-pointer max-w-[125px] truncate"
+                  title="Alterar status do atendimento"
                 >
                   <option value="EM_ANDAMENTO">🔴 Em Andamento</option>
                   <option value="AGUARDANDO">🟡 Aguardando</option>
                   <option value="FINALIZADO">🟢 Concluído</option>
-                  <option value="RETROAGIDO">🟣 Retroagido (Não era Automação)</option>
+                  <option value="RETROAGIDO">🟣 Retroagido</option>
                   <option value="PENDENCIA_PROXIMO_TURNO">🔵 Pendência Herdada</option>
                 </select>
 
@@ -459,7 +461,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                     value={item.prioridade}
                     onChange={(e) => onPriorityChange(item.id, e.target.value as PriorityLevel)}
                     title="Alterar prioridade do atendimento"
-                    className={`text-[10px] font-bold border rounded-lg px-1.5 py-1 focus:outline-none cursor-pointer ${
+                    className={`text-[10px] font-bold border rounded-lg px-1 py-1 focus:outline-none cursor-pointer max-w-[70px] truncate ${
                       item.prioridade === 'CRITICA' || item.prioridade === 'ALTA'
                         ? 'bg-rose-50 text-rose-700 border-rose-200 font-extrabold'
                         : 'bg-slate-50 text-slate-700 border-slate-200'
@@ -467,7 +469,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                   >
                     <option value="BAIXA">⚪ Baixa</option>
                     <option value="MEDIA">🔵 Média</option>
-                    <option value="ALTA">🟠 Alta (Prioritário)</option>
+                    <option value="ALTA">🟠 Alta</option>
                     <option value="CRITICA">🔴 Crítica</option>
                   </select>
                 )}
