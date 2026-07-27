@@ -300,11 +300,11 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
         {!isExpanded ? (
           <div className="space-y-2 pt-1 border-t border-slate-100">
             {/* Status, Tempo Parado e Previsão de Liberação */}
-            <div className="flex items-center justify-between text-[11px] flex-wrap gap-1">
+            <div className="flex items-center justify-between gap-2 pt-1">
               <select
                 value={item.status}
                 onChange={(e) => onStatusChange(item.id, e.target.value as IncidentStatusType)}
-                className="bg-slate-50 text-[10px] font-semibold text-slate-700 border border-slate-200 rounded-lg px-1.5 py-0.5 focus:outline-none focus:bg-white focus:border-sky-500 cursor-pointer max-w-[145px] truncate"
+                className="flex-1 bg-slate-50 text-xs font-bold text-slate-800 border border-slate-200 rounded-xl px-2.5 py-1 focus:outline-none focus:bg-white focus:border-sky-500 cursor-pointer shadow-2xs"
                 title="Alterar status do atendimento"
               >
                 <option value="EM_ANDAMENTO">🔴 Em Andamento</option>
@@ -314,14 +314,10 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                 <option value="PENDENCIA_PROXIMO_TURNO">🔵 Pendência Herdada</option>
               </select>
 
-              <div className="flex items-center gap-2 text-[10px]">
+              <div className="flex items-center gap-1.5 text-[11px] flex-shrink-0">
                 <span className="font-semibold text-slate-600 flex items-center gap-1" title={format(paradaDate, 'dd/MM/yyyy HH:mm')}>
-                  <Clock className="w-3 h-3 text-slate-400" />
+                  <Clock className="w-3.5 h-3.5 text-slate-400" />
                   Parado: <strong>{downtimeStr}</strong>
-                </span>
-
-                <span className="font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
-                  Prev: <strong>{item.previsaoLiberacao || '---'}</strong>
                 </span>
               </div>
             </div>
@@ -438,101 +434,98 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
               </div>
             </div>
 
-            {/* Botões de Ação do Card Maximizado */}
-            <div className="flex items-center justify-between pt-2 border-t border-slate-100 gap-1 flex-wrap">
-              <div className="flex items-center gap-1 max-w-[200px] flex-wrap">
-                {/* Seletor rápido de Status */}
+            {/* Linha de Seleção de Status & Prioridade (Espaçosa e Legível) */}
+            <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
+              <select
+                value={item.status}
+                onChange={(e) => onStatusChange(item.id, e.target.value as IncidentStatusType)}
+                className="flex-1 bg-slate-50 text-xs font-bold text-slate-800 border border-slate-200 rounded-xl px-2.5 py-1.5 focus:outline-none focus:bg-white focus:border-sky-500 cursor-pointer shadow-2xs"
+                title="Alterar status do atendimento"
+              >
+                <option value="EM_ANDAMENTO">🔴 Em Andamento</option>
+                <option value="AGUARDANDO">🟡 Aguardando</option>
+                <option value="FINALIZADO">🟢 Concluído</option>
+                <option value="RETROAGIDO">🟣 Retroagido (Não era Automação)</option>
+                <option value="PENDENCIA_PROXIMO_TURNO">🔵 Pendência Herdada</option>
+              </select>
+
+              {!isFinished && (
                 <select
-                  value={item.status}
-                  onChange={(e) => onStatusChange(item.id, e.target.value as IncidentStatusType)}
-                  className="bg-slate-50 text-[10px] font-semibold text-slate-700 border border-slate-200 rounded-lg px-1.5 py-1 focus:outline-none focus:bg-white focus:border-sky-500 cursor-pointer max-w-[125px] truncate"
-                  title="Alterar status do atendimento"
+                  value={item.prioridade}
+                  onChange={(e) => onPriorityChange(item.id, e.target.value as PriorityLevel)}
+                  title="Alterar prioridade do atendimento"
+                  className={`text-xs font-extrabold border rounded-xl px-2 py-1.5 focus:outline-none cursor-pointer flex-shrink-0 shadow-2xs ${
+                    item.prioridade === 'CRITICA' || item.prioridade === 'ALTA'
+                      ? 'bg-rose-50 text-rose-700 border-rose-200 font-extrabold'
+                      : 'bg-slate-50 text-slate-700 border-slate-200'
+                  }`}
                 >
-                  <option value="EM_ANDAMENTO">🔴 Em Andamento</option>
-                  <option value="AGUARDANDO">🟡 Aguardando</option>
-                  <option value="FINALIZADO">🟢 Concluído</option>
-                  <option value="RETROAGIDO">🟣 Retroagido</option>
-                  <option value="PENDENCIA_PROXIMO_TURNO">🔵 Pendência Herdada</option>
+                  <option value="BAIXA">⚪ Baixa</option>
+                  <option value="MEDIA">🔵 Média</option>
+                  <option value="ALTA">🟠 Alta</option>
+                  <option value="CRITICA">🔴 Crítica</option>
                 </select>
+              )}
+            </div>
 
-                {/* Seletor rápido de Prioridade (oculto quando concluído) */}
-                {!isFinished && (
-                  <select
-                    value={item.prioridade}
-                    onChange={(e) => onPriorityChange(item.id, e.target.value as PriorityLevel)}
-                    title="Alterar prioridade do atendimento"
-                    className={`text-[10px] font-bold border rounded-lg px-1 py-1 focus:outline-none cursor-pointer max-w-[70px] truncate ${
-                      item.prioridade === 'CRITICA' || item.prioridade === 'ALTA'
-                        ? 'bg-rose-50 text-rose-700 border-rose-200 font-extrabold'
-                        : 'bg-slate-50 text-slate-700 border-slate-200'
-                    }`}
-                  >
-                    <option value="BAIXA">⚪ Baixa</option>
-                    <option value="MEDIA">🔵 Média</option>
-                    <option value="ALTA">🟠 Alta</option>
-                    <option value="CRITICA">🔴 Crítica</option>
-                  </select>
+            {/* Linha de Ícones de Ação Rápida */}
+            <div className="flex items-center justify-end pt-1.5 border-t border-slate-100 space-x-1">
+              <button
+                onClick={() => onOpenCommentModal(item)}
+                title="Adicionar / Ver Anotações do Turno"
+                className="p-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg border border-emerald-200 transition-colors relative"
+              >
+                <MessageSquare className="w-3.5 h-3.5" />
+                {item.observacao && (
+                  <span className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
                 )}
-              </div>
+              </button>
 
-              <div className="flex items-center space-x-1">
+              <button
+                onClick={() => onOpenWhatsapp(item)}
+                title="Gerar Resumo WhatsApp"
+                className="p-1.5 bg-sky-50 hover:bg-sky-100 text-sky-700 rounded-lg border border-sky-200 transition-colors"
+              >
+                <Send className="w-3.5 h-3.5" />
+              </button>
+
+              <button
+                onClick={() => onOpenTimeline(item)}
+                title="Linha do Tempo"
+                className="p-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-lg border border-slate-200 transition-colors"
+              >
+                <History className="w-3.5 h-3.5" />
+              </button>
+
+              <button
+                onClick={() => onOpenEditIncident(item)}
+                title="Editar / Solução"
+                className="p-1.5 bg-slate-50 hover:bg-slate-100 text-amber-700 rounded-lg border border-slate-200 transition-colors"
+              >
+                <Wrench className="w-3.5 h-3.5" />
+              </button>
+
+              {onDeleteIncident && (
                 <button
-                  onClick={() => onOpenCommentModal(item)}
-                  title="Adicionar / Ver Anotações do Turno"
-                  className="p-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg border border-emerald-200 transition-colors relative"
+                  onClick={() => {
+                    if (window.confirm(`Tem certeza que deseja apagar o atendimento da TAG [${item.tag}]? Esta ação não pode ser desfeita.`)) {
+                      onDeleteIncident(item.id);
+                    }
+                  }}
+                  title="Excluir / Apagar Atendimento"
+                  className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg border border-rose-200 transition-colors cursor-pointer"
                 >
-                  <MessageSquare className="w-3.5 h-3.5" />
-                  {item.observacao && (
-                    <span className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-                  )}
+                  <Trash2 className="w-3.5 h-3.5" />
                 </button>
+              )}
 
-                <button
-                  onClick={() => onOpenWhatsapp(item)}
-                  title="Gerar Resumo WhatsApp"
-                  className="p-1.5 bg-sky-50 hover:bg-sky-100 text-sky-700 rounded-lg border border-sky-200 transition-colors"
-                >
-                  <Send className="w-3.5 h-3.5" />
-                </button>
-
-                <button
-                  onClick={() => onOpenTimeline(item)}
-                  title="Linha do Tempo"
-                  className="p-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-lg border border-slate-200 transition-colors"
-                >
-                  <History className="w-3.5 h-3.5" />
-                </button>
-
-                <button
-                  onClick={() => onOpenEditIncident(item)}
-                  title="Editar / Solução"
-                  className="p-1.5 bg-slate-50 hover:bg-slate-100 text-amber-700 rounded-lg border border-slate-200 transition-colors"
-                >
-                  <Wrench className="w-3.5 h-3.5" />
-                </button>
-
-                {onDeleteIncident && (
-                  <button
-                    onClick={() => {
-                      if (window.confirm(`Tem certeza que deseja apagar o atendimento da TAG [${item.tag}]? Esta ação não pode ser desfeita.`)) {
-                        onDeleteIncident(item.id);
-                      }
-                    }}
-                    title="Excluir / Apagar Atendimento"
-                    className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg border border-rose-200 transition-colors cursor-pointer"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                )}
-
-                <button
-                  onClick={() => toggleExpand(item.id)}
-                  className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg border border-slate-200 transition-colors flex items-center"
-                  title="Recolher / Minimizar card"
-                >
-                  <ChevronUp className="w-3.5 h-3.5" />
-                </button>
-              </div>
+              <button
+                onClick={() => toggleExpand(item.id)}
+                className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg border border-slate-200 transition-colors flex items-center"
+                title="Recolher / Minimizar card"
+              >
+                <ChevronUp className="w-3.5 h-3.5" />
+              </button>
             </div>
           </div>
         )}
