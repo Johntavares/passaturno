@@ -17,7 +17,8 @@ import {
   Layers,
   ChevronRight,
   ShieldCheck,
-  RotateCcw
+  RotateCcw,
+  Trash2
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -26,6 +27,7 @@ interface IncidentHistoryTabModalProps {
   onClose: () => void;
   incidents: IncidentType[];
   onOpenTimeline?: (incident: IncidentType) => void;
+  onDeleteIncident?: (id: string) => void;
 }
 
 export const IncidentHistoryTabModal: React.FC<IncidentHistoryTabModalProps> = ({
@@ -33,6 +35,7 @@ export const IncidentHistoryTabModal: React.FC<IncidentHistoryTabModalProps> = (
   onClose,
   incidents,
   onOpenTimeline,
+  onDeleteIncident,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('TODOS');
@@ -256,18 +259,34 @@ export const IncidentHistoryTabModal: React.FC<IncidentHistoryTabModalProps> = (
 
                     {/* Ação */}
                     <td className="px-4 py-3 text-right">
-                      {onOpenTimeline && (
-                        <button
-                          onClick={() => {
-                            onClose();
-                            onOpenTimeline(item);
-                          }}
-                          className="inline-flex items-center px-2.5 py-1 bg-sky-50 dark:bg-sky-950 hover:bg-sky-100 text-sky-700 dark:text-sky-300 text-[11px] font-bold rounded-lg border border-sky-200 dark:border-sky-800 transition-colors cursor-pointer"
-                        >
-                          <span>Linha do Tempo</span>
-                          <ChevronRight className="w-3 h-3 ml-1" />
-                        </button>
-                      )}
+                      <div className="flex items-center justify-end space-x-1.5">
+                        {onOpenTimeline && (
+                          <button
+                            onClick={() => {
+                              onClose();
+                              onOpenTimeline(item);
+                            }}
+                            className="inline-flex items-center px-2.5 py-1 bg-sky-50 dark:bg-sky-950 hover:bg-sky-100 text-sky-700 dark:text-sky-300 text-[11px] font-bold rounded-lg border border-sky-200 dark:border-sky-800 transition-colors cursor-pointer"
+                          >
+                            <span>Linha do Tempo</span>
+                            <ChevronRight className="w-3 h-3 ml-1" />
+                          </button>
+                        )}
+
+                        {onDeleteIncident && (
+                          <button
+                            onClick={() => {
+                              if (window.confirm(`Tem certeza que deseja excluir permanentemente a ocorrência da TAG [${item.tag}]?`)) {
+                                onDeleteIncident(item.id);
+                              }
+                            }}
+                            title="Excluir / Apagar Ocorrência"
+                            className="p-1 bg-rose-50 dark:bg-rose-950 hover:bg-rose-100 text-rose-600 dark:text-rose-400 rounded-lg border border-rose-200 dark:border-rose-800 transition-colors cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
                     </td>
 
                   </tr>

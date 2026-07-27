@@ -267,6 +267,18 @@ export default function Home() {
     }
   };
 
+  // Excluir Atendimento permanentemente
+  const handleDeleteIncident = async (id: string) => {
+    updateIncidentsState((prev) => prev.filter((item) => item.id !== id));
+    try {
+      await fetch(`/api/atendimentos/${id}`, {
+        method: 'DELETE',
+      });
+    } catch (err) {
+      console.error('Erro ao excluir atendimento:', err);
+    }
+  };
+
   // Contagem de itens de prioridade da passagem de turno não aceitos
   const unacceptedCount = incidents.filter((i) => {
     const isPriorityOrInherited =
@@ -435,6 +447,7 @@ export default function Home() {
                 setSelectedCommentIncident(inc);
                 setIsCommentOpen(true);
               }}
+              onDeleteIncident={handleDeleteIncident}
             />
 
             {/* 4. Resumo dos Atendimentos Diários & Passagem de Turno (Posicionado na parte inferior) */}
@@ -606,6 +619,7 @@ export default function Home() {
           setSelectedTimelineIncident(inc);
           setIsTimelineOpen(true);
         }}
+        onDeleteIncident={handleDeleteIncident}
       />
 
     </div>

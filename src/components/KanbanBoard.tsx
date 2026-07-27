@@ -16,7 +16,8 @@ import {
   ChevronDown,
   ChevronUp,
   Maximize2,
-  Minimize2
+  Minimize2,
+  Trash2
 } from 'lucide-react';
 import { differenceInMinutes, format } from 'date-fns';
 
@@ -29,6 +30,7 @@ interface KanbanBoardProps {
   onOpenEquipmentHistory: (tag: string) => void;
   onOpenEditIncident: (incident: IncidentType) => void;
   onOpenCommentModal: (incident: IncidentType) => void;
+  onDeleteIncident?: (id: string) => void;
 }
 
 export const KanbanBoard: React.FC<KanbanBoardProps> = ({
@@ -40,6 +42,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   onOpenEquipmentHistory,
   onOpenEditIncident,
   onOpenCommentModal,
+  onDeleteIncident,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedArea, setSelectedArea] = useState<string>('TODAS');
@@ -354,6 +357,21 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                 >
                   <Wrench className="w-3.5 h-3.5" />
                 </button>
+
+                {/* Botão Excluir Atendimento */}
+                {onDeleteIncident && (
+                  <button
+                    onClick={() => {
+                      if (window.confirm(`Tem certeza que deseja apagar o atendimento da TAG [${item.tag}]? Esta ação não pode ser desfeita.`)) {
+                        onDeleteIncident(item.id);
+                      }
+                    }}
+                    title="Excluir / Apagar Atendimento"
+                    className="p-1 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg border border-rose-200 transition-colors cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
 
               {/* Botão para Expandir Detalhes */}
@@ -490,6 +508,20 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                 >
                   <Wrench className="w-3.5 h-3.5" />
                 </button>
+
+                {onDeleteIncident && (
+                  <button
+                    onClick={() => {
+                      if (window.confirm(`Tem certeza que deseja apagar o atendimento da TAG [${item.tag}]? Esta ação não pode ser desfeita.`)) {
+                        onDeleteIncident(item.id);
+                      }
+                    }}
+                    title="Excluir / Apagar Atendimento"
+                    className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg border border-rose-200 transition-colors cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
 
                 <button
                   onClick={() => toggleExpand(item.id)}
