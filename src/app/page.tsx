@@ -283,18 +283,12 @@ export default function Home() {
     }
   };
 
-  // Contagem de itens de prioridade da passagem de turno não aceitos
+  // Contagem de itens de prioridade da passagem de turno pendentes de aceite (apenas pendências herdadas / próximo turno)
   const unacceptedCount = incidents.filter((i) => {
-    const isPriorityOrInherited =
-      i.isPendenciaHerdada ||
-      i.status === 'PENDENCIA_PROXIMO_TURNO' ||
-      i.status === 'AGUARDANDO' ||
-      i.prioridade === 'CRITICA' ||
-      i.prioridade === 'ALTA';
-
+    const isShiftHandoffPending = i.isPendenciaHerdada || i.status === 'PENDENCIA_PROXIMO_TURNO';
     const isNotYetAccepted = i.status !== 'FINALIZADO' && i.status !== 'RETROAGIDO' && i.status !== 'EM_ANDAMENTO';
 
-    return isPriorityOrInherited && isNotYetAccepted;
+    return isShiftHandoffPending && isNotYetAccepted;
   }).length;
 
   const handleRestoreNotifications = () => {

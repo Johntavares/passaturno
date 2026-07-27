@@ -72,18 +72,12 @@ export const CriticalPriorities: React.FC<CriticalPrioritiesProps> = ({
     }
   };
 
-  // Todos os itens de prioridade da passagem de turno ainda NÃO aceitos
+  // Apenas itens de passagem de turno pendentes de aceite pelo novo operador
   const allUnacceptedItems = incidents.filter((i) => {
-    const isPriorityOrInherited =
-      i.isPendenciaHerdada ||
-      i.status === 'PENDENCIA_PROXIMO_TURNO' ||
-      i.status === 'AGUARDANDO' ||
-      i.prioridade === 'CRITICA' ||
-      i.prioridade === 'ALTA';
-
+    const isShiftHandoffPending = i.isPendenciaHerdada || i.status === 'PENDENCIA_PROXIMO_TURNO';
     const isNotYetAccepted = i.status !== 'FINALIZADO' && i.status !== 'RETROAGIDO' && i.status !== 'EM_ANDAMENTO';
 
-    return isPriorityOrInherited && isNotYetAccepted;
+    return isShiftHandoffPending && isNotYetAccepted;
   });
 
   // Itens visíveis (que não foram dispensados individualmente)
