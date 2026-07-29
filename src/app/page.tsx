@@ -554,10 +554,23 @@ export default function Home() {
             }
 
             // 2. Limpeza da Dashboard do Turno Ativo:
-            // Ocorrências concluídas de turnos anteriores são arquivadas no Histórico de Atendimentos
+            // Ocorrências FINALIZADAS de turnos encerrados vão para o Histórico de Atendimentos.
             if (item.status === 'FINALIZADO') {
-              const foiFinalizadoHoje = isToday(item.dataHoraLiberacao) || isToday(item.criadoEm);
-              if (!foiFinalizadoHoje) return false;
+              // Se não há turno em andamento ativo, não exibe atendimentos encerrados na dashboard principal
+              if (!activeShift) return false;
+
+              if (activeShift.horaInicio || activeShift.criadoEm) {
+                const shiftStart = new Date(activeShift.horaInicio || activeShift.criadoEm).getTime();
+                const itemTime = item.dataHoraLiberacao 
+                  ? new Date(item.dataHoraLiberacao).getTime() 
+                  : new Date(item.criadoEm).getTime();
+
+                // Exibe apenas se foi finalizado durante o turno ativo atual
+                if (itemTime < shiftStart) return false;
+              } else {
+                const foiFinalizadoHoje = isToday(item.dataHoraLiberacao) || isToday(item.criadoEm);
+                if (!foiFinalizadoHoje) return false;
+              }
             }
 
             return true;

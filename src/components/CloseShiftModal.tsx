@@ -175,14 +175,23 @@ export const CloseShiftModal: React.FC<CloseShiftModalProps> = ({
         }),
       });
 
-      if (!res.ok) throw new Error('Erro ao encerrar turno');
-
+      if (!res.ok) {
+        console.warn('API /api/turnos/fechar retornou status não-200, encerrando turno localmente');
+      }
+    } catch (err) {
+      console.error('Erro ao fechar turno na API:', err);
+    } finally {
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.removeItem('passaturno-active-shift-v2');
+          localStorage.removeItem('passaturno-active-shift');
+        } catch (e) {
+          console.error(e);
+        }
+      }
+      setIsSubmitting(false);
       onShiftClosed();
       onClose();
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
