@@ -1,143 +1,216 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Megaphone, X, ShieldCheck, Clock, ChevronRight } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { MessageSquare, X, ShieldCheck, ChevronDown, Send } from 'lucide-react';
 import { format } from 'date-fns';
 import { ChatMessage } from './LiderTurmaModal';
 
+export interface OperatorReply {
+  id: string;
+  sender: string;
+  fromTurma: string;
+  text: string;
+  timestamp: string;
+}
+
 interface LeaderMessageNotificationProps {
   userTurma?: string;
+  currentUser?: { nome?: string; cargo?: string } | null;
 }
 
 export const LeaderMessageNotification: React.FC<LeaderMessageNotificationProps> = ({
   userTurma = 'A',
+  currentUser,
 }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [replies, setReplies] = useState<OperatorReply[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [dismissedIds, setDismissedIds] = useState<string[]>([]);
+  const [replyText, setReplyText] = useState('');
+  const bottomRef = useRef<HTMLDivElement>(null);
 
+  // Carrega mensagens do líder
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem('passaturno-leader-chat-v1');
-        if (saved) {
-          const allMsgs: ChatMessage[] = JSON.parse(saved);
-          const relevant = allMsgs.filter(
+    if (typeof window === 'undefined') return;
+    try {
+      const saved = localStorage.getItem('passaturno-leader-chat-v1');
+      if (saved) {
+        const allMsgs: ChatMessage[] = JSON.parse(saved);
+        setMessages(
+          allMsgs.filter(
             (m) =>
               m.targetTurma === 'GERAL' ||
               m.targetTurma.toUpperCase().trim() === userTurma.toUpperCase().trim()
-          );
-          setMessages(relevant);
-        }
-      } catch (e) {
-        console.error('Erro ao carregar mensagens da liderança:', e);
+          )
+        );
       }
+    } catch (e) {
+      console.error('Erro ao carregar mensagens da liderança:', e);
     }
   }, [userTurma]);
 
+  // Carrega respostas dos operadores
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const saved = localStorage.getItem('passaturno-operator-replies-v1');
+      if (saved) {
+        const all: OperatorReply[] = JSON.parse(saved);
+        setReplies(all.filter((r) => r.fromTurma === userTurma));
+      }
+    } catch (e) {
+      console.error('Erro ao carregar respostas:', e);
+    }
+  }, [userTurma]);
+
+  // Scrolla para baixo quando abre
+  useEffect(() => {
+    if (isOpen) {
+      setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+    }
+  }, [isOpen]);
+
+  const handleSendReply = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!replyText.trim()) return;
+
+    const reply: OperatorReply = {
+      id: `reply-${Date.now()}`,
+      sender: currentUser?.nome || `Operador Turma ${userTurma}`,
+      fromTurma: userTurma,
+      text: replyText.trim(),
+      timestamp: new Date().toISOString(),
+    };
+
+    // Salva junto com todas as respostas existentes (de todas as turmas)
+    try {
+      const saved = localStorage.getItem('passaturno-operator-replies-v1');
+      const allReplies: OperatorReply[] = saved ? JSON.parse(saved) : [];
+      const updated = [...allReplies, reply];
+      localStorage.setItem('passaturno-operator-replies-v1', JSON.stringify(updated));
+      setReplies((prev) => [...prev, reply]);
+      setReplyText('');
+      setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
+    } catch (e) {
+      console.error('Erro ao salvar resposta:', e);
+    }
+  };
+
   const activeMessages = messages.filter((m) => !dismissedIds.includes(m.id));
 
-  if (activeMessages.length === 0) return null;
+  // Mescla mensagens do líder e respostas do operador por timestamp
+  const chatItems = [
+    ...activeMessages.map((m) => ({ ...m, type: 'leader' as const })),
+    ...replies.map((r) => ({ ...r, type: 'operator' as const })),
+  ].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
-  const latestMsg = activeMessages[0];
+  const totalCount = activeMessages.length;
+  if (totalCount === 0 && replies.length === 0) return null;
 
   return (
-    <>
-      {/* Banner de Notificação da Liderança no Topo do Dashboard do Operador */}
-      <div className="bg-gradient-to-r from-amber-500 via-amber-600 to-amber-500 text-slate-950 p-3 rounded-2xl shadow-lg border border-amber-400 flex items-center justify-between gap-3 animate-fadeIn my-4">
-        <div className="flex items-center space-x-3">
-          <div className="w-9 h-9 bg-slate-950 text-amber-400 rounded-xl flex items-center justify-center flex-shrink-0 font-extrabold shadow-sm">
-            <Megaphone className="w-5 h-5 animate-bounce" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-black uppercase bg-slate-950 text-amber-300 px-2 py-0.5 rounded font-mono">
-                Notificação da Liderança
-              </span>
-              <span className="text-xs font-black text-slate-950">
-                {latestMsg.sender}
-              </span>
-            </div>
-            <p className="text-xs font-bold text-slate-950 line-clamp-1 mt-0.5">
-              {latestMsg.text}
-            </p>
-          </div>
-        </div>
+    <div className="fixed bottom-5 right-5 z-50 flex flex-col items-end gap-2">
 
-        <div className="flex items-center space-x-2 flex-shrink-0">
-          <button
-            onClick={() => setIsOpen(true)}
-            className="px-3 py-1.5 bg-slate-950 hover:bg-slate-900 text-amber-300 font-extrabold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1 cursor-pointer"
-          >
-            <span>Ver Orientações ({activeMessages.length})</span>
-            <ChevronRight className="w-3.5 h-3.5" />
-          </button>
-
-          <button
-            onClick={() => setDismissedIds((prev) => [...prev, latestMsg.id])}
-            title="Dispensar este aviso"
-            className="p-1.5 text-slate-900 hover:text-slate-950 rounded-lg hover:bg-amber-400/50 transition-colors cursor-pointer"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-
-      {/* Modal Completo de Leitura das Mensagens do Líder */}
+      {/* Painel de chat expandido */}
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md overflow-y-auto">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl relative my-8 text-slate-800 dark:text-slate-100 animate-fadeIn space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-              <div className="flex items-center space-x-2.5">
-                <div className="p-2 bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 rounded-xl">
-                  <Megaphone className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-black text-slate-900 dark:text-white">
-                    Orientações e Mensagens da Liderança
-                  </h3>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                    Instruções enviadas para a sua equipe (Turma {userTurma})
-                  </p>
-                </div>
+        <div className="w-80 bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden flex flex-col"
+          style={{ maxHeight: '420px' }}>
+
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50 flex-shrink-0">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 bg-emerald-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                <ShieldCheck className="w-3.5 h-3.5 text-white" />
               </div>
-
-              <button
-                onClick={() => setIsOpen(false)}
-                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
+              <div>
+                <p className="text-xs font-bold text-slate-800 leading-none">Liderança</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">Turma {userTurma}</p>
+              </div>
             </div>
-
-            <div className="max-h-72 overflow-y-auto space-y-3 pr-1">
-              {activeMessages.map((m) => (
-                <div key={m.id} className="bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 rounded-2xl p-3.5 text-xs space-y-1.5">
-                  <div className="flex items-center justify-between text-[10px] text-amber-900 dark:text-amber-300 font-bold">
-                    <span className="flex items-center gap-1">
-                      <ShieldCheck className="w-3.5 h-3.5 text-amber-600" />
-                      {m.sender} ➔ <strong className="uppercase">Para: {m.targetTurma === 'GERAL' ? 'Todas as Turmas' : `Turma ${m.targetTurma}`}</strong>
-                    </span>
-                    <span className="font-mono text-amber-700 dark:text-amber-400">{format(new Date(m.timestamp), 'dd/MM HH:mm')}</span>
-                  </div>
-                  <p className="text-amber-950 dark:text-amber-100 font-medium leading-relaxed">
-                    {m.text}
-                  </p>
-                </div>
-              ))}
-            </div>
-
-            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 text-right">
-              <button
-                onClick={() => setIsOpen(false)}
-                className="px-4 py-2 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 font-bold text-xs rounded-xl hover:bg-slate-800 transition-colors cursor-pointer"
-              >
-                Ciente
-              </button>
-            </div>
+            <button
+              onClick={() => setIsOpen(false)}
+              className="p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+            >
+              <ChevronDown className="w-4 h-4" />
+            </button>
           </div>
+
+          {/* Mensagens */}
+          <div className="flex-1 overflow-y-auto p-3 space-y-3 min-h-0">
+            {chatItems.map((item) => {
+              const isLeader = item.type === 'leader';
+              return (
+                <div key={item.id} className={`flex flex-col ${isLeader ? 'items-start' : 'items-end'}`}>
+                  <div className={`max-w-[85%] px-3 py-2 rounded-2xl text-xs leading-relaxed ${
+                    isLeader
+                      ? 'bg-slate-100 text-slate-800 rounded-tl-sm'
+                      : 'bg-emerald-500 text-white rounded-tr-sm'
+                  }`}>
+                    {item.text}
+                  </div>
+                  <div className={`flex items-center gap-1.5 mt-1 px-1 ${isLeader ? '' : 'flex-row-reverse'}`}>
+                    <span className="text-[10px] text-slate-400 font-medium">
+                      {isLeader ? (item as ChatMessage).sender : 'Você'}
+                    </span>
+                    <span className="text-[10px] text-slate-300 font-mono">
+                      {format(new Date(item.timestamp), 'HH:mm')}
+                    </span>
+                    {isLeader && (
+                      <button
+                        onClick={() => setDismissedIds((prev) => [...prev, item.id])}
+                        className="text-slate-300 hover:text-rose-400 transition-colors cursor-pointer ml-1"
+                        title="Dispensar"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+            <div ref={bottomRef} />
+          </div>
+
+          {/* Input de resposta */}
+          <form
+            onSubmit={handleSendReply}
+            className="flex items-center gap-2 p-3 border-t border-slate-100 flex-shrink-0"
+          >
+            <input
+              type="text"
+              value={replyText}
+              onChange={(e) => setReplyText(e.target.value)}
+              placeholder="Responder à liderança..."
+              className="flex-1 text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 placeholder-slate-400 focus:outline-none focus:border-emerald-400 transition-colors"
+            />
+            <button
+              type="submit"
+              disabled={!replyText.trim()}
+              className="w-8 h-8 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-40 text-white rounded-xl flex items-center justify-center transition-all flex-shrink-0 cursor-pointer"
+            >
+              <Send className="w-3.5 h-3.5" />
+            </button>
+          </form>
         </div>
       )}
-    </>
+
+      {/* Botão flutuante */}
+      <button
+        onClick={() => setIsOpen((v) => !v)}
+        className="relative flex items-center gap-2 px-3.5 py-2.5 bg-white border border-slate-200 rounded-2xl shadow-lg hover:shadow-xl hover:border-slate-300 transition-all cursor-pointer group"
+      >
+        <div className="w-6 h-6 bg-emerald-500 rounded-lg flex items-center justify-center flex-shrink-0">
+          <MessageSquare className="w-3.5 h-3.5 text-white" />
+        </div>
+        <span className="text-xs font-semibold text-slate-700 group-hover:text-slate-900 transition-colors">
+          Liderança
+        </span>
+        {totalCount > 0 && (
+          <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] bg-emerald-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 shadow-sm">
+            {totalCount}
+          </span>
+        )}
+      </button>
+
+    </div>
   );
 };

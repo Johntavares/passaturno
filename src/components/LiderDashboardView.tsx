@@ -32,11 +32,13 @@ import {
   UserPlus,
   Radio,
   SlidersHorizontal,
-  FolderOpen
+  FolderOpen,
+  X
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { userStore, StoredUser } from '@/lib/userStore';
 import { ChatMessage } from './LiderTurmaModal';
+import { OperatorReply } from './LeaderMessageNotification';
 
 interface LiderDashboardViewProps {
   incidents: IncidentType[];
@@ -70,13 +72,24 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
   const [newOpNome, setNewOpNome] = useState('');
   const [newOpMatricula, setNewOpMatricula] = useState('');
   const [newOpTurma, setNewOpTurma] = useState('A');
-  const [newOpSenha, setNewOpSenha] = useState('passaturno2026');
+  const [newOpSenha, setNewOpSenha] = useState('123456');
   const [userCreatedMsg, setUserCreatedMsg] = useState('');
+
+  // Modal de Edição de Usuário pelo Líder
+  const [editingUser, setEditingUser] = useState<StoredUser | null>(null);
+  const [editNome, setEditNome] = useState('');
+  const [editMatricula, setEditMatricula] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editSenha, setEditSenha] = useState('');
+  const [editTurma, setEditTurma] = useState('A');
+  const [editHorario, setEditHorario] = useState('07:00 às 19:00');
+  const [editPeriodo, setEditPeriodo] = useState<'Dia' | 'Noite'>('Dia');
 
   // Notificações / Chat State
   const [targetTurmaChannel, setTargetTurmaChannel] = useState<string>('GERAL');
   const [msgInput, setMsgInput] = useState<string>('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [operatorReplies, setOperatorReplies] = useState<OperatorReply[]>([]);
 
   // Time clock
   const [currentTime, setCurrentTime] = useState<string>('');
@@ -118,6 +131,23 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
         console.error('Erro ao ler mensagens:', e);
       }
     }
+  }, []);
+
+  // Carregar respostas dos operadores
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const load = () => {
+      try {
+        const saved = localStorage.getItem('passaturno-operator-replies-v1');
+        if (saved) setOperatorReplies(JSON.parse(saved));
+      } catch (e) {
+        console.error('Erro ao carregar respostas:', e);
+      }
+    };
+    load();
+    // Atualiza a cada 10s para capturar novas respostas
+    const interval = setInterval(load, 10000);
+    return () => clearInterval(interval);
   }, []);
 
   const handleSendLeaderMessage = (e: React.FormEvent) => {
@@ -163,7 +193,39 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
     setUserCreatedMsg(`Conta da Turma ${newOpTurma} criada com sucesso para ${newOpNome.trim()}! (Matrícula: ${newOpMatricula.trim()})`);
     setNewOpNome('');
     setNewOpMatricula('');
-    setNewOpSenha('passaturno2026');
+    setNewOpSenha('123456');
+    setTimeout(() => setUserCreatedMsg(''), 4000);
+  };
+
+  const handleOpenEditUser = (user: StoredUser) => {
+    setEditingUser(user);
+    setEditNome(user.nome);
+    setEditMatricula(user.matricula);
+    setEditEmail(user.email);
+    setEditSenha(user.senha);
+    setEditTurma(user.turma);
+    setEditHorario(user.horarioTurno || '07:00 às 19:00');
+    setEditPeriodo(user.periodoTurno || (user.turma === 'D' ? 'Noite' : 'Dia'));
+  };
+
+  const handleSaveEditUser = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUser) return;
+
+    userStore.updateUser(editingUser.id, {
+      nome: editNome.trim(),
+      matricula: editMatricula.trim(),
+      email: editEmail.trim(),
+      senha: editSenha.trim(),
+      turma: editTurma,
+      horarioTurno: editHorario.trim(),
+      periodoTurno: editPeriodo,
+    });
+
+    setUserList(userStore.getUsers());
+    setUserCreatedMsg(`Conta de ${editNome.trim()} (Turma ${editTurma}) atualizada com sucesso!`);
+    setEditingUser(null);
+    setTimeout(() => setUserCreatedMsg(''), 4000);
   };
 
   // Estatísticas
@@ -250,180 +312,76 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
   return (
     <div className="min-h-screen bg-[#f3f4f6] text-slate-800 flex font-sans">
       
-      {/* 1. ULTRA-MODERN EXECUTIVE GLASSMORPHIC SIDEBAR */}
-      <aside className="w-72 bg-[#0f172a] text-slate-300 flex flex-col justify-between hidden lg:flex flex-shrink-0 min-h-screen shadow-2xl border-r border-slate-800/80 relative z-30">
-        <div className="p-5 space-y-6">
-          
-          {/* Logo & Brand Header */}
-          <div className="flex items-center space-x-3 pb-5 border-b border-slate-800/80">
-            <div className="relative w-10 h-10 bg-gradient-to-br from-emerald-500 via-teal-500 to-emerald-600 rounded-2xl flex items-center justify-center text-white font-black shadow-lg shadow-emerald-500/25 border border-emerald-400/30">
-              <ShieldCheck className="w-6 h-6" />
+      {/* SIDEBAR — limpa e consistente com o restante da página */}
+      <aside className="w-56 bg-white flex flex-col justify-between hidden lg:flex flex-shrink-0 min-h-screen border-r border-slate-200 relative z-30">
+        <div className="p-4 space-y-5">
+
+          {/* Logo & Brand */}
+          <div className="flex items-center gap-2.5 pb-4 border-b border-slate-100">
+            <div className="w-8 h-8 bg-emerald-500 rounded-xl flex items-center justify-center flex-shrink-0">
+              <ShieldCheck className="w-4 h-4 text-white" />
             </div>
             <div>
-              <h2 className="text-lg font-black text-white tracking-tight leading-none">
-                PASSA<span className="text-emerald-400 font-black">TURNO</span>
-              </h2>
-              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest block mt-1">
-                Portal da Liderança
-              </span>
+              <p className="text-sm font-black text-slate-900 leading-none">
+                PASSA<span className="text-emerald-600">TURNO</span>
+              </p>
+              <p className="text-[10px] text-slate-400 font-semibold mt-0.5">Portal da Liderança</p>
             </div>
           </div>
 
-          {/* User Profile Box */}
-          <div className="bg-slate-900/90 p-3.5 rounded-2xl border border-slate-800 shadow-inner flex items-center space-x-3 relative overflow-hidden group">
-            <div className="relative w-10 h-10 bg-gradient-to-tr from-amber-500 to-emerald-500 text-slate-950 rounded-xl flex items-center justify-center font-black shadow-md flex-shrink-0">
-              <User className="w-5 h-5 text-slate-950" />
-              <span className="absolute -top-0.5 -right-0.5 flex h-3 w-3">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500 border-2 border-slate-900"></span>
-              </span>
+          {/* User Info */}
+          <div className="flex items-center gap-2.5 px-2">
+            <div className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center flex-shrink-0 border border-slate-200">
+              <User className="w-4 h-4 text-slate-500" />
             </div>
             <div className="truncate">
-              <div className="text-xs font-black text-white truncate group-hover:text-emerald-400 transition-colors">
-                {currentUser?.nome || 'Líder da Turma'}
-              </div>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                <span className="text-[9px] uppercase font-mono font-black bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded border border-amber-500/30">
-                  {currentUser?.cargo || 'LÍDER DE TURMA'}
-                </span>
-              </div>
+              <p className="text-xs font-bold text-slate-800 truncate">{currentUser?.nome || 'Líder da Turma'}</p>
+              <p className="text-[10px] text-slate-400 font-medium truncate">{currentUser?.cargo || 'Líder de Turma'}</p>
             </div>
           </div>
 
-          {/* MENU LATERAL DE NAVEGAÇÃO EXECUTIVA (5 TELAS DEDICADAS) */}
-          <nav className="space-y-6 text-xs font-bold">
-            
-            {/* SEÇÃO 1: PRINCIPAL */}
-            <div>
-              <span className="text-[10px] text-slate-400 uppercase tracking-widest block mb-2 px-3 font-mono font-black">
-                PAINEL OPERACIONAL
-              </span>
+          {/* Navegação */}
+          <nav className="space-y-1">
+            <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-widest px-2 pb-1">Menu</p>
 
-              <div className="space-y-1">
-                <button
-                  onClick={() => setActiveSection('dashboard')}
-                  className={`w-full relative flex items-center space-x-3 px-3.5 py-3 rounded-2xl transition-all duration-200 cursor-pointer ${
-                    activeSection === 'dashboard'
-                      ? 'bg-gradient-to-r from-emerald-500/20 via-teal-500/10 to-transparent text-white font-black border border-emerald-500/30 shadow-md'
-                      : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/50'
-                  }`}
-                >
-                  {activeSection === 'dashboard' && (
-                    <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-7 bg-gradient-to-b from-emerald-400 to-amber-400 rounded-r-full shadow-[0_0_12px_rgba(52,211,153,0.8)]" />
-                  )}
-                  <div className={`p-1.5 rounded-xl ${activeSection === 'dashboard' ? 'bg-emerald-500 text-slate-950' : 'bg-slate-800 text-slate-400'}`}>
-                    <LayoutDashboard className="w-4 h-4" />
-                  </div>
-                  <span className="text-xs font-bold">1. Dashboard Principal</span>
-                </button>
-              </div>
-            </div>
-
-            {/* SEÇÃO 2: GESTÃO DE TURMAS */}
-            <div>
-              <span className="text-[10px] text-slate-400 uppercase tracking-widest block mb-2 px-3 font-mono font-black">
-                GESTÃO DA EQUIPE
-              </span>
-
-              <div className="space-y-1.5">
-                <button
-                  onClick={() => setActiveSection('team')}
-                  className={`w-full relative flex items-center space-x-3 px-3.5 py-3 rounded-2xl transition-all duration-200 cursor-pointer ${
-                    activeSection === 'team'
-                      ? 'bg-gradient-to-r from-amber-500/20 via-orange-500/10 to-transparent text-white font-black border border-amber-500/30 shadow-md'
-                      : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/50'
-                  }`}
-                >
-                  {activeSection === 'team' && (
-                    <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-7 bg-gradient-to-b from-amber-400 to-orange-400 rounded-r-full shadow-[0_0_12px_rgba(251,191,36,0.8)]" />
-                  )}
-                  <div className={`p-1.5 rounded-xl ${activeSection === 'team' ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-slate-400'}`}>
-                    <Users className="w-4 h-4" />
-                  </div>
-                  <span className="text-xs font-bold">2. Gestão de Turma</span>
-                </button>
-
-                <button
-                  onClick={() => setActiveSection('history')}
-                  className={`w-full relative flex items-center space-x-3 px-3.5 py-3 rounded-2xl transition-all duration-200 cursor-pointer ${
-                    activeSection === 'history'
-                      ? 'bg-gradient-to-r from-sky-500/20 via-blue-500/10 to-transparent text-white font-black border border-sky-500/30 shadow-md'
-                      : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/50'
-                  }`}
-                >
-                  {activeSection === 'history' && (
-                    <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-7 bg-gradient-to-b from-sky-400 to-blue-400 rounded-r-full shadow-[0_0_12px_rgba(56,189,248,0.8)]" />
-                  )}
-                  <div className={`p-1.5 rounded-xl ${activeSection === 'history' ? 'bg-sky-500 text-slate-950' : 'bg-slate-800 text-slate-400'}`}>
-                    <History className="w-4 h-4" />
-                  </div>
-                  <span className="text-xs font-bold">3. Histórico por Turma</span>
-                </button>
-              </div>
-            </div>
-
-            {/* SEÇÃO 3: COMUNICAÇÃO */}
-            <div>
-              <span className="text-[10px] text-slate-400 uppercase tracking-widest block mb-2 px-3 font-mono font-black">
-                CENTRAL DE COMUNICAÇÃO
-              </span>
-
-              <div className="space-y-1.5">
-                <button
-                  onClick={() => setActiveSection('notifications')}
-                  className={`w-full relative flex items-center space-x-3 px-3.5 py-3 rounded-2xl transition-all duration-200 cursor-pointer ${
-                    activeSection === 'notifications'
-                      ? 'bg-gradient-to-r from-indigo-500/20 via-sky-500/10 to-transparent text-white font-black border border-indigo-500/30 shadow-md'
-                      : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/50'
-                  }`}
-                >
-                  {activeSection === 'notifications' && (
-                    <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-7 bg-gradient-to-b from-indigo-400 to-sky-400 rounded-r-full shadow-[0_0_12px_rgba(129,140,248,0.8)]" />
-                  )}
-                  <div className={`p-1.5 rounded-xl ${activeSection === 'notifications' ? 'bg-indigo-500 text-white' : 'bg-slate-800 text-slate-400'}`}>
-                    <Megaphone className="w-4 h-4" />
-                  </div>
-                  <span className="text-xs font-bold">4. Notificações & Avisos</span>
-                </button>
-
-                <button
-                  onClick={() => setActiveSection('alerts')}
-                  className={`w-full relative flex items-center justify-between px-3.5 py-3 rounded-2xl transition-all duration-200 cursor-pointer ${
-                    activeSection === 'alerts'
-                      ? 'bg-gradient-to-r from-rose-500/20 via-red-500/10 to-transparent text-white font-black border border-rose-500/30 shadow-md'
-                      : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/50'
-                  }`}
-                >
-                  {activeSection === 'alerts' && (
-                    <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-7 bg-gradient-to-b from-rose-400 to-red-400 rounded-r-full shadow-[0_0_12px_rgba(251,113,133,0.8)]" />
-                  )}
-                  <div className="flex items-center space-x-3">
-                    <div className={`p-1.5 rounded-xl ${activeSection === 'alerts' ? 'bg-rose-500 text-white' : 'bg-slate-800 text-slate-400'}`}>
-                      <AlertTriangle className="w-4 h-4" />
-                    </div>
-                    <span className="text-xs font-bold">5. Alertas Críticos</span>
-                  </div>
-                  {urgentesCount > 0 && (
-                    <span className="bg-rose-500 text-white text-[10px] px-2 py-0.5 rounded-full font-black animate-pulse shadow-sm shadow-rose-500/50">
-                      {urgentesCount}
-                    </span>
-                  )}
-                </button>
-              </div>
-            </div>
-
+            {[
+              { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+              { id: 'team',      label: 'Gestão de Turma', icon: Users },
+              { id: 'history',   label: 'Histórico', icon: History },
+              { id: 'notifications', label: 'Notificações', icon: Megaphone },
+              { id: 'alerts',    label: 'Alertas Críticos', icon: AlertTriangle, badge: urgentesCount },
+            ].map(({ id, label, icon: Icon, badge }) => (
+              <button
+                key={id}
+                onClick={() => setActiveSection(id as typeof activeSection)}
+                className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                  activeSection === id
+                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
+                }`}
+              >
+                <span className="flex items-center gap-2">
+                  <Icon className={`w-4 h-4 flex-shrink-0 ${activeSection === id ? 'text-emerald-600' : 'text-slate-400'}`} />
+                  {label}
+                </span>
+                {badge != null && badge > 0 && (
+                  <span className="bg-rose-500 text-white text-[9px] px-1.5 py-0.5 rounded-full font-bold">
+                    {badge}
+                  </span>
+                )}
+              </button>
+            ))}
           </nav>
-
         </div>
 
-        {/* Footer Logout Button */}
-        <div className="p-5 border-t border-slate-800/80 bg-slate-950/40">
+        {/* Logout */}
+        <div className="p-4 border-t border-slate-100">
           <button
             onClick={onLogout}
-            className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-slate-900 hover:bg-rose-950/80 text-rose-300 hover:text-rose-200 rounded-2xl text-xs font-bold transition-all duration-200 cursor-pointer border border-slate-800 hover:border-rose-800/80 shadow-sm"
+            className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-semibold text-slate-500 hover:bg-rose-50 hover:text-rose-600 transition-all cursor-pointer"
           >
-            <LogOut className="w-4 h-4 text-rose-400" />
-            <span>Encerrar Sessão</span>
+            <LogOut className="w-4 h-4" />
+            Encerrar Sessão
           </button>
         </div>
       </aside>
@@ -822,7 +780,8 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
                           <th className="px-4 py-3">Matrícula</th>
                           <th className="px-4 py-3">E-mail</th>
                           <th className="px-4 py-3">Turma</th>
-                          <th className="px-4 py-3">Cargo / Função</th>
+                          <th className="px-4 py-3">Senha</th>
+                          <th className="px-4 py-3 text-right">Gerenciamento</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 bg-white">
@@ -830,13 +789,21 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
                           <tr key={u.id} className="hover:bg-slate-50 transition-colors">
                             <td className="px-4 py-3 font-bold text-slate-900">{u.nome}</td>
                             <td className="px-4 py-3 font-mono text-slate-700 font-bold">{u.matricula}</td>
-                            <td className="px-4 py-3 text-slate-500">{u.email}</td>
+                            <td className="px-4 py-3 text-slate-500 font-mono">{u.email}</td>
                             <td className="px-4 py-3">
                               <span className="font-mono bg-sky-100 text-sky-800 px-2.5 py-1 rounded font-black text-[11px]">
                                 Turma {u.turma}
                               </span>
                             </td>
-                            <td className="px-4 py-3 text-slate-600 font-medium">{u.cargo}</td>
+                            <td className="px-4 py-3 font-mono text-slate-500 font-bold">•••••• ({u.senha})</td>
+                            <td className="px-4 py-3 text-right">
+                              <button
+                                onClick={() => handleOpenEditUser(u)}
+                                className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold text-[11px] rounded-xl border border-amber-200 transition-colors cursor-pointer inline-flex items-center gap-1"
+                              >
+                                ✏️ Editar Login / Senha
+                              </button>
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -845,6 +812,127 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
                 </div>
 
               </div>
+
+              {/* MODAL DE EDIÇÃO DE CONTA DO OPERADOR / LÍDER */}
+              {editingUser && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md overflow-y-auto">
+                  <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl relative my-8 border border-slate-200 animate-fadeIn text-slate-800 space-y-4">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                      <div className="flex items-center space-x-2">
+                        <div className="p-2 bg-amber-50 text-amber-600 rounded-xl">
+                          <UserPlus className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-black text-slate-900">
+                            Editar Credenciais da Conta ({editingUser.nome})
+                          </h3>
+                          <p className="text-[11px] text-slate-500 font-medium">
+                            Altere o e-mail, matrícula, senha ou turno da equipe.
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setEditingUser(null)}
+                        className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    <form onSubmit={handleSaveEditUser} className="space-y-3 text-xs">
+                      <div>
+                        <label className="font-bold text-slate-700 block mb-1">Nome Completo</label>
+                        <input
+                          type="text"
+                          value={editNome}
+                          onChange={(e) => setEditNome(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 font-bold"
+                          required
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="font-bold text-slate-700 block mb-1">Matrícula</label>
+                          <input
+                            type="text"
+                            value={editMatricula}
+                            onChange={(e) => setEditMatricula(e.target.value)}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 font-mono font-bold"
+                            required
+                          />
+                        </div>
+
+                        <div>
+                          <label className="font-bold text-slate-700 block mb-1">Senha de Acesso</label>
+                          <input
+                            type="text"
+                            value={editSenha}
+                            onChange={(e) => setEditSenha(e.target.value)}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 font-mono font-bold"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="font-bold text-slate-700 block mb-1">E-mail de Login</label>
+                        <input
+                          type="email"
+                          value={editEmail}
+                          onChange={(e) => setEditEmail(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 font-mono"
+                          required
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="font-bold text-slate-700 block mb-1">Turma / Letra</label>
+                          <select
+                            value={editTurma}
+                            onChange={(e) => setEditTurma(e.target.value)}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900"
+                          >
+                            <option value="GERAL">👑 Líder / Geral</option>
+                            <option value="A">🅰️ Turma A</option>
+                            <option value="B">🅱️ Turma B</option>
+                            <option value="C">🅲 Turma C</option>
+                            <option value="D">🅳 Turma D</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="font-bold text-slate-700 block mb-1">Horário do Turno</label>
+                          <input
+                            type="text"
+                            value={editHorario}
+                            onChange={(e) => setEditHorario(e.target.value)}
+                            placeholder="07:00 às 19:00"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 font-mono"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="pt-3 border-t border-slate-100 flex justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setEditingUser(null)}
+                          className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl"
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          type="submit"
+                          className="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-xl shadow-xs"
+                        >
+                          Salvar Alterações
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
 
             </div>
           )}
@@ -1120,7 +1208,7 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
                     Histórico de Notificações Enviadas ({messages.length})
                   </h3>
 
-                  <div className="space-y-2.5 max-h-96 overflow-y-auto pr-1">
+                  <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1">
                     {messages.map((m) => (
                       <div
                         key={m.id}
@@ -1146,6 +1234,37 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
                     ))}
                   </div>
                 </div>
+
+                {/* RESPOSTAS DAS TURMAS */}
+                {operatorReplies.length > 0 && (
+                  <div className="space-y-3 pt-2 border-t border-slate-100">
+                    <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                      <MessageSquare className="w-4 h-4 text-emerald-500" />
+                      Respostas das Turmas ({operatorReplies.length})
+                    </h3>
+                    <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                      {operatorReplies
+                        .slice()
+                        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+                        .map((r) => (
+                          <div key={r.id} className="flex items-start gap-3 p-3 bg-emerald-50/60 border border-emerald-100 rounded-xl text-xs">
+                            <div className="w-7 h-7 bg-emerald-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                              <span className="text-white text-[10px] font-black">{r.fromTurma}</span>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between gap-2 mb-1">
+                                <span className="font-bold text-slate-800 text-[11px]">{r.sender}</span>
+                                <span className="text-[10px] text-slate-400 font-mono flex-shrink-0">
+                                  {format(new Date(r.timestamp), 'dd/MM HH:mm')}
+                                </span>
+                              </div>
+                              <p className="text-slate-700 leading-relaxed">{r.text}</p>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
 
               </div>
 

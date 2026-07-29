@@ -309,6 +309,74 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess }) => {
                   <LogIn className="w-4 h-4" />
                   <span>{isSubmitting ? 'Autenticando...' : 'Entrar no Sistema'}</span>
                 </button>
+
+                {/* Seleção Rápida dos 5 Perfis Oficiais */}
+                <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2">
+                  <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+                    Acesso Rápido - 5 Perfis Oficiais (Senha: 123456):
+                  </p>
+                  <div className="grid grid-cols-2 gap-1.5 text-[11px] font-bold">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLoginInput('lider@passaturno.com');
+                        setSenhaInput('123456');
+                      }}
+                      className="col-span-2 px-2.5 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-800 rounded-xl text-left transition-all flex items-center justify-between cursor-pointer"
+                    >
+                      <span>👑 Líder da Turma</span>
+                      <span className="font-mono text-[10px] opacity-70">lider@passaturno.com</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLoginInput('turma.a@passaturno.com');
+                        setSenhaInput('123456');
+                      }}
+                      className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-xl text-left transition-all flex items-center justify-between cursor-pointer"
+                    >
+                      <span>🅰️ Turma A</span>
+                      <span className="font-mono text-[10px] opacity-60">1001</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLoginInput('turma.b@passaturno.com');
+                        setSenhaInput('123456');
+                      }}
+                      className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-xl text-left transition-all flex items-center justify-between cursor-pointer"
+                    >
+                      <span>🅱️ Turma B</span>
+                      <span className="font-mono text-[10px] opacity-60">1002</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLoginInput('turma.c@passaturno.com');
+                        setSenhaInput('123456');
+                      }}
+                      className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-xl text-left transition-all flex items-center justify-between cursor-pointer"
+                    >
+                      <span>🅲 Turma C</span>
+                      <span className="font-mono text-[10px] opacity-60">1003</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLoginInput('turma.d@passaturno.com');
+                        setSenhaInput('123456');
+                      }}
+                      className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-xl text-left transition-all flex items-center justify-between cursor-pointer"
+                    >
+                      <span>🅳 Turma D</span>
+                      <span className="font-mono text-[10px] opacity-60">1004</span>
+                    </button>
+                  </div>
+                </div>
               </form>
             ) : (
               /* FORMULÁRIO 2: SIGN UP DO LÍDER (PRIMEIRO ACESSO DA LIDERANÇA) */

@@ -23,6 +23,7 @@ interface TwoHourReportModalProps {
   onClose: () => void;
   incidents: IncidentType[];
   activeShift: ShiftType | null;
+  currentUser?: any;
 }
 
 export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
@@ -30,6 +31,7 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
   onClose,
   incidents,
   activeShift,
+  currentUser,
 }) => {
   const [copied, setCopied] = useState(false);
   const [lastSentTime, setLastSentTime] = useState<string | null>(null);
@@ -76,18 +78,27 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
 
   const activeIncidents = incidents.filter(i => i.status === 'EM_ANDAMENTO');
 
-  // Gerar o texto completo formatado para envio de 2 em 2 horas (Sem título e sem ícones)
+  // Gerar o texto completo formatado para envio de 2 em 2 horas
   const generateReportText = () => {
     const now = new Date();
     const dataFormatada = now.toLocaleDateString('pt-BR');
     const pad = (n: number) => String(n).padStart(2, '0');
 
-    let text = `Turno: ${activeShift?.tipoTurno || 'Diurno'}\n`;
+    const tipoTurno = currentUser?.periodoTurno 
+      ? (currentUser.periodoTurno === 'Noite' ? 'Noturno' : 'Diurno') 
+      : (activeShift?.tipoTurno || 'Diurno');
+
+    const horarioTurno = currentUser?.horarioTurno || '07:00 às 19:00';
+    const nomeOperador = currentUser?.nome || activeShift?.responsavelNome || 'John Tavares';
+    const letraTurma = activeShift?.turma || currentUser?.turma || 'A';
+
+    let text = `TURNO: ${tipoTurno}\n`;
+    text += `HORÁRIO: ${horarioTurno}\n`;
     text += `ESCALA: ${activeShift?.escala || '2x3'}\n`;
-    text += `LETRA: ${activeShift?.turma || 'C'}\n`;
+    text += `LETRA: ${letraTurma}\n`;
     text += `DATA: ${dataFormatada}\n`;
     text += `EQUIPE: _ ${equipeSonda} _\n`;
-    text += `MONITORAMENTO: ${activeShift?.responsavelNome || 'John Tavares'}\n`;
+    text += `MONITORAMENTO: ${nomeOperador}\n`;
     if (ausencia) text += `AUSÊNCIA: ${ausencia}\n`;
     text += `\n`;
 

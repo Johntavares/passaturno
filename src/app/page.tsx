@@ -24,6 +24,8 @@ import { DesktopAdBanner } from '@/components/DesktopAdBanner';
 import { LiderTurmaModal } from '@/components/LiderTurmaModal';
 import { LiderDashboardView } from '@/components/LiderDashboardView';
 import { LeaderMessageNotification } from '@/components/LeaderMessageNotification';
+import { EditTurmaProfileModal } from '@/components/EditTurmaProfileModal';
+import { SettingsModal } from '@/components/SettingsModal';
 
 export default function Home() {
   const [incidents, setIncidents] = useState<IncidentType[]>([]);
@@ -42,6 +44,8 @@ export default function Home() {
   const [isGpsDiagnosticOpen, setIsGpsDiagnosticOpen] = useState(false);
   const [isHistoryTabOpen, setIsHistoryTabOpen] = useState(false);
   const [isLiderTurmaOpen, setIsLiderTurmaOpen] = useState(false);
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [selectedTurmaFilter, setSelectedTurmaFilter] = useState<string>('TODAS');
 
   const [selectedTimelineIncident, setSelectedTimelineIncident] = useState<IncidentType | null>(null);
@@ -509,18 +513,11 @@ export default function Home() {
         onOpenNewIncident={() => setIsNewIncidentOpen(true)}
         onOpenAssumeShift={() => setIsAssumeShiftOpen(true)}
         onOpenCloseShift={() => setIsCloseShiftOpen(true)}
-        onOpenEquipmentManager={() => setIsEquipmentManagerOpen(true)}
-        onOpenOneNoteRoutine={() => setIsOneNoteRoutineOpen(true)}
         onOpenTwoHourReport={() => setIsTwoHourReportOpen(true)}
-        onOpenGpsDiagnostic={() => setIsGpsDiagnosticOpen(true)}
-        onOpenHistoryTab={() => setIsHistoryTabOpen(true)}
-        onOpenLiderTurma={() => setIsLiderTurmaOpen(true)}
-        onRefreshData={loadData}
-        isRefreshing={isRefreshing}
+        onOpenSettings={() => setIsSettingsOpen(true)}
         unacceptedCount={unacceptedCount}
         onRestoreNotifications={handleRestoreNotifications}
         currentTheme={theme}
-        onThemeChange={handleThemeChange}
         currentUser={currentUser}
         onLogout={handleLogout}
       />
@@ -534,15 +531,42 @@ export default function Home() {
             <p className="text-xs font-semibold text-slate-500 tracking-wider">CARREGANDO AUTOMATION CONTROL...</p>
           </div>
         ) : (() => {
+          const isToday = (dateStr?: string | null) => {
+            if (!dateStr) return false;
+            try {
+              const d = new Date(dateStr);
+              const today = new Date();
+              return (
+                d.getDate() === today.getDate() &&
+                d.getMonth() === today.getMonth() &&
+                d.getFullYear() === today.getFullYear()
+              );
+            } catch {
+              return false;
+            }
+          };
+
           const displayedIncidents = incidents.filter((item) => {
-            if (selectedTurmaFilter === 'TODAS') return true;
-            return (item.turma || 'A').toUpperCase().trim() === selectedTurmaFilter;
+            // 1. Filtro por Turma
+            if (selectedTurmaFilter !== 'TODAS') {
+              const itemTurma = (item.turma || 'A').toUpperCase().trim();
+              if (itemTurma !== selectedTurmaFilter) return false;
+            }
+
+            // 2. Limpeza da Dashboard do Turno Ativo:
+            // Ocorrências concluídas de turnos anteriores são arquivadas no Histórico de Atendimentos
+            if (item.status === 'FINALIZADO') {
+              const foiFinalizadoHoje = isToday(item.dataHoraLiberacao) || isToday(item.criadoEm);
+              if (!foiFinalizadoHoje) return false;
+            }
+
+            return true;
           });
 
           return (
           <>
             {/* 0. Notificações / Orientações enviadas pela Liderança da Turma */}
-            <LeaderMessageNotification userTurma={activeShift?.turma || 'A'} />
+            <LeaderMessageNotification userTurma={activeShift?.turma || 'A'} currentUser={currentUser} />
 
             {/* 1. Dashboard Stats */}
             <DashboardStats incidents={displayedIncidents} />
@@ -755,6 +779,33 @@ export default function Home() {
         onClose={() => setIsTwoHourReportOpen(false)}
         incidents={incidents}
         activeShift={activeShift}
+        currentUser={currentUser}
+      />
+
+      {/* Modal de Edição de Perfil do Turno / Letra */}
+      <EditTurmaProfileModal
+        isOpen={isEditProfileOpen}
+        onClose={() => setIsEditProfileOpen(false)}
+        currentUser={currentUser}
+        onProfileUpdated={(updated) => setCurrentUser(updated)}
+      />
+
+      {/* Central de Configurações */}
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        currentUser={currentUser}
+        activeShift={activeShift}
+        currentTheme={theme}
+        onThemeChange={handleThemeChange}
+        onOpenAssumeShift={() => setIsAssumeShiftOpen(true)}
+        onOpenCloseShift={() => setIsCloseShiftOpen(true)}
+        onOpenEquipmentManager={() => setIsEquipmentManagerOpen(true)}
+        onOpenTwoHourReport={() => setIsTwoHourReportOpen(true)}
+        onOpenGpsDiagnostic={() => setIsGpsDiagnosticOpen(true)}
+        onOpenHistoryTab={() => setIsHistoryTabOpen(true)}
+        onRefreshData={loadData}
+        onProfileUpdated={(updated) => setCurrentUser(updated)}
       />
 
       {/* Modal Reporte de Diagnóstico de GPS */}
