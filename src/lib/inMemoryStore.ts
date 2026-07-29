@@ -510,18 +510,26 @@ export const inMemoryStore = {
   },
 
   getActiveShift: () => {
+    const activeShift = globalStore.inMemoryShift?.status === 'ATIVO' ? globalStore.inMemoryShift : null;
     const activeIncidents = inMemoryStore.getIncidents({ status: 'EM_ANDAMENTO' });
     const criticalCount = activeIncidents.filter((i) => i.prioridade === 'CRITICA').length;
     const inheritedCount = activeIncidents.filter((i) => i.isPendenciaHerdada).length;
 
     return {
-      activeShift: globalStore.inMemoryShift,
+      activeShift,
       lastClosedShift: null,
       openIncidentsCount: activeIncidents.length,
       criticalCount,
       inheritedCount,
       openIncidents: activeIncidents,
     };
+  },
+
+  closeShift: () => {
+    if (globalStore.inMemoryShift) {
+      globalStore.inMemoryShift.status = 'ENCERRADO';
+      globalStore.inMemoryShift.horaFim = new Date().toISOString();
+    }
   },
 
   updateShift: (shiftData: Partial<InMemoryShift>) => {
