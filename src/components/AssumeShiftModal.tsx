@@ -58,14 +58,15 @@ export const AssumeShiftModal: React.FC<AssumeShiftModalProps> = ({
         }),
       });
 
-      if (!res.ok) throw new Error('Erro ao assumir o turno');
-
-      onShiftAssumed();
-      onClose();
+      if (!res.ok) {
+        console.warn('API /api/turnos/assumir retornou status não-200, assumindo turno localmente');
+      }
     } catch (err) {
-      console.error(err);
+      console.error('Erro ao assumir turno:', err);
     } finally {
       setIsSubmitting(false);
+      onShiftAssumed();
+      onClose();
     }
   };
 

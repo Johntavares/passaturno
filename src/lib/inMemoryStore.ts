@@ -532,6 +532,25 @@ export const inMemoryStore = {
     }
   },
 
+  startShift: (data: { equipe: string; responsavelNome: string; observacoes?: string }) => {
+    const newShift: InMemoryShift = {
+      id: `shift-${Date.now()}`,
+      equipe: data.equipe || 'Automação B',
+      turma: data.equipe || 'A',
+      tipoTurno: 'Diurno',
+      escala: '2x3',
+      horarioTurno: '07h às 19h',
+      responsavelNome: data.responsavelNome || 'Operador',
+      data: new Date().toISOString().split('T')[0],
+      horaInicio: new Date().toISOString(),
+      status: 'ATIVO',
+      observacoes: data.observacoes || '',
+      criadoEm: new Date().toISOString(),
+    };
+    globalStore.inMemoryShift = newShift;
+    return newShift;
+  },
+
   updateShift: (shiftData: Partial<InMemoryShift>) => {
     if (globalStore.inMemoryShift) {
       globalStore.inMemoryShift = {
