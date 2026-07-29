@@ -553,23 +553,25 @@ export default function Home() {
               if (itemTurma !== selectedTurmaFilter) return false;
             }
 
+            const isConcluido = item.status === 'FINALIZADO' || item.status === 'RETROAGIDO';
+
             // 2. Limpeza da Dashboard do Turno Ativo:
-            // Ocorrências FINALIZADAS de turnos encerrados vão para o Histórico de Atendimentos.
-            if (item.status === 'FINALIZADO') {
-              // Se não há turno em andamento ativo, não exibe atendimentos encerrados na dashboard principal
+            // Ocorrências concluídas (FINALIZADO ou RETROAGIDO) de turnos anteriores são arquivadas no Histórico.
+            // Ao iniciar/assumir um novo turno, o painel começa zerado!
+            if (isConcluido) {
               if (!activeShift) return false;
 
-              if (activeShift.horaInicio || activeShift.criadoEm) {
-                const shiftStart = new Date(activeShift.horaInicio || activeShift.criadoEm).getTime();
-                const itemTime = item.dataHoraLiberacao 
+              const shiftStartTime = activeShift.horaInicio || activeShift.criadoEm;
+              if (shiftStartTime) {
+                const shiftStartMs = new Date(shiftStartTime).getTime();
+                const itemTimeMs = item.dataHoraLiberacao 
                   ? new Date(item.dataHoraLiberacao).getTime() 
-                  : new Date(item.criadoEm).getTime();
+                  : new Date(item.atualizadoEm || item.criadoEm).getTime();
 
-                // Exibe apenas se foi finalizado durante o turno ativo atual
-                if (itemTime < shiftStart) return false;
+                // Exibe no painel do turno APENAS o que for concluído APÓS o início do turno ativo atual
+                if (itemTimeMs <= shiftStartMs) return false;
               } else {
-                const foiFinalizadoHoje = isToday(item.dataHoraLiberacao) || isToday(item.criadoEm);
-                if (!foiFinalizadoHoje) return false;
+                return false;
               }
             }
 

@@ -533,6 +533,7 @@ export const inMemoryStore = {
   },
 
   startShift: (data: { equipe: string; responsavelNome: string; observacoes?: string }) => {
+    const nowIso = new Date().toISOString();
     const newShift: InMemoryShift = {
       id: `shift-${Date.now()}`,
       equipe: data.equipe || 'Automação B',
@@ -542,11 +543,26 @@ export const inMemoryStore = {
       horarioTurno: '07h às 19h',
       responsavelNome: data.responsavelNome || 'Operador',
       data: new Date().toISOString().split('T')[0],
-      horaInicio: new Date().toISOString(),
+      horaInicio: nowIso,
       status: 'ATIVO',
       observacoes: data.observacoes || '',
-      criadoEm: new Date().toISOString(),
+      criadoEm: nowIso,
     };
+
+    // Atualiza incidentes da memória: transforma abertos em pendências herdadas
+    if (globalStore.inMemoryIncidents) {
+      globalStore.inMemoryIncidents = globalStore.inMemoryIncidents.map((inc) => {
+        if (inc.status !== 'FINALIZADO' && inc.status !== 'RETROAGIDO') {
+          return {
+            ...inc,
+            isPendenciaHerdada: true,
+            status: 'PENDENCIA_PROXIMO_TURNO',
+          };
+        }
+        return inc;
+      });
+    }
+
     globalStore.inMemoryShift = newShift;
     return newShift;
   },
