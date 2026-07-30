@@ -65,45 +65,53 @@ export default function Home() {
   const [editSolucao, setEditSolucao] = useState('');
   const [editStatus, setEditStatus] = useState<IncidentStatusType>('EM_ANDAMENTO');
 
-  // Função auxiliar para atualizar o estado de atendimentos e persistir no localStorage
+  // Cache localStorage para fallback offline (fonte da verdade é o servidor)
+  const saveLocalCache = (data: IncidentType[]) => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('passaturno-incidents-v2', JSON.stringify(data));
+      } catch (e) {
+        console.error('Erro ao persistir cache:', e);
+      }
+    }
+  };
+
+  const loadLocalCache = (): IncidentType[] => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('passaturno-incidents-v2');
+        if (saved) return JSON.parse(saved);
+      } catch (e) {
+        console.error('Erro ao ler cache:', e);
+      }
+    }
+    return [];
+  };
+
+  const getDeletedIds = (): Set<string> => {
+    const ids = new Set<string>();
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('passaturno-deleted-incidents-v2');
+        if (saved) (JSON.parse(saved) as string[]).forEach((d) => ids.add(d.toUpperCase().trim()));
+      } catch (e) {
+        console.error('Erro ao ler excluídos:', e);
+      }
+    }
+    return ids;
+  };
+
   const updateIncidentsState = (updater: (prev: IncidentType[]) => IncidentType[]) => {
     setIncidents((prev) => {
       const updated = updater(prev);
-      if (typeof window !== 'undefined') {
-        try {
-          localStorage.setItem('passaturno-incidents-v2', JSON.stringify(updated));
-        } catch (e) {
-          console.error('Erro ao persistir no localStorage:', e);
-        }
-      }
+      saveLocalCache(updated);
       return updated;
     });
   };
 
-  // Buscar todos os dados com fusão e persistência resiliente no localStorage
   const loadData = useCallback(async () => {
     setIsRefreshing(true);
-    let localSaved: IncidentType[] = [];
-    const deletedIds = new Set<string>();
-
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem('passaturno-incidents-v2');
-        if (saved) localSaved = JSON.parse(saved);
-
-        const savedDeleted = localStorage.getItem('passaturno-deleted-incidents-v2');
-        if (savedDeleted) {
-          (JSON.parse(savedDeleted) as string[]).forEach((d) => deletedIds.add(d.toUpperCase().trim()));
-        }
-      } catch (e) {
-        console.error('Erro ao ler atendimentos salvos:', e);
-      }
-    }
-
-    // Filtrar itens locais excluídos
-    localSaved = localSaved.filter(
-      (item) => !deletedIds.has(item.id.toUpperCase().trim()) && !deletedIds.has(item.tag.toUpperCase().trim())
-    );
+    const deletedIds = getDeletedIds();
 
     try {
       const [incRes, eqRes, shiftRes] = await Promise.all([
@@ -113,42 +121,18 @@ export default function Home() {
       ]);
 
       if (incRes.ok) {
-        const incDataRaw: IncidentType[] = await incRes.json();
-        const incData = (incDataRaw || []).filter(
+        const incData = (await incRes.json() as IncidentType[]).filter(
           (item) => !deletedIds.has(item.id.toUpperCase().trim()) && !deletedIds.has(item.tag.toUpperCase().trim())
         );
-
-        const mergedMap = new Map<string, IncidentType>();
-        
-        incData.forEach((item) => mergedMap.set(item.id, item));
-        localSaved.forEach((item) => {
-          if (!mergedMap.has(item.id)) {
-            mergedMap.set(item.id, item);
-          } else {
-            const serverItem = mergedMap.get(item.id)!;
-            const localTime = new Date(item.atualizadoEm || item.criadoEm).getTime();
-            const serverTime = new Date(serverItem.atualizadoEm || serverItem.criadoEm).getTime();
-            if (localTime > serverTime) {
-              mergedMap.set(item.id, item);
-            }
-          }
-        });
-
-        const mergedArray = Array.from(mergedMap.values()).sort(
-          (a, b) => new Date(b.criadoEm).getTime() - new Date(a.criadoEm).getTime()
-        );
-
-        setIncidents(mergedArray);
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('passaturno-incidents-v2', JSON.stringify(mergedArray));
-        }
-      } else if (localSaved.length > 0) {
-        setIncidents(localSaved);
+        setIncidents(incData);
+        saveLocalCache(incData);
+      } else {
+        const cached = loadLocalCache();
+        if (cached.length > 0) setIncidents(cached);
       }
 
       if (eqRes.ok) {
-        const eqData = await eqRes.json();
-        setEquipments(eqData);
+        setEquipments(await eqRes.json());
       }
 
       if (shiftRes.ok) {
@@ -157,7 +141,8 @@ export default function Home() {
       }
     } catch (err) {
       console.error('Error loading CCO data:', err);
-      if (localSaved.length > 0) setIncidents(localSaved);
+      const cached = loadLocalCache();
+      if (cached.length > 0) setIncidents(cached);
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);

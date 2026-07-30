@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { ShiftType } from '@/types';
 import { ThemeMode, UserSession } from './HeaderNav';
-import { userStore } from '@/lib/userStore';
+
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -74,15 +74,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleSaveProfile = (e: React.FormEvent) => {
+  const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser?.id) return;
-
-    const updated = userStore.updateUser(currentUser.id, {
-      nome: nome.trim(),
-      horarioTurno: horarioTurno.trim(),
-      periodoTurno,
-    });
 
     const userSessionData = {
       ...currentUser,
@@ -91,12 +85,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       periodoTurno,
     };
 
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem('passaturno-current-user', JSON.stringify(userSessionData));
-      } catch (err) {
-        console.error('Erro ao atualizar usuário local:', err);
-      }
+    try {
+      await fetch(`/api/usuarios/${currentUser.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nome: nome.trim(),
+          horarioTurno: horarioTurno.trim(),
+          periodoTurno,
+        }),
+      });
+    } catch (err) {
+      console.error('Erro ao atualizar perfil na API:', err);
     }
 
     onProfileUpdated(userSessionData);

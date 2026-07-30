@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { X, User, Clock, Sun, Moon, Check, Save } from 'lucide-react';
-import { userStore, StoredUser } from '@/lib/userStore';
+
 
 interface EditTurmaProfileModalProps {
   isOpen: boolean;
@@ -32,15 +32,9 @@ export const EditTurmaProfileModal: React.FC<EditTurmaProfileModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser?.id) return;
-
-    const updated = userStore.updateUser(currentUser.id, {
-      nome: nome.trim(),
-      horarioTurno: horarioTurno.trim(),
-      periodoTurno,
-    });
 
     const userSessionData = {
       ...currentUser,
@@ -49,13 +43,18 @@ export const EditTurmaProfileModal: React.FC<EditTurmaProfileModalProps> = ({
       periodoTurno,
     };
 
-    // Atualiza a sessão local
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem('passaturno-current-user', JSON.stringify(userSessionData));
-      } catch (err) {
-        console.error('Erro ao atualizar usuário no localStorage:', err);
-      }
+    try {
+      await fetch(`/api/usuarios/${currentUser.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nome: nome.trim(),
+          horarioTurno: horarioTurno.trim(),
+          periodoTurno,
+        }),
+      });
+    } catch (err) {
+      console.error('Erro ao atualizar perfil na API:', err);
     }
 
     onProfileUpdated(userSessionData);

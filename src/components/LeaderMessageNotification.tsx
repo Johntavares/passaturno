@@ -15,7 +15,7 @@ export interface OperatorReply {
 
 interface LeaderMessageNotificationProps {
   userTurma?: string;
-  currentUser?: { nome?: string; cargo?: string } | null;
+  currentUser?: { id?: string; nome?: string; cargo?: string } | null;
 }
 
 export const LeaderMessageNotification: React.FC<LeaderMessageNotificationProps> = ({
@@ -29,38 +29,35 @@ export const LeaderMessageNotification: React.FC<LeaderMessageNotificationProps>
   const [replyText, setReplyText] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  // Carrega mensagens do líder
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
+  // Carrega mensagens do líder da API
+  const loadMessages = async () => {
     try {
-      const saved = localStorage.getItem('passaturno-leader-chat-v1');
-      if (saved) {
-        const allMsgs: ChatMessage[] = JSON.parse(saved);
-        setMessages(
-          allMsgs.filter(
-            (m) =>
-              m.targetTurma === 'GERAL' ||
-              m.targetTurma.toUpperCase().trim() === userTurma.toUpperCase().trim()
-          )
-        );
+      const res = await fetch(`/api/lider/mensagens?turma=${userTurma}`);
+      if (res.ok) {
+        const allMsgs: ChatMessage[] = await res.json();
+        setMessages(allMsgs);
       }
     } catch (e) {
       console.error('Erro ao carregar mensagens da liderança:', e);
     }
-  }, [userTurma]);
+  };
 
-  // Carrega respostas dos operadores
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
+  // Carrega respostas dos operadores da API
+  const loadReplies = async () => {
     try {
-      const saved = localStorage.getItem('passaturno-operator-replies-v1');
-      if (saved) {
-        const all: OperatorReply[] = JSON.parse(saved);
-        setReplies(all.filter((r) => r.fromTurma === userTurma));
+      const res = await fetch(`/api/lider/respostas?turma=${userTurma}`);
+      if (res.ok) {
+        const all: OperatorReply[] = await res.json();
+        setReplies(all);
       }
     } catch (e) {
       console.error('Erro ao carregar respostas:', e);
     }
+  };
+
+  useEffect(() => {
+    loadMessages();
+    loadReplies();
   }, [userTurma]);
 
   // Scrolla para baixo quando abre
@@ -70,27 +67,29 @@ export const LeaderMessageNotification: React.FC<LeaderMessageNotificationProps>
     }
   }, [isOpen]);
 
-  const handleSendReply = (e: React.FormEvent) => {
+  const handleSendReply = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!replyText.trim()) return;
 
-    const reply: OperatorReply = {
-      id: `reply-${Date.now()}`,
+    const body = {
       sender: currentUser?.nome || `Operador Turma ${userTurma}`,
+      senderId: currentUser?.id || null,
       fromTurma: userTurma,
       text: replyText.trim(),
-      timestamp: new Date().toISOString(),
     };
 
-    // Salva junto com todas as respostas existentes (de todas as turmas)
     try {
-      const saved = localStorage.getItem('passaturno-operator-replies-v1');
-      const allReplies: OperatorReply[] = saved ? JSON.parse(saved) : [];
-      const updated = [...allReplies, reply];
-      localStorage.setItem('passaturno-operator-replies-v1', JSON.stringify(updated));
-      setReplies((prev) => [...prev, reply]);
-      setReplyText('');
-      setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
+      const res = await fetch('/api/lider/respostas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (res.ok) {
+        const reply = await res.json();
+        setReplies((prev) => [...prev, reply]);
+        setReplyText('');
+        setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
+      }
     } catch (e) {
       console.error('Erro ao salvar resposta:', e);
     }

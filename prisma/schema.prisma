@@ -1,6 +1,6 @@
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 generator client {
@@ -8,15 +8,21 @@ generator client {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  nome      String
-  email     String   @unique
-  senha     String   @default("passaturno2026")
-  matricula String?  @unique
-  equipe    String   // ex: Automação A, Automação B, CCO
-  cargo     String   // ex: Técnico de Automação, Engenheiro de Automação, Supervisor
-  criadoEm  DateTime @default(now())
-  shifts    Shift[]  @relation("ResponsavelShift")
+  id            String   @id @default(uuid())
+  nome          String
+  email         String   @unique
+  senha         String
+  matricula     String?  @unique
+  equipe        String
+  cargo         String
+  turma         String   @default("A")
+  horarioTurno  String?  @default("07:00 às 19:00")
+  periodoTurno  String?  @default("Dia")
+  criadoPor     String?
+  criadoEm      DateTime @default(now())
+  shifts        Shift[]   @relation("ResponsavelShift")
+  leaderMessages  LeaderMessage[] @relation("SenderUser")
+  operatorReplies OperatorReply[] @relation("ReplyUser")
 }
 
 model Shift {
@@ -135,4 +141,24 @@ model ShiftHandover {
   resumoFinalizados              String   // JSON string
   resumoPendencias               String   // JSON string
   prioridades                    String   // JSON string
+}
+
+model LeaderMessage {
+  id          String   @id @default(uuid())
+  sender      String
+  senderId    String?
+  senderUser  User?    @relation("SenderUser", fields: [senderId], references: [id])
+  targetTurma String   // 'A' | 'B' | 'C' | 'D' | 'GERAL'
+  text        String
+  criadoEm    DateTime @default(now())
+}
+
+model OperatorReply {
+  id        String   @id @default(uuid())
+  sender    String
+  senderId  String?
+  senderUser User?   @relation("ReplyUser", fields: [senderId], references: [id])
+  fromTurma String   // 'A' | 'B' | 'C' | 'D'
+  text      String
+  criadoEm  DateTime @default(now())
 }

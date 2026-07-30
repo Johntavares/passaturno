@@ -15,8 +15,6 @@ import {
   ArrowRight,
   CheckCircle2
 } from 'lucide-react';
-import { userStore } from '@/lib/userStore';
-
 interface UserSession {
   id: string;
   nome: string;
@@ -81,21 +79,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess }) => {
         return;
       }
 
-      // 2. Se falhar na API, verificar se o usuário existe no userStore local criado pelo Líder
-      const localUser = userStore.findUserByLogin(loginInput);
-      if (localUser && localUser.senha === senhaInput.trim()) {
-        onLoginSuccess({
-          id: localUser.id,
-          nome: localUser.nome,
-          email: localUser.email,
-          matricula: localUser.matricula,
-          equipe: localUser.equipe,
-          cargo: localUser.cargo,
-          turma: localUser.turma,
-        });
-        return;
-      }
-
       throw new Error(data.error || 'Credenciais inválidas. Verifique sua Matrícula e Senha.');
     } catch (err: any) {
       setErrorMsg(err.message || 'Erro ao realizar login.');
@@ -123,20 +106,29 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess }) => {
     setIsSubmitting(true);
 
     try {
-      const created = userStore.addUser({
-        nome: leaderNome.trim(),
-        matricula: leaderMatricula.trim(),
-        email: leaderEmail.trim() || `lider.${leaderMatricula.trim()}@passaturno.com`,
-        senha: leaderSenha.trim(),
-        equipe: 'Gestão Multiturmas (Letras A, B, C, D)',
-        cargo: 'LÍDER DE TURMA',
-        turma: 'GERAL',
+      const res = await fetch('/api/usuarios', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nome: leaderNome.trim(),
+          matricula: leaderMatricula.trim(),
+          senha: leaderSenha.trim(),
+          turma: 'GERAL',
+          criadoPor: 'system',
+        }),
       });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Erro ao criar conta');
+      }
+
+      const created = await res.json();
 
       setSuccessMsg('Conta de Líder criada com sucesso! Faça login abaixo com sua nova conta.');
       setMode('signin');
       setLoginInput(created.matricula);
-      setSenhaInput(created.senha);
+      setSenhaInput('');
     } catch (err: any) {
       setErrorMsg('Não foi possível criar a conta do Líder.');
     } finally {
@@ -310,73 +302,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess }) => {
                   <span>{isSubmitting ? 'Autenticando...' : 'Entrar no Sistema'}</span>
                 </button>
 
-                {/* Seleção Rápida dos 5 Perfis Oficiais */}
-                <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2">
-                  <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
-                    Acesso Rápido - 5 Perfis Oficiais (Senha: 123456):
-                  </p>
-                  <div className="grid grid-cols-2 gap-1.5 text-[11px] font-bold">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setLoginInput('lider@passaturno.com');
-                        setSenhaInput('123456');
-                      }}
-                      className="col-span-2 px-2.5 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-800 rounded-xl text-left transition-all flex items-center justify-between cursor-pointer"
-                    >
-                      <span>👑 Líder da Turma</span>
-                      <span className="font-mono text-[10px] opacity-70">lider@passaturno.com</span>
-                    </button>
 
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setLoginInput('turma.a@passaturno.com');
-                        setSenhaInput('123456');
-                      }}
-                      className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-xl text-left transition-all flex items-center justify-between cursor-pointer"
-                    >
-                      <span>🅰️ Turma A</span>
-                      <span className="font-mono text-[10px] opacity-60">1001</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setLoginInput('turma.b@passaturno.com');
-                        setSenhaInput('123456');
-                      }}
-                      className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-xl text-left transition-all flex items-center justify-between cursor-pointer"
-                    >
-                      <span>🅱️ Turma B</span>
-                      <span className="font-mono text-[10px] opacity-60">1002</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setLoginInput('turma.c@passaturno.com');
-                        setSenhaInput('123456');
-                      }}
-                      className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-xl text-left transition-all flex items-center justify-between cursor-pointer"
-                    >
-                      <span>🅲 Turma C</span>
-                      <span className="font-mono text-[10px] opacity-60">1003</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setLoginInput('turma.d@passaturno.com');
-                        setSenhaInput('123456');
-                      }}
-                      className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-xl text-left transition-all flex items-center justify-between cursor-pointer"
-                    >
-                      <span>🅳 Turma D</span>
-                      <span className="font-mono text-[10px] opacity-60">1004</span>
-                    </button>
-                  </div>
-                </div>
               </form>
             ) : (
               /* FORMULÁRIO 2: SIGN UP DO LÍDER (PRIMEIRO ACESSO DA LIDERANÇA) */

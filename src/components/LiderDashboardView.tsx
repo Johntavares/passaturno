@@ -36,7 +36,6 @@ import {
   X
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { userStore, StoredUser } from '@/lib/userStore';
 import { ChatMessage } from './LiderTurmaModal';
 import { OperatorReply } from './LeaderMessageNotification';
 
@@ -68,7 +67,7 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
   const [historySearchTerm, setHistorySearchTerm] = useState<string>('');
 
   // Gestão de Usuários / Contas
-  const [userList, setUserList] = useState<StoredUser[]>([]);
+  const [userList, setUserList] = useState<any[]>([]);
   const [newOpNome, setNewOpNome] = useState('');
   const [newOpMatricula, setNewOpMatricula] = useState('');
   const [newOpTurma, setNewOpTurma] = useState('A');
@@ -76,7 +75,7 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
   const [userCreatedMsg, setUserCreatedMsg] = useState('');
 
   // Modal de Edição de Usuário pelo Líder
-  const [editingUser, setEditingUser] = useState<StoredUser | null>(null);
+  const [editingUser, setEditingUser] = useState<any | null>(null);
   const [editNome, setEditNome] = useState('');
   const [editMatricula, setEditMatricula] = useState('');
   const [editEmail, setEditEmail] = useState('');
@@ -94,8 +93,37 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
   // Time clock
   const [currentTime, setCurrentTime] = useState<string>('');
 
+  const loadUsers = async () => {
+    try {
+      const res = await fetch('/api/usuarios');
+      if (res.ok) setUserList(await res.json());
+    } catch (e) {
+      console.error('Erro ao carregar usuários:', e);
+    }
+  };
+
+  const loadMessages = async () => {
+    try {
+      const res = await fetch('/api/lider/mensagens');
+      if (res.ok) setMessages(await res.json());
+    } catch (e) {
+      console.error('Erro ao carregar mensagens:', e);
+    }
+  };
+
+  const loadReplies = async () => {
+    try {
+      const res = await fetch('/api/lider/respostas');
+      if (res.ok) setOperatorReplies(await res.json());
+    } catch (e) {
+      console.error('Erro ao carregar respostas:', e);
+    }
+  };
+
   useEffect(() => {
-    setUserList(userStore.getUsers());
+    loadUsers();
+    loadMessages();
+    loadReplies();
   }, []);
 
   useEffect(() => {
@@ -107,97 +135,74 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
     return () => clearInterval(interval);
   }, []);
 
-  // Carregar mensagens enviadas
+  // Polling de respostas a cada 10s
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem('passaturno-leader-chat-v1');
-        if (saved) {
-          setMessages(JSON.parse(saved));
-        } else {
-          const defaultMsgs: ChatMessage[] = [
-            {
-              id: 'msg-1',
-              sender: 'Líder da Turma',
-              targetTurma: 'GERAL',
-              text: '📢 Orientação da Liderança: Atenção especial na conferência das pendências de automação ao trocar de turno.',
-              timestamp: new Date().toISOString(),
-            },
-          ];
-          setMessages(defaultMsgs);
-          localStorage.setItem('passaturno-leader-chat-v1', JSON.stringify(defaultMsgs));
-        }
-      } catch (e) {
-        console.error('Erro ao ler mensagens:', e);
-      }
-    }
-  }, []);
-
-  // Carregar respostas dos operadores
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const load = () => {
-      try {
-        const saved = localStorage.getItem('passaturno-operator-replies-v1');
-        if (saved) setOperatorReplies(JSON.parse(saved));
-      } catch (e) {
-        console.error('Erro ao carregar respostas:', e);
-      }
-    };
-    load();
-    // Atualiza a cada 10s para capturar novas respostas
-    const interval = setInterval(load, 10000);
+    const interval = setInterval(loadReplies, 10000);
     return () => clearInterval(interval);
   }, []);
 
-  const handleSendLeaderMessage = (e: React.FormEvent) => {
+  const handleSendLeaderMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!msgInput.trim()) return;
 
-    const newMsg: ChatMessage = {
-      id: `msg-${Date.now()}`,
+    const body = {
       sender: currentUser?.nome || 'Líder da Turma',
+      senderId: currentUser?.id || null,
       targetTurma: targetTurmaChannel,
       text: msgInput.trim(),
-      timestamp: new Date().toISOString(),
     };
 
-    const updated = [newMsg, ...messages];
-    setMessages(updated);
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem('passaturno-leader-chat-v1', JSON.stringify(updated));
-      } catch (e) {
-        console.error('Erro ao guardar mensagem do líder:', e);
+    try {
+      const res = await fetch('/api/lider/mensagens', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (res.ok) {
+        const newMsg = await res.json();
+        setMessages((prev) => [newMsg, ...prev]);
       }
+    } catch (e) {
+      console.error('Erro ao enviar mensagem:', e);
     }
     setMsgInput('');
   };
 
-  const handleCreateOperatorAccount = (e: React.FormEvent) => {
+  const handleCreateOperatorAccount = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newOpNome.trim() || !newOpMatricula.trim() || !newOpSenha.trim()) return;
 
-    userStore.addUser({
-      nome: newOpNome.trim(),
-      matricula: newOpMatricula.trim(),
-      email: `turma.${newOpTurma.toLowerCase()}.${newOpMatricula.trim()}@passaturno.com`,
-      senha: newOpSenha.trim(),
-      equipe: `Automação & CCO (Turma ${newOpTurma})`,
-      cargo: `Técnico de Automação (Turma ${newOpTurma})`,
-      turma: newOpTurma,
-      criadoPor: currentUser?.nome || 'Líder da Turma',
-    });
+    try {
+      const res = await fetch('/api/usuarios', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nome: newOpNome.trim(),
+          matricula: newOpMatricula.trim(),
+          senha: newOpSenha.trim(),
+          turma: newOpTurma,
+          criadoPor: currentUser?.nome || 'Líder da Turma',
+        }),
+      });
 
-    setUserList(userStore.getUsers());
-    setUserCreatedMsg(`Conta da Turma ${newOpTurma} criada com sucesso para ${newOpNome.trim()}! (Matrícula: ${newOpMatricula.trim()})`);
-    setNewOpNome('');
-    setNewOpMatricula('');
-    setNewOpSenha('123456');
+      if (res.ok) {
+        await loadUsers();
+        setUserCreatedMsg(`Conta da Turma ${newOpTurma} criada com sucesso para ${newOpNome.trim()}! (Matrícula: ${newOpMatricula.trim()})`);
+        setNewOpNome('');
+        setNewOpMatricula('');
+        setNewOpSenha('123456');
+      } else {
+        const err = await res.json();
+        setUserCreatedMsg(`Erro: ${err.error}`);
+      }
+    } catch (e) {
+      console.error('Erro ao criar conta:', e);
+      setUserCreatedMsg('Erro ao criar conta. Verifique o console.');
+    }
     setTimeout(() => setUserCreatedMsg(''), 4000);
   };
 
-  const handleOpenEditUser = (user: StoredUser) => {
+  const handleOpenEditUser = (user: any) => {
     setEditingUser(user);
     setEditNome(user.nome);
     setEditMatricula(user.matricula);
@@ -208,22 +213,36 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
     setEditPeriodo(user.periodoTurno || (user.turma === 'D' ? 'Noite' : 'Dia'));
   };
 
-  const handleSaveEditUser = (e: React.FormEvent) => {
+  const handleSaveEditUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingUser) return;
 
-    userStore.updateUser(editingUser.id, {
-      nome: editNome.trim(),
-      matricula: editMatricula.trim(),
-      email: editEmail.trim(),
-      senha: editSenha.trim(),
-      turma: editTurma,
-      horarioTurno: editHorario.trim(),
-      periodoTurno: editPeriodo,
-    });
+    try {
+      const res = await fetch(`/api/usuarios/${editingUser.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nome: editNome.trim(),
+          matricula: editMatricula.trim(),
+          email: editEmail.trim(),
+          senha: editSenha.trim(),
+          turma: editTurma,
+          horarioTurno: editHorario.trim(),
+          periodoTurno: editPeriodo,
+        }),
+      });
 
-    setUserList(userStore.getUsers());
-    setUserCreatedMsg(`Conta de ${editNome.trim()} (Turma ${editTurma}) atualizada com sucesso!`);
+      if (res.ok) {
+        await loadUsers();
+        setUserCreatedMsg(`Conta de ${editNome.trim()} (Turma ${editTurma}) atualizada com sucesso!`);
+      } else {
+        const err = await res.json();
+        setUserCreatedMsg(`Erro: ${err.error}`);
+      }
+    } catch (e) {
+      console.error('Erro ao atualizar conta:', e);
+      setUserCreatedMsg('Erro ao atualizar conta.');
+    }
     setEditingUser(null);
     setTimeout(() => setUserCreatedMsg(''), 4000);
   };

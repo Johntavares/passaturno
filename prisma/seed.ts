@@ -1,6 +1,77 @@
 import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
+
+const DEFAULT_PASSWORD_HASH = bcrypt.hashSync('123456', 10);
+
+const defaultUsers = [
+  {
+    id: 'usr-lider-official',
+    nome: 'Líder da Turma',
+    email: 'lider@passaturno.com',
+    matricula: '9001',
+    senha: DEFAULT_PASSWORD_HASH,
+    equipe: 'Gestão Multiturmas (A, B, C, D)',
+    cargo: 'LÍDER DE TURMA',
+    turma: 'GERAL',
+    horarioTurno: null,
+    periodoTurno: null,
+    criadoPor: 'system',
+  },
+  {
+    id: 'usr-turma-a-official',
+    nome: 'Operador Turma A',
+    email: 'turma.a@passaturno.com',
+    matricula: '1001',
+    senha: DEFAULT_PASSWORD_HASH,
+    equipe: 'Automação & CCO (Turma A)',
+    cargo: 'Técnico de Automação (Turma A)',
+    turma: 'A',
+    horarioTurno: '07:00 às 19:00',
+    periodoTurno: 'Dia',
+    criadoPor: 'system',
+  },
+  {
+    id: 'usr-turma-b-official',
+    nome: 'Operador Turma B',
+    email: 'turma.b@passaturno.com',
+    matricula: '1002',
+    senha: DEFAULT_PASSWORD_HASH,
+    equipe: 'Automação & CCO (Turma B)',
+    cargo: 'Técnico de Automação (Turma B)',
+    turma: 'B',
+    horarioTurno: '07:00 às 19:00',
+    periodoTurno: 'Dia',
+    criadoPor: 'system',
+  },
+  {
+    id: 'usr-turma-c-official',
+    nome: 'Operador Turma C',
+    email: 'turma.c@passaturno.com',
+    matricula: '1003',
+    senha: DEFAULT_PASSWORD_HASH,
+    equipe: 'Automação & CCO (Turma C)',
+    cargo: 'Técnico de Automação (Turma C)',
+    turma: 'C',
+    horarioTurno: '07:00 às 19:00',
+    periodoTurno: 'Dia',
+    criadoPor: 'system',
+  },
+  {
+    id: 'usr-turma-d-official',
+    nome: 'Operador Turma D',
+    email: 'turma.d@passaturno.com',
+    matricula: '1004',
+    senha: DEFAULT_PASSWORD_HASH,
+    equipe: 'Automação & CCO (Turma D)',
+    cargo: 'Técnico de Automação (Turma D)',
+    turma: 'D',
+    horarioTurno: '19:00 às 07:00',
+    periodoTurno: 'Noite',
+    criadoPor: 'system',
+  },
+];
 
 const realFleetData = [
   // KOMATSU - 830E-AC (Caminhões)
@@ -134,28 +205,19 @@ const realFleetData = [
 ];
 
 async function main() {
-  console.log('🌱 Iniciando povoamento da frota real e repetidoras...');
+  console.log('🌱 Iniciando povoamento do banco PostgreSQL...');
 
-  // 1. Criar Usuários
-  await prisma.user.upsert({
-    where: { id: 'usr-1' },
-    update: {
-      nome: 'John Tavares',
-      email: 'john.tavares@passaturno.com',
-      matricula: '1001',
-      equipe: 'Automação & CCO',
-      cargo: 'Engenheiro de Automação',
-    },
-    create: {
-      id: 'usr-1',
-      nome: 'John Tavares',
-      email: 'john.tavares@passaturno.com',
-      matricula: '1001',
-      senha: 'passaturno2026',
-      equipe: 'Automação & CCO',
-      cargo: 'Engenheiro de Automação',
-    },
-  });
+  // 1. Criar Usuários Padrão (Líder + Operadores A, B, C, D)
+  let usersCreated = 0;
+  for (const u of defaultUsers) {
+    await prisma.user.upsert({
+      where: { id: u.id },
+      update: u,
+      create: u,
+    });
+    usersCreated++;
+  }
+  console.log(`✅ ${usersCreated} usuários padrão sincronizados (senha: 123456)`);
 
   // 2. Inserir Frota Real Completa e Repetidoras RPT
   let createdCount = 0;
