@@ -35,6 +35,87 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Senha incorreta.' }, { status: 401 });
     }
 
+    // --- AUTO-ASSUMIR TURNO LOGIC ---
+    if (['A', 'B', 'C', 'D'].includes(user.turma)) {
+      try {
+        const { inMemoryStore } = await import('@/lib/inMemoryStore');
+        
+        let currentTurma = null;
+        try {
+          const activeShift = await prisma.shift.findFirst({
+            where: { status: 'ATIVO' },
+            orderBy: { criadoEm: 'desc' },
+          });
+          currentTurma = activeShift?.turma;
+        } catch (dbErr) {
+          const inMemActive = inMemoryStore.getActiveShift();
+          currentTurma = inMemActive?.activeShift?.turma;
+        }
+
+        if (currentTurma !== user.turma) {
+          console.log(`Auto-assumindo turno para Turma ${user.turma} via login...`);
+          const today = new Date().toISOString().split('T')[0];
+          const equipe = user.equipe;
+          const responsavelNome = user.nome;
+          const turma = user.turma;
+          const escala = '3x3';
+          
+          inMemoryStore.startShift({
+            equipe,
+            responsavelNome,
+            observacoes: 'Turno assumido automaticamente no login.',
+            turma,
+            escala,
+          });
+
+          try {
+            const activeShift = await prisma.shift.findFirst({
+              where: { status: 'ATIVO' },
+            });
+
+            if (activeShift) {
+              await prisma.shift.update({
+                where: { id: activeShift.id },
+                data: { status: 'ENCERRADO', horaFim: new Date() },
+              });
+            }
+
+            const openIncidents = await prisma.incident.findMany({
+              where: { status: { in: ['EM_ANDAMENTO', 'AGUARDANDO', 'PENDENCIA_PROXIMO_TURNO'] } },
+            });
+
+            for (const incident of openIncidents) {
+              await prisma.incident.update({
+                where: { id: incident.id },
+                data: {
+                  isPendenciaHerdada: true,
+                  status: incident.status === 'EM_ANDAMENTO' ? 'PENDENCIA_PROXIMO_TURNO' : incident.status,
+                },
+              });
+            }
+
+            await prisma.shift.create({
+              data: {
+                equipe,
+                responsavelNome,
+                turma,
+                escala,
+                data: today,
+                horaInicio: new Date(),
+                status: 'ATIVO',
+                observacoes: 'Turno assumido automaticamente no login.',
+              },
+            });
+          } catch (e) {
+            console.warn('SQLite auto-assume failed, inMemoryStore updated.', e);
+          }
+        }
+      } catch (autoShiftErr) {
+        console.error('Erro no auto-assumir turno durante o login:', autoShiftErr);
+      }
+    }
+    // ---------------------------------
+
     return NextResponse.json({
       message: 'Login realizado com sucesso',
       user: {
