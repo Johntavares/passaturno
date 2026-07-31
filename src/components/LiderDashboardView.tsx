@@ -450,29 +450,29 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
               <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white rounded-3xl p-5 shadow-lg border border-slate-700 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="flex items-center space-x-4">
                   <div className="w-12 h-12 bg-emerald-500/20 text-emerald-400 rounded-2xl flex items-center justify-center font-black text-lg border border-emerald-500/40">
-                    {activeShift?.turma ? activeShift.turma.replace('Turma ', '') : 'A'}
+                    {activeShift?.turma ? activeShift.turma.replace('Turma ', '').replace('TURMA ', '') : '-'}
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="text-[10px] font-black uppercase bg-emerald-500 text-slate-950 px-2 py-0.5 rounded font-mono">
-                        Equipe do Dia Ativa
+                        {activeShift ? 'Equipe do Dia Ativa' : 'Nenhum Turno Ativo'}
                       </span>
                       <span className="text-xs font-bold text-slate-300">
                         {activeShift?.equipe || 'Automação & CCO'}
                       </span>
                     </div>
                     <h2 className="text-lg font-black text-white mt-1">
-                      {activeShift ? activeShift.turma : 'Turma A (Turno Diurno)'}
+                      {activeShift ? activeShift.turma : 'Sem Turno Iniciado'}
                     </h2>
                     <p className="text-xs text-slate-400">
-                      Responsável: <strong className="text-emerald-300">{activeShift?.responsavelNome || 'John Tavares'}</strong> • Escala: {activeShift?.escala || '2x3'}
+                      Responsável: <strong className="text-emerald-300">{activeShift?.responsavelNome || 'Aguardando assumir turno'}</strong> • Escala: {activeShift?.escala || '-'}
                     </p>
                   </div>
                 </div>
 
                 <div className="flex items-center space-x-3 text-xs bg-slate-800/80 px-4 py-2.5 rounded-2xl border border-slate-700 font-mono">
                   <Clock className="w-4 h-4 text-emerald-400" />
-                  <span>Horário: {activeShift?.horarioTurno || '07h às 19h'}</span>
+                  <span>Horário: {activeShift?.horarioTurno || '-'}</span>
                 </div>
               </div>
 
