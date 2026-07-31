@@ -788,7 +788,12 @@ export default function Home() {
         isOpen={isEditProfileOpen}
         onClose={() => setIsEditProfileOpen(false)}
         currentUser={currentUser}
-        onProfileUpdated={(updated) => setCurrentUser(updated)}
+        onProfileUpdated={(updated) => {
+          setCurrentUser(updated);
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('passaturno-user', JSON.stringify(updated));
+          }
+        }}
       />
 
       {/* Central de Configurações */}
@@ -806,7 +811,12 @@ export default function Home() {
         onOpenGpsDiagnostic={() => setIsGpsDiagnosticOpen(true)}
         onOpenHistoryTab={() => setIsHistoryTabOpen(true)}
         onRefreshData={loadData}
-        onProfileUpdated={(updated) => setCurrentUser(updated)}
+        onProfileUpdated={(updated) => {
+          setCurrentUser(updated);
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('passaturno-user', JSON.stringify(updated));
+          }
+        }}
       />
 
       {/* Modal Reporte de Diagnóstico de GPS */}
