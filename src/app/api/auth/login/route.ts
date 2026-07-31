@@ -58,12 +58,14 @@ export async function POST(request: Request) {
           const equipe = user.equipe;
           const responsavelNome = user.nome;
           const turma = user.turma;
-          const escala = '3x3';
+          const escala = user.escala || '3x3';
+          const diaEscala = user.diaEscala || '1º Dia';
+          const observacoes = `Turno assumido automaticamente no login. Escala: ${escala} (${diaEscala}).`;
           
           inMemoryStore.startShift({
             equipe,
             responsavelNome,
-            observacoes: 'Turno assumido automaticamente no login.',
+            observacoes,
             turma,
             escala,
           });
@@ -99,11 +101,14 @@ export async function POST(request: Request) {
                 equipe,
                 responsavelNome,
                 turma,
+                tipoTurno: user.periodoTurno === 'Noite' ? 'Noturno' : 'Diurno',
                 escala,
+                horarioTurno: user.horarioTurno,
+                responsavelId: user.id,
                 data: today,
                 horaInicio: new Date(),
                 status: 'ATIVO',
-                observacoes: 'Turno assumido automaticamente no login.',
+                observacoes,
               },
             });
           } catch (e) {

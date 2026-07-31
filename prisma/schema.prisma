@@ -18,6 +18,8 @@ model User {
   turma         String   @default("A")
   horarioTurno  String?  @default("07:00 às 19:00")
   periodoTurno  String?  @default("Dia")
+  escala        String?  @default("3x3")
+  diaEscala     String?  @default("1º Dia")
   criadoPor     String?
   criadoEm      DateTime @default(now())
   shifts        Shift[]   @relation("ResponsavelShift")

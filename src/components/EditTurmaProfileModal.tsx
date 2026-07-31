@@ -20,6 +20,8 @@ export const EditTurmaProfileModal: React.FC<EditTurmaProfileModalProps> = ({
   const [nome, setNome] = useState('');
   const [horarioTurno, setHorarioTurno] = useState('07:00 às 19:00');
   const [periodoTurno, setPeriodoTurno] = useState<'Dia' | 'Noite'>('Dia');
+  const [escala, setEscala] = useState('3x3');
+  const [diaEscala, setDiaEscala] = useState('1º Dia');
   const [savedSuccess, setSavedSuccess] = useState(false);
 
   useEffect(() => {
@@ -27,6 +29,8 @@ export const EditTurmaProfileModal: React.FC<EditTurmaProfileModalProps> = ({
       setNome(currentUser.nome || '');
       setHorarioTurno(currentUser.horarioTurno || '07:00 às 19:00');
       setPeriodoTurno(currentUser.periodoTurno || (currentUser.turma === 'D' ? 'Noite' : 'Dia'));
+      setEscala(currentUser.escala || '3x3');
+      setDiaEscala(currentUser.diaEscala || '1º Dia');
     }
   }, [currentUser, isOpen]);
 
@@ -41,6 +45,8 @@ export const EditTurmaProfileModal: React.FC<EditTurmaProfileModalProps> = ({
       nome: nome.trim(),
       horarioTurno: horarioTurno.trim(),
       periodoTurno,
+      escala,
+      diaEscala,
     };
 
     try {
@@ -51,6 +57,8 @@ export const EditTurmaProfileModal: React.FC<EditTurmaProfileModalProps> = ({
           nome: nome.trim(),
           horarioTurno: horarioTurno.trim(),
           periodoTurno,
+          escala,
+          diaEscala,
         }),
       });
     } catch (err) {
@@ -174,6 +182,40 @@ export const EditTurmaProfileModal: React.FC<EditTurmaProfileModalProps> = ({
                   className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pl-10 pr-3.5 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500 font-mono font-bold"
                   required
                 />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Escala (ex: 3x3):
+                </label>
+                <input
+                  type="text"
+                  value={escala}
+                  onChange={(e) => setEscala(e.target.value)}
+                  placeholder="Ex: 3x3"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500 font-mono font-bold"
+                  required
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Dia de Trabalho (Sua Letra):
+                </label>
+                <select
+                  value={diaEscala}
+                  onChange={(e) => setDiaEscala(e.target.value)}
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
+                >
+                  <option value="1º Dia">1º Dia</option>
+                  <option value="2º Dia">2º Dia</option>
+                  <option value="3º Dia">3º Dia</option>
+                  <option value="4º Dia">4º Dia</option>
+                  <option value="5º Dia">5º Dia</option>
+                  <option value="Folga">Folga</option>
+                </select>
               </div>
             </div>
 

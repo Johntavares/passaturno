@@ -6,7 +6,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   try {
     const { id } = await params;
     const body = await request.json();
-    const { nome, matricula, email, senha, turma, horarioTurno, periodoTurno } = body;
+    const { nome, matricula, email, senha, turma, horarioTurno, periodoTurno, escala, diaEscala } = body;
 
     const data: any = {};
     if (nome !== undefined) data.nome = nome.trim();
@@ -15,6 +15,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     if (turma !== undefined) data.turma = turma;
     if (horarioTurno !== undefined) data.horarioTurno = horarioTurno;
     if (periodoTurno !== undefined) data.periodoTurno = periodoTurno;
+    if (escala !== undefined) data.escala = escala;
+    if (diaEscala !== undefined) data.diaEscala = diaEscala;
     if (senha !== undefined) {
       data.senha = await bcrypt.hash(senha, 10);
     }
@@ -32,6 +34,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         turma: true,
         horarioTurno: true,
         periodoTurno: true,
+        escala: true,
+        diaEscala: true,
         criadoPor: true,
         criadoEm: true,
       },
