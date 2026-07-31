@@ -532,14 +532,14 @@ export const inMemoryStore = {
     }
   },
 
-  startShift: (data: { equipe: string; responsavelNome: string; observacoes?: string }) => {
+  startShift: (data: { equipe: string; responsavelNome: string; observacoes?: string; turma?: string; escala?: string }) => {
     const nowIso = new Date().toISOString();
     const newShift: InMemoryShift = {
       id: `shift-${Date.now()}`,
       equipe: data.equipe || 'Automação B',
-      turma: data.equipe || 'A',
+      turma: data.turma || data.equipe?.replace('Automação ', '') || 'A',
       tipoTurno: 'Diurno',
-      escala: '2x3',
+      escala: data.escala || '3x3',
       horarioTurno: '07h às 19h',
       responsavelNome: data.responsavelNome || 'Operador',
       data: new Date().toISOString().split('T')[0],

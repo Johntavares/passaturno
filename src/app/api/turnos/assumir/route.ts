@@ -16,6 +16,8 @@ export async function POST(request: Request) {
       equipe: equipe || 'Automação B',
       responsavelNome: responsavelNome || 'Operador',
       observacoes: observacoes || '',
+      turma: turma,
+      escala: escala,
     });
 
     try {
