@@ -36,7 +36,7 @@ export async function POST(request: Request) {
     }
 
     // --- AUTO-ASSUMIR TURNO LOGIC ---
-    if (['A', 'B', 'C', 'D'].includes(user.turma)) {
+    if (user.cargo !== 'LIDER' && ['A', 'B', 'C', 'D'].includes(user.turma)) {
       try {
         const { inMemoryStore } = await import('@/lib/inMemoryStore');
         
