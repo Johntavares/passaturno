@@ -29,13 +29,36 @@ export const LeaderMessageNotification: React.FC<LeaderMessageNotificationProps>
   const [replyText, setReplyText] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
 
+  const DISMISS_KEY = 'dismissed_shift_notifications';
+
+  const loadDismissed = () => {
+    try {
+      const saved = localStorage.getItem(DISMISS_KEY);
+      if (saved) setDismissedIds(JSON.parse(saved));
+    } catch (e) {
+      console.error('Erro ao ler mensagens dispensadas:', e);
+    }
+  };
+
+  const handleDismiss = (id: string) => {
+    setDismissedIds((prev) => {
+      const next = [...prev, id];
+      try {
+        localStorage.setItem(DISMISS_KEY, JSON.stringify(next));
+      } catch (e) {
+        console.error('Erro ao dispensar mensagem:', e);
+      }
+      return next;
+    });
+  };
+
   // Carrega mensagens do líder da API
   const loadMessages = async () => {
     try {
       const res = await fetch(`/api/lider/mensagens?turma=${userTurma}`);
       if (res.ok) {
-        const allMsgs: ChatMessage[] = await res.json();
-        setMessages(allMsgs);
+        const allMsgs = (await res.json()) as any[];
+        setMessages(allMsgs.map((m) => ({ ...m, timestamp: m.timestamp || m.criadoEm || m.dataHora })));
       }
     } catch (e) {
       console.error('Erro ao carregar mensagens da liderança:', e);
@@ -47,8 +70,8 @@ export const LeaderMessageNotification: React.FC<LeaderMessageNotificationProps>
     try {
       const res = await fetch(`/api/lider/respostas?turma=${userTurma}`);
       if (res.ok) {
-        const all: OperatorReply[] = await res.json();
-        setReplies(all);
+        const all = (await res.json()) as any[];
+        setReplies(all.map((r) => ({ ...r, timestamp: r.timestamp || r.criadoEm || r.dataHora })));
       }
     } catch (e) {
       console.error('Erro ao carregar respostas:', e);
@@ -56,8 +79,17 @@ export const LeaderMessageNotification: React.FC<LeaderMessageNotificationProps>
   };
 
   useEffect(() => {
+    loadDismissed();
     loadMessages();
     loadReplies();
+
+    const onStorage = () => {
+      loadDismissed();
+      loadMessages();
+      loadReplies();
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
   }, [userTurma]);
 
   // Scrolla para baixo quando abre
@@ -97,11 +129,22 @@ export const LeaderMessageNotification: React.FC<LeaderMessageNotificationProps>
 
   const activeMessages = messages.filter((m) => !dismissedIds.includes(m.id));
 
+  const safeFormat = (value?: string | null, pattern = 'HH:mm') => {
+    if (!value) return '';
+    const d = new Date(value);
+    if (isNaN(d.getTime())) return '';
+    return format(d, pattern);
+  };
+
   // Mescla mensagens do líder e respostas do operador por timestamp
   const chatItems = [
     ...activeMessages.map((m) => ({ ...m, type: 'leader' as const })),
     ...replies.map((r) => ({ ...r, type: 'operator' as const })),
-  ].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+  ].sort((a, b) => {
+    const ta = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+    const tb = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+    return ta - tb;
+  });
 
   const totalCount = activeMessages.length;
   if (totalCount === 0 && replies.length === 0) return null;
@@ -151,11 +194,11 @@ export const LeaderMessageNotification: React.FC<LeaderMessageNotificationProps>
                       {isLeader ? (item as ChatMessage).sender : 'Você'}
                     </span>
                     <span className="text-[10px] text-slate-300 font-mono">
-                      {format(new Date(item.timestamp), 'HH:mm')}
+                      {safeFormat(item.timestamp, 'HH:mm')}
                     </span>
                     {isLeader && (
                       <button
-                        onClick={() => setDismissedIds((prev) => [...prev, item.id])}
+                        onClick={() => handleDismiss(item.id)}
                         className="text-slate-300 hover:text-rose-400 transition-colors cursor-pointer ml-1"
                         title="Dispensar"
                       >

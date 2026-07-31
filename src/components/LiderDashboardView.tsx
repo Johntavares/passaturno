@@ -105,7 +105,10 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
   const loadMessages = async () => {
     try {
       const res = await fetch('/api/lider/mensagens');
-      if (res.ok) setMessages(await res.json());
+      if (res.ok) {
+        const raw = (await res.json()) as any[];
+        setMessages(raw.map((m) => ({ ...m, timestamp: m.timestamp || m.criadoEm || m.dataHora })));
+      }
     } catch (e) {
       console.error('Erro ao carregar mensagens:', e);
     }
@@ -114,7 +117,10 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
   const loadReplies = async () => {
     try {
       const res = await fetch('/api/lider/respostas');
-      if (res.ok) setOperatorReplies(await res.json());
+      if (res.ok) {
+        const raw = (await res.json()) as any[];
+        setOperatorReplies(raw.map((r) => ({ ...r, timestamp: r.timestamp || r.criadoEm || r.dataHora })));
+      }
     } catch (e) {
       console.error('Erro ao carregar respostas:', e);
     }
@@ -1226,7 +1232,7 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
                             {m.sender} ➔ <strong className="uppercase bg-white px-2 py-0.5 rounded border border-slate-200 text-slate-800">Para: {m.targetTurma === 'GERAL' ? 'Mural Geral' : `Turma ${m.targetTurma}`}</strong>
                           </span>
                           <span className="font-mono text-slate-500 font-medium">
-                            {format(new Date(m.timestamp), 'dd/MM/yyyy HH:mm')}
+                            {m.timestamp ? (() => { const d = new Date(m.timestamp); return isNaN(d.getTime()) ? '' : format(d, 'dd/MM/yyyy HH:mm'); })() : ''}
                           </span>
                         </div>
                         <p className="text-slate-800 font-medium leading-relaxed">
@@ -1247,7 +1253,11 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
                     <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
                       {operatorReplies
                         .slice()
-                        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+                        .sort((a, b) => {
+                          const ta = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+                          const tb = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+                          return tb - ta;
+                        })
                         .map((r) => (
                           <div key={r.id} className="flex items-start gap-3 p-3 bg-emerald-50/60 border border-emerald-100 rounded-xl text-xs">
                             <div className="w-7 h-7 bg-emerald-500 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -1257,7 +1267,7 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
                               <div className="flex items-center justify-between gap-2 mb-1">
                                 <span className="font-bold text-slate-800 text-[11px]">{r.sender}</span>
                                 <span className="text-[10px] text-slate-400 font-mono flex-shrink-0">
-                                  {format(new Date(r.timestamp), 'dd/MM HH:mm')}
+                                  {r.timestamp ? (() => { const d = new Date(r.timestamp); return isNaN(d.getTime()) ? '' : format(d, 'dd/MM HH:mm'); })() : ''}
                                 </span>
                               </div>
                               <p className="text-slate-700 leading-relaxed">{r.text}</p>
