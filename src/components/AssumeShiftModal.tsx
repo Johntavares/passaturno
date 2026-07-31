@@ -57,6 +57,12 @@ export const AssumeShiftModal: React.FC<AssumeShiftModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+
+    const turmaDaEquipe = equipe.replace('Automação ', '').trim();
+    const turmaEnvio = ['A', 'B', 'C', 'D'].includes(turmaDaEquipe)
+      ? turmaDaEquipe
+      : currentUser?.turma || 'A';
+
     try {
       const res = await fetch('/api/turnos/assumir', {
         method: 'POST',
@@ -65,7 +71,7 @@ export const AssumeShiftModal: React.FC<AssumeShiftModalProps> = ({
           equipe,
           responsavelNome,
           observacoes,
-          turma: currentUser?.turma || equipe.replace('Automação ', '') || 'A',
+          turma: turmaEnvio,
           escala,
         }),
       });

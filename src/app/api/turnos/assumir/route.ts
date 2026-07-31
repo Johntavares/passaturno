@@ -11,12 +11,23 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Equipe e Nome do Responsável são obrigatórios' }, { status: 400 });
     }
 
+    // Deriva a turma da equipe selecionada (ex: 'Automação C' => 'C'),
+    // garantindo que turma e equipe nunca fiquem inconsistentes.
+    const turmaDaEquipe = (equipe || '')
+      .replace(/Automação\s*/i, '')
+      .replace(/& CCO.*/i, '')
+      .trim()
+      .toUpperCase();
+    const turmaFinal = ['A', 'B', 'C', 'D'].includes(turmaDaEquipe)
+      ? turmaDaEquipe
+      : (turma || 'A').toUpperCase().trim();
+
     // 1. Atualizar a memória do servidor para resposta imediata
     const inMemShift = inMemoryStore.startShift({
       equipe: equipe || 'Automação B',
       responsavelNome: responsavelNome || 'Operador',
       observacoes: observacoes || '',
-      turma: turma,
+      turma: turmaFinal,
       escala: escala,
     });
 
@@ -59,7 +70,7 @@ export async function POST(request: Request) {
         data: {
           equipe,
           responsavelNome,
-          turma: turma || equipe.replace('Automação ', '') || 'A',
+          turma: turmaFinal,
           escala: escala || '3x3',
           data: today,
           horaInicio: new Date(),
