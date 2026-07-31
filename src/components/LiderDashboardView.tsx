@@ -263,6 +263,19 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
       i.prioridade === 'ALTA'
   );
 
+  const currentActiveTurma = activeShift?.turma?.replace('Turma ', '')?.replace('TURMA ', '')?.trim() || 'A';
+  
+  const delayedAssets = incidents.filter(i => {
+    const iTurma = (i.turma || '').toUpperCase().trim();
+    if (iTurma !== currentActiveTurma) return false;
+    if (i.status !== 'EM_ANDAMENTO') return false;
+    
+    const start = new Date(i.criadoEm);
+    const now = new Date();
+    const diffHours = (now.getTime() - start.getTime()) / (1000 * 60 * 60);
+    return diffHours >= 2;
+  });
+
   const getTurmaDestino = (turmaOrigem: string) => {
     switch (turmaOrigem.toUpperCase().trim()) {
       case 'A': return 'Turma B';
@@ -476,59 +489,47 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
                 </div>
               </div>
 
-              {/* 4 CARDS COLORIDOS DE ESTATÍSTICAS DA OPERAÇÃO */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl p-5 shadow-md flex items-center justify-between">
-                  <div>
-                    <div className="text-3xl font-black">{totalIncidents}</div>
-                    <div className="text-xs font-bold text-blue-100 mt-1 flex items-center gap-1">
-                      <BarChart3 className="w-3.5 h-3.5" />
-                      <span>Total Ocorrências Hoje</span>
-                    </div>
+              {/* ATIVOS COM MAIS DE 2 HORAS EM ANDAMENTO */}
+              <div className="bg-white rounded-3xl border border-slate-200 p-5 shadow-xs space-y-4">
+                <div className="flex items-center space-x-2 border-b border-slate-100 pb-3">
+                  <div className="p-2 bg-rose-50 text-rose-600 rounded-xl border border-rose-200">
+                    <AlertTriangle className="w-5 h-5" />
                   </div>
-                  <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center text-white backdrop-blur-xs">
-                    <BarChart3 className="w-6 h-6" />
+                  <div>
+                    <h3 className="text-base font-black text-slate-900">
+                      Ativos com mais de 2 horas em atendimento
+                    </h3>
+                    <p className="text-xs text-slate-500 font-medium">
+                      Ocorrências em andamento prolongado da Turma {currentActiveTurma}
+                    </p>
                   </div>
                 </div>
 
-                <div className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-2xl p-5 shadow-md flex items-center justify-between">
-                  <div>
-                    <div className="text-3xl font-black">{concluidosCount}</div>
-                    <div className="text-xs font-bold text-emerald-100 mt-1 flex items-center gap-1">
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      <span>Concluídos pelas Turmas</span>
-                    </div>
+                {delayedAssets.length === 0 ? (
+                  <div className="py-6 text-center text-xs font-bold text-slate-400 border border-dashed border-slate-200 rounded-2xl bg-slate-50">
+                    🟢 Nenhum ativo da sua turma ultrapassou 2 horas em andamento.
                   </div>
-                  <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center text-white backdrop-blur-xs">
-                    <CheckSquare className="w-6 h-6" />
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {delayedAssets.map(item => {
+                      const start = new Date(item.criadoEm);
+                      const now = new Date();
+                      const diffHours = Math.floor((now.getTime() - start.getTime()) / (1000 * 60 * 60));
+                      const diffMinutes = Math.floor(((now.getTime() - start.getTime()) % (1000 * 60 * 60)) / (1000 * 60));
+                      
+                      return (
+                        <div key={item.id} className="bg-rose-50 border border-rose-200 rounded-2xl p-4 space-y-2 relative overflow-hidden">
+                          <div className="absolute top-0 right-0 bg-rose-600 text-white text-[10px] font-black px-2 py-1 rounded-bl-lg">
+                            {diffHours}h {diffMinutes}m
+                          </div>
+                          <div className="font-mono text-sm font-black text-rose-900">{item.tag}</div>
+                          <div className="text-xs font-bold text-slate-800 line-clamp-2">{item.falha}</div>
+                          <div className="text-[10px] font-medium text-slate-600">Resp: {item.responsavel}</div>
+                        </div>
+                      );
+                    })}
                   </div>
-                </div>
-
-                <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-2xl p-5 shadow-md flex items-center justify-between">
-                  <div>
-                    <div className="text-3xl font-black">{pendenciasCount}</div>
-                    <div className="text-xs font-bold text-amber-100 mt-1 flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5" />
-                      <span>Pendências de Bastão</span>
-                    </div>
-                  </div>
-                  <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center text-white backdrop-blur-xs">
-                    <Clock className="w-6 h-6" />
-                  </div>
-                </div>
-
-                <div className="bg-gradient-to-r from-rose-600 to-red-600 text-white rounded-2xl p-5 shadow-md flex items-center justify-between">
-                  <div>
-                    <div className="text-3xl font-black">{urgentesCount}</div>
-                    <div className="text-xs font-bold text-rose-100 mt-1 flex items-center gap-1">
-                      <AlertTriangle className="w-3.5 h-3.5" />
-                      <span>Alertas Críticos Urgentes</span>
-                    </div>
-                  </div>
-                  <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center text-white backdrop-blur-xs">
-                    <AlertCircle className="w-6 h-6" />
-                  </div>
-                </div>
+                )}
               </div>
 
               {/* GRID: TABELA DE BASTÃO + RESUMO DAS TURMAS */}
