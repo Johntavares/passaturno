@@ -5,7 +5,7 @@ import { inMemoryStore } from '@/lib/inMemoryStore';
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { equipe, responsavelNome, observacoes } = body;
+    const { equipe, responsavelNome, observacoes, turma, escala } = body;
 
     if (!equipe || !responsavelNome) {
       return NextResponse.json({ error: 'Equipe e Nome do Responsável são obrigatórios' }, { status: 400 });
@@ -57,6 +57,8 @@ export async function POST(request: Request) {
         data: {
           equipe,
           responsavelNome,
+          turma: turma || equipe.replace('Automação ', '') || 'A',
+          escala: escala || '3x3',
           data: today,
           horaInicio: new Date(),
           status: 'ATIVO',

@@ -663,6 +663,7 @@ export default function Home() {
         isOpen={isAssumeShiftOpen}
         onClose={() => setIsAssumeShiftOpen(false)}
         onShiftAssumed={loadData}
+        currentUser={currentUser}
       />
 
       <CloseShiftModal

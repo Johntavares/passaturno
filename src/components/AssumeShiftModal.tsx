@@ -7,19 +7,29 @@ interface AssumeShiftModalProps {
   isOpen: boolean;
   onClose: () => void;
   onShiftAssumed: () => void;
+  currentUser?: any;
 }
 
 export const AssumeShiftModal: React.FC<AssumeShiftModalProps> = ({
   isOpen,
   onClose,
   onShiftAssumed,
+  currentUser,
 }) => {
-  const [equipe, setEquipe] = useState('Automação B');
-  const [responsavelNome, setResponsavelNome] = useState('Silva Santos');
+  const [equipe, setEquipe] = useState('Automação A');
+  const [responsavelNome, setResponsavelNome] = useState('');
+  const [escala, setEscala] = useState('3x3');
   const [observacoes, setObservacoes] = useState('');
   const [activeShiftData, setActiveShiftData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (currentUser) {
+      setEquipe(currentUser.equipe || 'Automação A');
+      setResponsavelNome(currentUser.nome || '');
+    }
+  }, [currentUser]);
 
   useEffect(() => {
     if (isOpen) {
@@ -55,6 +65,8 @@ export const AssumeShiftModal: React.FC<AssumeShiftModalProps> = ({
           equipe,
           responsavelNome,
           observacoes,
+          turma: currentUser?.turma || equipe.replace('Automação ', '') || 'A',
+          escala,
         }),
       });
 
