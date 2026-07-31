@@ -41,6 +41,30 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       },
     });
 
+    // Sincronizar turno ativo se pertencer a este usuário
+    try {
+      const activeShift = await prisma.shift.findFirst({
+        where: { status: 'ATIVO', responsavelId: id },
+      });
+
+      if (activeShift) {
+        const updateData: any = {};
+        if (data.turma !== undefined) updateData.turma = data.turma;
+        if (data.escala !== undefined) updateData.escala = data.escala;
+        if (data.horarioTurno !== undefined) updateData.horarioTurno = data.horarioTurno;
+        if (data.nome !== undefined) updateData.responsavelNome = data.nome;
+
+        if (Object.keys(updateData).length > 0) {
+          await prisma.shift.update({
+            where: { id: activeShift.id },
+            data: updateData,
+          });
+        }
+      }
+    } catch (shiftErr) {
+      console.error('Erro ao sincronizar turno ativo:', shiftErr);
+    }
+
     return NextResponse.json(user);
   } catch (error) {
     console.error('Erro ao atualizar usuário:', error);

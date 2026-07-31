@@ -793,6 +793,7 @@ export default function Home() {
           if (typeof window !== 'undefined') {
             localStorage.setItem('passaturno-user', JSON.stringify(updated));
           }
+          loadData();
         }}
       />
 
@@ -816,6 +817,7 @@ export default function Home() {
           if (typeof window !== 'undefined') {
             localStorage.setItem('passaturno-user', JSON.stringify(updated));
           }
+          loadData();
         }}
       />
 
