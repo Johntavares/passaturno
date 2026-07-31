@@ -320,7 +320,7 @@ if (!globalStore.inMemoryShift) {
   globalStore.inMemoryShift = {
     id: 'shift-active-1',
     equipe: 'Automação & CCO',
-    turma: 'Turma A',
+    turma: 'A',
     tipoTurno: 'Diurno',
     escala: '2x3',
     horarioTurno: '07h às 19h',
@@ -435,6 +435,9 @@ export const inMemoryStore = {
       localizacaoAtualOpcional: data.localizacaoAtualOpcional || null,
       observacao: data.observacao || null,
       shiftId: globalStore.inMemoryShift?.id || null,
+      turma: globalStore.inMemoryShift?.turma
+        ? globalStore.inMemoryShift.turma.replace('Turma ', '').replace('TURMA ', '').trim()
+        : null,
       isPendenciaHerdada: false,
       criadoEm: nowIso,
       atualizadoEm: nowIso,

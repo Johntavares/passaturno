@@ -105,6 +105,7 @@ model Incident {
   observacao              String?
   shiftId                 String?
   shift                   Shift?          @relation(fields: [shiftId], references: [id])
+  turma                   String?         // Turma A, B, C ou D (derivada do turno ativo no momento da abertura)
   isPendenciaHerdada      Boolean         @default(false)
   historico               IncidentHistory[]
   criadoEm                DateTime        @default(now())

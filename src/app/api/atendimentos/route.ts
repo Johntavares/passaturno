@@ -110,6 +110,7 @@ export async function POST(request: Request) {
           localizacaoAtualOpcional,
           observacao,
           shiftId: activeShift?.id || null,
+          turma: activeShift?.turma ? activeShift.turma.replace('Turma ', '').replace('TURMA ', '').trim() : null,
           isPendenciaHerdada: false,
           historico: {
             create: {
