@@ -20,6 +20,7 @@ export const EditTurmaProfileModal: React.FC<EditTurmaProfileModalProps> = ({
   const [nome, setNome] = useState('');
   const [horarioTurno, setHorarioTurno] = useState('07:00 às 19:00');
   const [periodoTurno, setPeriodoTurno] = useState<'Dia' | 'Noite'>('Dia');
+  const [turma, setTurma] = useState('A');
   const [escala, setEscala] = useState('3x3');
   const [diaEscala, setDiaEscala] = useState('1º Dia');
   const [savedSuccess, setSavedSuccess] = useState(false);
@@ -29,6 +30,7 @@ export const EditTurmaProfileModal: React.FC<EditTurmaProfileModalProps> = ({
       setNome(currentUser.nome || '');
       setHorarioTurno(currentUser.horarioTurno || '07:00 às 19:00');
       setPeriodoTurno(currentUser.periodoTurno || (currentUser.turma === 'D' ? 'Noite' : 'Dia'));
+      setTurma(currentUser.turma || 'A');
       setEscala(currentUser.escala || '3x3');
       setDiaEscala(currentUser.diaEscala || '1º Dia');
     }
@@ -45,6 +47,7 @@ export const EditTurmaProfileModal: React.FC<EditTurmaProfileModalProps> = ({
       nome: nome.trim(),
       horarioTurno: horarioTurno.trim(),
       periodoTurno,
+      turma,
       escala,
       diaEscala,
     };
@@ -57,6 +60,7 @@ export const EditTurmaProfileModal: React.FC<EditTurmaProfileModalProps> = ({
           nome: nome.trim(),
           horarioTurno: horarioTurno.trim(),
           periodoTurno,
+          turma,
           escala,
           diaEscala,
         }),
@@ -185,7 +189,24 @@ export const EditTurmaProfileModal: React.FC<EditTurmaProfileModalProps> = ({
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Turma:
+                </label>
+                <select
+                  value={turma}
+                  onChange={(e) => setTurma(e.target.value)}
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
+                >
+                  <option value="A">Turma A</option>
+                  <option value="B">Turma B</option>
+                  <option value="C">Turma C</option>
+                  <option value="D">Turma D</option>
+                  <option value="GERAL">Geral/Administrativo</option>
+                </select>
+              </div>
+
               <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
                   Escala (ex: 3x3):
@@ -199,13 +220,14 @@ export const EditTurmaProfileModal: React.FC<EditTurmaProfileModalProps> = ({
                   required
                 />
               </div>
+            </div>
 
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Dia de Trabalho (Sua Letra):
-                </label>
-                <select
-                  value={diaEscala}
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                Dia de Trabalho (Sua Letra):
+              </label>
+              <select
+                value={diaEscala}
                   onChange={(e) => setDiaEscala(e.target.value)}
                   className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
                 >
