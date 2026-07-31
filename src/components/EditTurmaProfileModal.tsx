@@ -239,7 +239,6 @@ export const EditTurmaProfileModal: React.FC<EditTurmaProfileModalProps> = ({
                   <option value="Folga">Folga</option>
                 </select>
               </div>
-            </div>
 
             {/* Actions */}
             <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-2">
