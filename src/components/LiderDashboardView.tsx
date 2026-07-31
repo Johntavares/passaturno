@@ -462,23 +462,20 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
               {/* CARD DA EQUIPE DO DIA (TURNO ATIVO) */}
               <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white rounded-3xl p-5 shadow-lg border border-slate-700 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-emerald-500/20 text-emerald-400 rounded-2xl flex items-center justify-center font-black text-lg border border-emerald-500/40">
+                  <div className="w-12 h-12 bg-emerald-500/20 text-emerald-400 rounded-2xl flex items-center justify-center font-black text-xl border border-emerald-500/40">
                     {activeShift?.turma ? activeShift.turma.replace('Turma ', '').replace('TURMA ', '') : '-'}
                   </div>
                   <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-black uppercase bg-emerald-500 text-slate-950 px-2 py-0.5 rounded font-mono">
-                        {activeShift ? 'Equipe do Dia Ativa' : 'Nenhum Turno Ativo'}
-                      </span>
-                      <span className="text-xs font-bold text-slate-300">
-                        {activeShift?.equipe || 'Automação & CCO'}
-                      </span>
-                    </div>
-                    <h2 className="text-lg font-black text-white mt-1">
-                      {activeShift ? activeShift.turma : 'Sem Turno Iniciado'}
+                    <h2 className="text-xl font-black text-white flex items-center gap-3">
+                      {activeShift ? (activeShift.turma.toLowerCase().includes('turma') ? activeShift.turma : `Turma ${activeShift.turma}`) : 'Sem Turno Iniciado'}
+                      {activeShift && (
+                        <span className="text-[10px] font-black uppercase bg-emerald-500 text-slate-950 px-2 py-0.5 rounded font-mono">
+                          ATIVO
+                        </span>
+                      )}
                     </h2>
-                    <p className="text-xs text-slate-400">
-                      Responsável: <strong className="text-emerald-300">{activeShift?.responsavelNome || 'Aguardando assumir turno'}</strong> • Escala: {activeShift?.escala || '-'}
+                    <p className="text-sm text-slate-300 mt-1">
+                      Colaborador: <strong className="text-emerald-300">{activeShift?.responsavelNome || '-'}</strong>
                     </p>
                   </div>
                 </div>
