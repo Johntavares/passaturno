@@ -167,32 +167,16 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess }) => {
           {/* Texto de Boas-Vindas Central */}
           <div className="relative z-10 space-y-4 my-auto py-6">
             <h2 className="text-2xl font-black leading-snug tracking-tight">
-              Bem-vindo ao Sistema da Automação!
+              Bem-vindo ao Controle de Turno!
             </h2>
             <p className="text-xs text-emerald-100/90 leading-relaxed">
-              Plataforma unificada para Gestão de Ocorrências, Alertas de Prioridade, Troca de Bastão e Comunicação entre a Liderança e as Turmas.
+              Plataforma unificada para Gestão de Ocorrências, Alertas de Prioridade e Passagem de Turno.
             </p>
-
-            {/* Badges de Turmas em Destaque */}
-            <div className="pt-2 flex items-center gap-1.5 flex-wrap">
-              <span className="px-2.5 py-1 bg-white/15 backdrop-blur-xs rounded-xl text-[11px] font-bold border border-white/20">
-                🅰️ Turma A
-              </span>
-              <span className="px-2.5 py-1 bg-white/15 backdrop-blur-xs rounded-xl text-[11px] font-bold border border-white/20">
-                🅱️ Turma B
-              </span>
-              <span className="px-2.5 py-1 bg-white/15 backdrop-blur-xs rounded-xl text-[11px] font-bold border border-white/20">
-                🅲 Turma C
-              </span>
-              <span className="px-2.5 py-1 bg-white/15 backdrop-blur-xs rounded-xl text-[11px] font-bold border border-white/20">
-                🅳 Turma D
-              </span>
-            </div>
           </div>
 
           {/* Rodapé do Painel Decorativo */}
           <div className="relative z-10 text-[11px] text-emerald-200/80 font-medium border-t border-white/10 pt-4 flex items-center justify-between">
-            <span>Gestão Operacional de CCO</span>
+            <span>Controle de Turno Seguro</span>
             <ShieldCheck className="w-4 h-4 text-emerald-300" />
           </div>
 
@@ -396,7 +380,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess }) => {
           <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
             <span>Primeiro Acesso do Líder</span>
             <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-              Automação & CCO
+              Controle de Turno
             </span>
           </div>
 
