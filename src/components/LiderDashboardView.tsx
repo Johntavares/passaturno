@@ -467,7 +467,7 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
                   </div>
                   <div>
                     <h2 className="text-xl font-black text-white flex items-center gap-3">
-                      {activeShift ? (activeShift.turma.toLowerCase().includes('turma') ? activeShift.turma : `Turma ${activeShift.turma}`) : 'Sem Turno Iniciado'}
+                      {activeShift?.turma ? (activeShift.turma.toLowerCase().includes('turma') ? activeShift.turma : `Turma ${activeShift.turma}`) : 'Sem Turno Iniciado'}
                       {activeShift && (
                         <span className="text-[10px] font-black uppercase bg-emerald-500 text-slate-950 px-2 py-0.5 rounded font-mono">
                           ATIVO
