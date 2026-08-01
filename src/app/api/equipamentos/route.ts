@@ -39,7 +39,7 @@ export async function POST(request: Request) {
       });
 
       if (existing) {
-        return NextResponse.json({ error: 'Equipamento com esta TAG já está cadastrado' }, { status: 400 });
+        return NextResponse.json(existing, { status: 200 });
       }
 
       const equipment = await prisma.equipment.create({
