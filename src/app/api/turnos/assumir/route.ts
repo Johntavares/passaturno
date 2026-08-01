@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { inMemoryStore } from '@/lib/inMemoryStore';
+import { normalizeTurma, turmaInFilter } from '@/lib/turma';
 
 export async function POST(request: Request) {
   try {
@@ -32,9 +33,9 @@ export async function POST(request: Request) {
     });
 
     try {
-      // Encerrar qualquer turno ativo no banco SQLite
+      // Encerrar apenas o turno ativo DA MESMA TURMA (outras turmas são independentes)
       const activeShift = await prisma.shift.findFirst({
-        where: { status: 'ATIVO' },
+        where: { status: 'ATIVO', turma: turmaInFilter(turmaFinal) },
       });
 
       if (activeShift) {
@@ -47,10 +48,11 @@ export async function POST(request: Request) {
         });
       }
 
-      // Marcar ocorrências não finalizadas como Pendências Herdadas
+      // Marcar como pendências herdadas apenas as ocorrências abertas DA PRÓPRIA TURMA
       const openIncidents = await prisma.incident.findMany({
         where: {
-          status: { in: ['EM_ANDAMENTO', 'AGUARDANDO', 'PENDENCIA_PROXIMO_TURNO'] },
+          turma: turmaInFilter(turmaFinal),
+          status: { in: ['EM_ANDAMENTO', 'AGUARDANDO'] },
         },
       });
 
@@ -59,7 +61,7 @@ export async function POST(request: Request) {
           where: { id: incident.id },
           data: {
             isPendenciaHerdada: true,
-            status: incident.status === 'EM_ANDAMENTO' ? 'PENDENCIA_PROXIMO_TURNO' : incident.status,
+            status: 'PENDENCIA_PROXIMO_TURNO',
           },
         });
       }

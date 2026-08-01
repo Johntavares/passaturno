@@ -2,11 +2,16 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { inMemoryStore } from '@/lib/inMemoryStore';
+import { normalizeTurma, turmaInFilter } from '@/lib/turma';
 
-export async function GET() {
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const turma = normalizeTurma(searchParams.get('turma'));
+  const turmaWhere = turma ? { turma: turmaInFilter(turma) } : {};
+
   try {
     const activeShift = await prisma.shift.findFirst({
-      where: { status: 'ATIVO' },
+      where: { status: 'ATIVO', ...turmaWhere },
       orderBy: { criadoEm: 'desc' },
       include: {
         responsavel: true,
@@ -14,13 +19,14 @@ export async function GET() {
     });
 
     const lastClosedShift = await prisma.shift.findFirst({
-      where: { status: 'ENCERRADO' },
+      where: { status: 'ENCERRADO', ...turmaWhere },
       orderBy: { horaFim: 'desc' },
     });
 
     const openIncidents = await prisma.incident.findMany({
       where: {
         status: { in: ['EM_ANDAMENTO', 'AGUARDANDO', 'PENDENCIA_PROXIMO_TURNO'] },
+        ...turmaWhere,
       },
       include: {
         equipment: true,
@@ -41,7 +47,19 @@ export async function GET() {
     });
   } catch (error) {
     console.warn('Fallback to inMemoryStore for GET /api/turnos/ativo:', error);
-    return NextResponse.json(inMemoryStore.getActiveShift());
+    const fallback = inMemoryStore.getActiveShift();
+    if (turma) {
+      const shiftTurma = normalizeTurma(fallback?.activeShift?.turma);
+      return NextResponse.json({
+        ...fallback,
+        activeShift: shiftTurma === turma ? fallback.activeShift : null,
+        lastClosedShift: null,
+        openIncidents: (fallback?.openIncidents || []).filter(
+          (i: any) => normalizeTurma(i.turma) === turma
+        ),
+      });
+    }
+    return NextResponse.json(fallback);
   }
 }
 

@@ -76,14 +76,44 @@ export const CloseShiftModal: React.FC<CloseShiftModalProps> = ({
 
   if (!isOpen) return null;
 
-  const pendentesLista = localIncidents.filter((i) => i.status !== 'FINALIZADO');
-  const importanetes = localIncidents.filter(
-    (i) => (i.prioridade === 'CRITICA' || i.prioridade === 'ALTA') && i.status !== 'FINALIZADO'
+  // Determinar o momento exato de início do turno ativo atual
+  let shiftStartMs = 0;
+  if (activeShift?.horaInicio) {
+    shiftStartMs = new Date(activeShift.horaInicio).getTime();
+  } else if (activeShift?.criadoEm) {
+    shiftStartMs = new Date(activeShift.criadoEm).getTime();
+  } else {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    shiftStartMs = todayStart.getTime();
+  }
+
+  const currentTurma = (turma || activeShift?.turma || currentUser?.turma || 'C').toUpperCase().trim();
+
+  // Filtrar ocorrências pertencentes ao turno ativo atual da turma logada
+  const shiftIncidents = localIncidents.filter((item) => {
+    const itemTurma = (item.turma || 'A').toUpperCase().trim();
+    if (itemTurma !== currentTurma) return false;
+
+    // Se finalizado/retroagido, só exibe no resumo de encerrados se foi concluído DURANTE o turno ativo atual
+    if (item.status === 'FINALIZADO' || item.status === 'RETROAGIDO') {
+      const itemTimeMs = item.dataHoraLiberacao
+        ? new Date(item.dataHoraLiberacao).getTime()
+        : new Date(item.atualizadoEm || item.criadoEm).getTime();
+      return itemTimeMs >= shiftStartMs;
+    }
+
+    return true;
+  });
+
+  const pendentesLista = shiftIncidents.filter((i) => i.status !== 'FINALIZADO' && i.status !== 'RETROAGIDO');
+  const importanetes = shiftIncidents.filter(
+    (i) => (i.prioridade === 'CRITICA' || i.prioridade === 'ALTA') && i.status !== 'FINALIZADO' && i.status !== 'RETROAGIDO'
   );
-  const emAndamento = localIncidents.filter(
-    (i) => i.status !== 'FINALIZADO' && i.prioridade !== 'CRITICA' && i.prioridade !== 'ALTA'
+  const emAndamento = shiftIncidents.filter(
+    (i) => i.status !== 'FINALIZADO' && i.status !== 'RETROAGIDO' && i.prioridade !== 'CRITICA' && i.prioridade !== 'ALTA'
   );
-  const realizados = localIncidents.filter((i) => i.status === 'FINALIZADO');
+  const realizados = shiftIncidents.filter((i) => i.status === 'FINALIZADO' || i.status === 'RETROAGIDO');
 
   const handleTogglePriority = async (incidentId: string) => {
     const target = localIncidents.find((i) => i.id === incidentId);

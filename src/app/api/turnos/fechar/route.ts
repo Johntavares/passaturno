@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { inMemoryStore } from '@/lib/inMemoryStore';
+import { normalizeTurma, turmaInFilter } from '@/lib/turma';
 
 export async function POST(request: Request) {
   try {
@@ -25,27 +26,35 @@ export async function POST(request: Request) {
     inMemoryStore.closeShift();
 
     try {
+      const turmaTurno = normalizeTurma(turma);
+      const turmaWhere = turmaTurno ? { turma: turmaInFilter(turmaTurno) } : {};
+
       const activeShift = await prisma.shift.findFirst({
-        where: { status: 'ATIVO' },
+        where: { status: 'ATIVO', ...turmaWhere },
         include: {
           incidents: true,
         },
       });
 
       if (activeShift) {
-        // Buscar atendimentos do turno e pendências
+        const shiftTurma = normalizeTurma(activeShift.turma);
+        const shiftTurmaWhere = shiftTurma ? { turma: turmaInFilter(shiftTurma) } : {};
+
+        // Buscar atendimentos do turno e pendências (apenas da própria turma)
         const finalizedIncidents = await prisma.incident.findMany({
           where: {
             status: 'FINALIZADO',
             atualizadoEm: {
               gte: activeShift.horaInicio,
             },
+            ...shiftTurmaWhere,
           },
         });
 
         const openIncidents = await prisma.incident.findMany({
           where: {
             status: { in: ['EM_ANDAMENTO', 'AGUARDANDO', 'PENDENCIA_PROXIMO_TURNO'] },
+            ...shiftTurmaWhere,
           },
         });
 

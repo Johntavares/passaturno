@@ -8,6 +8,7 @@ interface NewIncidentModalProps {
   isOpen: boolean;
   onClose: () => void;
   equipments: EquipmentType[];
+  turma?: string;
   onIncidentCreated: () => void;
 }
 
@@ -15,6 +16,7 @@ export const NewIncidentModal: React.FC<NewIncidentModalProps> = ({
   isOpen,
   onClose,
   equipments,
+  turma,
   onIncidentCreated,
 }) => {
   const [tag, setTag] = useState('');
@@ -173,6 +175,7 @@ export const NewIncidentModal: React.FC<NewIncidentModalProps> = ({
           motivoEspera,
           proximaAcao,
           observacao,
+          turma,
         }),
       });
 

@@ -40,7 +40,9 @@ export const AssumeShiftModal: React.FC<AssumeShiftModalProps> = ({
   const fetchCurrentShift = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch('/api/turnos/ativo');
+      const turmaParam = (currentUser?.turma || '').toUpperCase().trim();
+      const turmaQuery = turmaParam && turmaParam !== 'GERAL' ? `?turma=${encodeURIComponent(turmaParam)}` : '';
+      const res = await fetch(`/api/turnos/ativo${turmaQuery}`);
       if (res.ok) {
         const data = await res.json();
         setActiveShiftData(data);

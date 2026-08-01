@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { inMemoryStore } from '@/lib/inMemoryStore';
+import { normalizeTurma, turmaInFilter } from '@/lib/turma';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -8,9 +9,14 @@ export async function GET(request: Request) {
   const status = searchParams.get('status') || undefined;
   const prioridade = searchParams.get('prioridade') || undefined;
   const search = searchParams.get('search') || undefined;
+  const turma = normalizeTurma(searchParams.get('turma'));
 
   try {
     const where: any = {};
+
+    if (turma) {
+      where.turma = turmaInFilter(turma);
+    }
 
     if (tag) {
       where.tag = { contains: tag };
@@ -49,6 +55,11 @@ export async function GET(request: Request) {
   } catch (error) {
     console.warn('Fallback to inMemoryStore for GET /api/atendimentos:', error);
     const incidents = inMemoryStore.getIncidents({ tag, status, prioridade, search });
+    if (turma) {
+      return NextResponse.json(
+        incidents.filter((i) => normalizeTurma(i.turma) === turma)
+      );
+    }
     return NextResponse.json(incidents);
   }
 }
@@ -73,6 +84,7 @@ export async function POST(request: Request) {
       proximaAcao,
       localizacaoAtualOpcional,
       observacao,
+      turma,
     } = body;
 
     if (!tag || !falha || !responsavel) {
@@ -85,9 +97,14 @@ export async function POST(request: Request) {
         where: { tag: tag.toUpperCase().trim() },
       });
 
-      // Buscar turno ativo atual
+      const turmaNormalizada = normalizeTurma(turma) || undefined;
+
+      // Buscar turno ativo atual DA MESMA TURMA (nunca de outra turma)
       const activeShift = await prisma.shift.findFirst({
-        where: { status: 'ATIVO' },
+        where: {
+          status: 'ATIVO',
+          ...(turmaNormalizada ? { turma: turmaInFilter(turmaNormalizada) } : {}),
+        },
       });
 
       const incident = await prisma.incident.create({
@@ -110,7 +127,7 @@ export async function POST(request: Request) {
           localizacaoAtualOpcional,
           observacao,
           shiftId: activeShift?.id || null,
-          turma: activeShift?.turma ? activeShift.turma.replace('Turma ', '').replace('TURMA ', '').trim() : null,
+          turma: turmaNormalizada || (activeShift?.turma ? normalizeTurma(activeShift.turma) : null),
           isPendenciaHerdada: false,
           historico: {
             create: {

@@ -65,22 +65,49 @@ export default function Home() {
   const [editSolucao, setEditSolucao] = useState('');
   const [editStatus, setEditStatus] = useState<IncidentStatusType>('EM_ANDAMENTO');
 
-  // Cache localStorage para fallback offline (fonte da verdade é o servidor)
-  const saveLocalCache = (data: IncidentType[]) => {
+  type ThemeMode = 'light' | 'dark' | 'mina';
+  const [theme, setTheme] = useState<ThemeMode>('light');
+  const [currentUser, setCurrentUser] = useState<UserSession | null>(null);
+
+  const getCurrentTurmaKey = () => {
+    const t = (currentUser?.turma || activeShift?.turma || '').toUpperCase().trim();
+    return t && t !== 'GERAL' ? t : 'TODAS';
+  };
+
+  // Cache localStorage para fallback offline (fonte da verdade é o servidor),
+  // separado POR TURMA para nunca vazar dados entre turmas.
+  const saveLocalCache = (data: IncidentType[], turmaKey?: string) => {
     if (typeof window !== 'undefined') {
       try {
-        localStorage.setItem('passaturno-incidents-v2', JSON.stringify(data));
+        const key = turmaKey || getCurrentTurmaKey();
+        localStorage.setItem(`passaturno-incidents-v3-${key}`, JSON.stringify(data));
       } catch (e) {
         console.error('Erro ao persistir cache:', e);
       }
     }
   };
 
-  const loadLocalCache = (): IncidentType[] => {
+  const loadLocalCache = (turmaKey?: string): IncidentType[] => {
     if (typeof window !== 'undefined') {
       try {
-        const saved = localStorage.getItem('passaturno-incidents-v2');
-        if (saved) return JSON.parse(saved);
+        const key = turmaKey || getCurrentTurmaKey();
+        const saved = localStorage.getItem(`passaturno-incidents-v3-${key}`);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) return parsed;
+        }
+        if (key !== 'TODAS') {
+          const legacy = localStorage.getItem('passaturno-incidents-v2');
+          if (legacy) {
+            const parsedLegacy = JSON.parse(legacy);
+            if (Array.isArray(parsedLegacy)) {
+              const filtered = parsedLegacy.filter(
+                (i: IncidentType) => (i.turma || 'A').toUpperCase().trim() === key
+              );
+              if (filtered.length > 0) return filtered;
+            }
+          }
+        }
       } catch (e) {
         console.error('Erro ao ler cache:', e);
       }
@@ -109,15 +136,20 @@ export default function Home() {
     });
   };
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (turmaOverride?: string) => {
     setIsRefreshing(true);
     const deletedIds = getDeletedIds();
 
+    const turmaRaw = turmaOverride || currentUser?.turma || '';
+    const turmaKey = turmaRaw.toUpperCase().trim();
+    const hasTurma = turmaKey !== '' && turmaKey !== 'GERAL';
+    const turmaQuery = hasTurma ? `?turma=${encodeURIComponent(turmaKey)}` : '';
+
     try {
       const [incRes, eqRes, shiftRes] = await Promise.all([
-        fetch('/api/atendimentos'),
+        fetch(`/api/atendimentos${turmaQuery}`),
         fetch('/api/equipamentos'),
-        fetch('/api/turnos/ativo'),
+        fetch(`/api/turnos/ativo${turmaQuery}`),
       ]);
 
       if (incRes.ok) {
@@ -125,9 +157,9 @@ export default function Home() {
           (item) => !deletedIds.has(item.id.toUpperCase().trim()) && !deletedIds.has(item.tag.toUpperCase().trim())
         );
         setIncidents(incData);
-        saveLocalCache(incData);
+        saveLocalCache(incData, hasTurma ? turmaKey : 'TODAS');
       } else {
-        const cached = loadLocalCache();
+        const cached = loadLocalCache(hasTurma ? turmaKey : 'TODAS');
         if (cached.length > 0) setIncidents(cached);
       }
 
@@ -141,13 +173,13 @@ export default function Home() {
       }
     } catch (err) {
       console.error('Error loading CCO data:', err);
-      const cached = loadLocalCache();
+      const cached = loadLocalCache(hasTurma ? turmaKey : 'TODAS');
       if (cached.length > 0) setIncidents(cached);
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, []);
+  }, [currentUser?.turma]);
 
   useEffect(() => {
     loadData();
@@ -421,10 +453,6 @@ export default function Home() {
     }
   };
 
-  type ThemeMode = 'light' | 'dark' | 'mina';
-  const [theme, setTheme] = useState<ThemeMode>('light');
-  const [currentUser, setCurrentUser] = useState<UserSession | null>(null);
-
   const applyTheme = (newTheme: ThemeMode) => {
     if (typeof document === 'undefined') return;
     document.documentElement.classList.remove('dark', 'theme-mina');
@@ -466,6 +494,7 @@ export default function Home() {
     const userSavedTheme = (localStorage.getItem(userKey) as ThemeMode) || 'light';
     setTheme(userSavedTheme);
     applyTheme(userSavedTheme);
+    loadData(user.turma);
   };
 
   const handleLogout = () => {
@@ -474,6 +503,7 @@ export default function Home() {
     const guestTheme = (localStorage.getItem('passaturno-theme-guest') as ThemeMode) || 'light';
     setTheme(guestTheme);
     applyTheme(guestTheme);
+    loadData();
   };
 
   // Salvar a alteração de tema estritamente no perfil do usuário logado
@@ -666,6 +696,7 @@ export default function Home() {
         isOpen={isNewIncidentOpen}
         onClose={() => setIsNewIncidentOpen(false)}
         equipments={equipments}
+        turma={currentUser?.turma || activeShift?.turma || 'A'}
         onIncidentCreated={loadData}
       />
 
