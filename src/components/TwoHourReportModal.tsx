@@ -52,6 +52,9 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
   const [liderVale, setLiderVale] = useState('Vinicius');
   const [ausencia, setAusencia] = useState('Baia (férias)');
 
+  const [customReportText, setCustomReportText] = useState('');
+  const [isCustomEdited, setIsCustomEdited] = useState(false);
+
   useEffect(() => {
     if (incidents.length > 0) {
       const pad = (n: number) => String(n).padStart(2, '0');
@@ -74,10 +77,6 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
     }
   }, [activeShift]);
 
-  if (!isOpen) return null;
-
-  const activeIncidents = incidents.filter(i => i.status === 'EM_ANDAMENTO');
-
   // Gerar o texto completo formatado para envio de 2 em 2 horas
   const generateReportText = () => {
     const now = new Date();
@@ -91,6 +90,8 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
     const horarioTurno = currentUser?.horarioTurno || '07:00 às 19:00';
     const nomeOperador = currentUser?.nome || activeShift?.responsavelNome || 'John Tavares';
     const letraTurma = activeShift?.turma || currentUser?.turma || 'A';
+
+    const activeIncidents = (incidents || []).filter(i => i.status === 'EM_ANDAMENTO');
 
     let text = `TURNO: ${tipoTurno}\n`;
     text += `HORÁRIO: ${horarioTurno}\n`;
@@ -130,14 +131,13 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
     return text.trim();
   };
 
-  const [customReportText, setCustomReportText] = useState('');
-  const [isCustomEdited, setIsCustomEdited] = useState(false);
-
   useEffect(() => {
-    if (!isCustomEdited) {
+    if (isOpen && !isCustomEdited) {
       setCustomReportText(generateReportText());
     }
-  }, [incidents, activeShift, currentUser, carteiraTotal, carteiraAndamento, carteiraAberto, carteiraPendente, equipSemDespacho, equipSemGps, equipPreventiva, equipManutencao, equipeSonda, liderVale, ausencia, isCustomEdited]);
+  }, [isOpen, incidents, activeShift, currentUser, carteiraTotal, carteiraAndamento, carteiraAberto, carteiraPendente, equipSemDespacho, equipSemGps, equipPreventiva, equipManutencao, equipeSonda, liderVale, ausencia, isCustomEdited]);
+
+  if (!isOpen) return null;
 
   const handleCopy = () => {
     const textToCopy = customReportText || generateReportText();

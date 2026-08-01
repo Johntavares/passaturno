@@ -61,6 +61,9 @@ export const CloseShiftModal: React.FC<CloseShiftModalProps> = ({
   // Lista local de atendimentos para alteração dinâmica de prioridade
   const [localIncidents, setLocalIncidents] = useState<IncidentType[]>(incidents);
 
+  const [customWhatsappText, setCustomWhatsappText] = useState('');
+  const [isCustomEdited, setIsCustomEdited] = useState(false);
+
   useEffect(() => {
     if (isOpen) {
       setLocalIncidents(incidents);
@@ -74,8 +77,6 @@ export const CloseShiftModal: React.FC<CloseShiftModalProps> = ({
       setSolicitacaoMaterialResponsavel(effResp);
     }
   }, [isOpen, activeShift, currentUser, incidents]);
-
-  if (!isOpen) return null;
 
   // Determinar o momento exato de início do turno ativo atual
   let shiftStartMs = 0;
@@ -92,11 +93,10 @@ export const CloseShiftModal: React.FC<CloseShiftModalProps> = ({
   const currentTurma = normalizeTurma(turma) || normalizeTurma(activeShift?.turma) || normalizeTurma(currentUser?.turma) || 'C';
 
   // Filtrar ocorrências pertencentes ao turno ativo atual da turma logada
-  const shiftIncidents = localIncidents.filter((item) => {
+  const shiftIncidents = (localIncidents || []).filter((item) => {
     const itemTurma = normalizeTurma(item.turma) || 'A';
     if (itemTurma !== currentTurma) return false;
 
-    // Se finalizado/retroagido, só exibe no resumo de encerrados se foi concluído DURANTE o turno ativo atual
     if (item.status === 'FINALIZADO' || item.status === 'RETROAGIDO') {
       const itemTimeMs = item.dataHoraLiberacao
         ? new Date(item.dataHoraLiberacao).getTime()
@@ -140,9 +140,6 @@ export const CloseShiftModal: React.FC<CloseShiftModalProps> = ({
       console.error(err);
     }
   };
-
-  const [customWhatsappText, setCustomWhatsappText] = useState('');
-  const [isCustomEdited, setIsCustomEdited] = useState(false);
 
   // Gerar o formato exato fornecido pelo usuário
   const generateExactWhatsappText = () => {
@@ -200,10 +197,12 @@ export const CloseShiftModal: React.FC<CloseShiftModalProps> = ({
   };
 
   useEffect(() => {
-    if (!isCustomEdited) {
+    if (isOpen && !isCustomEdited) {
       setCustomWhatsappText(generateExactWhatsappText());
     }
-  }, [turma, proximaTurma, monitoramento, horarioTurno, checklistMalaoStatus, checklistMalaoFaltantes, checklistMalaoResponsavel, solicitacaoMaterialStatus, solicitacaoMaterialResponsavel, anomaliasIdentificadas, observacoesTurno, localIncidents, isCustomEdited]);
+  }, [isOpen, turma, proximaTurma, monitoramento, horarioTurno, checklistMalaoStatus, checklistMalaoFaltantes, checklistMalaoResponsavel, solicitacaoMaterialStatus, solicitacaoMaterialResponsavel, anomaliasIdentificadas, observacoesTurno, localIncidents, isCustomEdited]);
+
+  if (!isOpen) return null;
 
   const handleCopyText = () => {
     navigator.clipboard.writeText(customWhatsappText || generateExactWhatsappText());
