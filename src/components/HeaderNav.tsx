@@ -127,16 +127,16 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
           </div>
 
           {/* LADO DIREITO: APENAS AS AÇÕES PRINCIPAIS & CONFIGURAÇÕES */}
-          <div className="flex items-center gap-2 justify-end">
+          <div className="flex items-center gap-1.5 sm:gap-2 justify-end">
             
             {/* Alerta de Ativos Pendentes */}
             {unacceptedCount > 0 && (
               <button
                 onClick={onRestoreNotifications}
-                className="inline-flex items-center px-3 py-2 bg-rose-50 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 font-bold text-xs rounded-xl border border-rose-200 dark:border-rose-800 animate-pulse cursor-pointer"
+                className="inline-flex items-center px-2.5 py-1.5 bg-rose-50 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 font-bold text-[11px] rounded-lg border border-rose-200 dark:border-rose-800 animate-pulse cursor-pointer"
                 title="Existem atividades da passagem de turno aguardando aceite"
               >
-                <Bell className="w-4 h-4 mr-1 text-rose-600 animate-bounce" />
+                <Bell className="w-3.5 h-3.5 mr-1 text-rose-600 animate-bounce" />
                 <span>{unacceptedCount} Pendente{unacceptedCount > 1 ? 's' : ''}</span>
               </button>
             )}
@@ -146,9 +146,9 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
               <button
                 onClick={onOpenTeamsCheck}
                 title="Relatório Inicial de Turno (Check das Equipes)"
-                className="inline-flex items-center px-3 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-emerald-700 dark:text-emerald-300 font-bold text-xs rounded-xl border border-emerald-200 dark:border-emerald-800 transition-all cursor-pointer"
+                className="inline-flex items-center px-2.5 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-emerald-700 dark:text-emerald-300 font-bold text-[11px] rounded-lg border border-emerald-200 dark:border-emerald-800 transition-all cursor-pointer"
               >
-                <Users className="w-4 h-4 mr-1 text-emerald-600" />
+                <Users className="w-3.5 h-3.5 mr-1 text-emerald-600" />
                 <span className="hidden sm:inline">Check de Equipes</span>
               </button>
             )}
@@ -158,9 +158,9 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
               <button
                 onClick={onOpenTwoHourReport}
                 title="Gerar e enviar Boletim de Automação de 2 Horas no WhatsApp"
-                className="inline-flex items-center px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-md shadow-emerald-600/20 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+                className="inline-flex items-center px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] rounded-lg shadow-xs transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
               >
-                <Clock className="w-4 h-4 mr-1.5 stroke-[2.5]" />
+                <Clock className="w-3.5 h-3.5 mr-1 stroke-[2.5]" />
                 <span>Boletim de 2h</span>
               </button>
             )}
@@ -168,18 +168,18 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
             {/* 2. Iniciar / Fechar Turno */}
             <button
               onClick={activeShift ? onOpenCloseShift : onOpenAssumeShift}
-              className="inline-flex items-center px-3.5 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs rounded-xl border border-slate-200 dark:border-slate-700 transition-all cursor-pointer"
+              className="inline-flex items-center px-2.5 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-[11px] rounded-lg border border-slate-200 dark:border-slate-700 transition-all cursor-pointer"
             >
-              <UserCheck className="w-4 h-4 mr-1.5 text-emerald-600" />
+              <UserCheck className="w-3.5 h-3.5 mr-1 text-emerald-600" />
               <span>{activeShift ? 'Fechar Turno' : 'Iniciar Turno'}</span>
             </button>
 
             {/* 3. Novo Atendimento (CTA Principal) */}
             <button
               onClick={onOpenNewIncident}
-              className="inline-flex items-center px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-xl shadow-md shadow-sky-600/20 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+              className="inline-flex items-center px-3 py-1.5 bg-sky-600 hover:bg-sky-500 text-white font-bold text-[11px] rounded-lg shadow-xs transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
             >
-              <Plus className="w-4 h-4 mr-1.5 stroke-[2.5]" />
+              <Plus className="w-3.5 h-3.5 mr-1 stroke-[2.5]" />
               <span>Novo Atendimento</span>
             </button>
 
@@ -187,9 +187,9 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
             <button
               onClick={onOpenSettings}
               title="Abrir Central de Configurações (Perfil, Frota, Turno, Relatórios)"
-              className="inline-flex items-center px-3.5 py-2 bg-slate-900 dark:bg-slate-100 hover:bg-slate-800 dark:hover:bg-white text-white dark:text-slate-900 font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer gap-1.5"
+              className="inline-flex items-center px-2.5 py-1.5 bg-slate-900 dark:bg-slate-100 hover:bg-slate-800 dark:hover:bg-white text-white dark:text-slate-900 font-bold text-[11px] rounded-lg shadow-xs transition-all cursor-pointer gap-1"
             >
-              <Settings className="w-4 h-4 text-emerald-400 dark:text-emerald-600" />
+              <Settings className="w-3.5 h-3.5 text-emerald-400 dark:text-emerald-600" />
               <span className="hidden sm:inline">Configurações</span>
             </button>
 
