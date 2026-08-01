@@ -567,8 +567,11 @@ export default function Home() {
           };
 
           const displayedIncidents = incidents.filter((item) => {
-            const userTurma = (currentUser?.turma || activeShift?.turma || 'A').toUpperCase().trim();
-            const currentFilter = selectedTurmaFilter === 'TODAS' ? userTurma : selectedTurmaFilter.toUpperCase().trim();
+            const activeTurma = (currentUser?.turma || activeShift?.turma || '').toUpperCase().trim();
+            
+            // Se o filtro for TODAS, exibe todas as ocorrências de todas as turmas
+            // Se o filtro for uma turma específica (ex: 'C'), filtra pela turma C
+            const currentFilter = selectedTurmaFilter.toUpperCase().trim();
 
             const itemTurma = (item.turma || 'A').toUpperCase().trim();
             const isUnacceptedInherited =
@@ -577,11 +580,11 @@ export default function Home() {
               item.status !== 'RETROAGIDO' &&
               item.status !== 'EM_ANDAMENTO';
 
-            // Garantir a independência da turma:
-            // Exibir apenas ocorrências pertencentes à turma selecionada/ativa
-            // OU pendências herdadas ainda não aceitas pelo novo turno
-            if (itemTurma !== currentFilter && !isUnacceptedInherited) {
-              return false;
+            // Garantir a independência de cada turma quando um filtro específico estiver selecionado
+            if (currentFilter !== 'TODAS' && currentFilter !== 'GERAL' && currentFilter !== '') {
+              if (itemTurma !== currentFilter && !isUnacceptedInherited) {
+                return false;
+              }
             }
 
             const isConcluido = item.status === 'FINALIZADO' || item.status === 'RETROAGIDO';
