@@ -141,6 +141,9 @@ export const CloseShiftModal: React.FC<CloseShiftModalProps> = ({
     }
   };
 
+  const [customWhatsappText, setCustomWhatsappText] = useState('');
+  const [isCustomEdited, setIsCustomEdited] = useState(false);
+
   // Gerar o formato exato fornecido pelo usuário
   const generateExactWhatsappText = () => {
     const todayStr = format(new Date(), 'dd/MM/yyyy');
@@ -196,9 +199,14 @@ export const CloseShiftModal: React.FC<CloseShiftModalProps> = ({
     return text;
   };
 
+  useEffect(() => {
+    if (!isCustomEdited) {
+      setCustomWhatsappText(generateExactWhatsappText());
+    }
+  }, [turma, proximaTurma, monitoramento, horarioTurno, checklistMalaoStatus, checklistMalaoFaltantes, checklistMalaoResponsavel, solicitacaoMaterialStatus, solicitacaoMaterialResponsavel, anomaliasIdentificadas, observacoesTurno, localIncidents, isCustomEdited]);
+
   const handleCopyText = () => {
-    const text = generateExactWhatsappText();
-    navigator.clipboard.writeText(text);
+    navigator.clipboard.writeText(customWhatsappText || generateExactWhatsappText());
     setCopied(true);
     setTimeout(() => setCopied(false), 2500);
   };
@@ -489,9 +497,16 @@ export const CloseShiftModal: React.FC<CloseShiftModalProps> = ({
                   )}
                 </button>
               </div>
-              <pre className="text-[11px] font-mono bg-white p-2.5 rounded-xl border border-slate-200 text-slate-800 whitespace-pre-wrap max-h-36 overflow-y-auto select-all leading-relaxed">
-                {generateExactWhatsappText()}
-              </pre>
+              <textarea
+                value={customWhatsappText}
+                onChange={(e) => {
+                  setIsCustomEdited(true);
+                  setCustomWhatsappText(e.target.value);
+                }}
+                rows={6}
+                className="w-full text-[11px] font-mono bg-white p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-amber-500 text-slate-800 leading-relaxed custom-scrollbar resize-y"
+                placeholder="Edite a passagem de turno antes de copiar..."
+              />
             </div>
 
           </div>

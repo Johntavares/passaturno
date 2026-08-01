@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { IncidentType } from '@/types';
-import { X, MessageSquare, Copy, Check } from 'lucide-react';
+import { X, MessageSquare, Copy, Check, Edit3 } from 'lucide-react';
 import { format, differenceInMinutes } from 'date-fns';
 
 interface WhatsappModalProps {
@@ -17,54 +17,61 @@ export const WhatsappModal: React.FC<WhatsappModalProps> = ({
   onClose,
 }) => {
   const [copied, setCopied] = useState(false);
+  const [editableText, setEditableText] = useState('');
 
-  if (!isOpen || !incident) return null;
+  const generateWhatsappText = (inc: IncidentType) => {
+    const paradaDate = new Date(inc.dataHoraParada);
+    const liberacaoDate = inc.dataHoraLiberacao ? new Date(inc.dataHoraLiberacao) : null;
+    
+    let tempoTotalStr = '';
+    if (liberacaoDate) {
+      const mins = differenceInMinutes(liberacaoDate, paradaDate);
+      const hours = Math.floor(mins / 60);
+      const remMins = mins % 60;
+      tempoTotalStr = hours > 0 ? `${hours}h ${remMins}min` : `${remMins} min`;
+    }
 
-  const paradaDate = new Date(incident.dataHoraParada);
-  const liberacaoDate = incident.dataHoraLiberacao ? new Date(incident.dataHoraLiberacao) : null;
-  
-  let tempoTotalStr = '';
-  if (liberacaoDate) {
-    const mins = differenceInMinutes(liberacaoDate, paradaDate);
-    const hours = Math.floor(mins / 60);
-    const remMins = mins % 60;
-    tempoTotalStr = hours > 0 ? `${hours}h ${remMins}min` : `${remMins} min`;
-  }
-
-  const generateWhatsappText = () => {
     let text = `🚨 *AUTOMAÇÃO INDUSTRIAL*\n\n`;
-    text += `🏷️ *TAG:* ${incident.tag}\n`;
-    text += `⚙️ *Equipamento:* ${incident.equipamentoNome}\n`;
-    text += `📍 *Área:* ${incident.area}\n`;
-    text += `⚠️ *Prioridade:* ${incident.prioridade}\n\n`;
-    text += `🔧 *Falha:*\n${incident.falha}\n\n`;
+    text += `🏷️ *TAG:* ${inc.tag}\n`;
+    text += `⚙️ *Equipamento:* ${inc.equipamentoNome}\n`;
+    text += `📍 *Área:* ${inc.area}\n`;
+    text += `⚠️ *Prioridade:* ${inc.prioridade}\n\n`;
+    text += `🔧 *Falha:*\n${inc.falha}\n\n`;
     text += `⏰ *Hora parada:*\n${format(paradaDate, 'HH:mm • dd/MM/yyyy')}\n\n`;
-    text += `📋 *Status:*\n${incident.status}\n\n`;
+    text += `📋 *Status:*\n${inc.status}\n\n`;
 
     if (liberacaoDate) {
       text += `🏁 *Hora liberação:*\n${format(liberacaoDate, 'HH:mm • dd/MM/yyyy')}\n\n`;
       text += `⏳ *Tempo total de parada:*\n${tempoTotalStr}\n\n`;
     }
 
-    if (incident.solucao) {
-      text += `🛠️ *Solução aplicada:*\n${incident.solucao}\n\n`;
+    if (inc.solucao) {
+      text += `🛠️ *Solução aplicada:*\n${inc.solucao}\n\n`;
     }
 
-    if (incident.motivoEspera) {
-      text += `🟡 *Motivo do aguardo:*\n${incident.motivoEspera}\n\n`;
+    if (inc.motivoEspera) {
+      text += `🟡 *Motivo do aguardo:*\n${inc.motivoEspera}\n\n`;
     }
 
-    if (incident.proximaAcao) {
-      text += `➡️ *Próxima ação:*\n${incident.proximaAcao}\n\n`;
+    if (inc.proximaAcao) {
+      text += `➡️ *Próxima ação:*\n${inc.proximaAcao}\n\n`;
     }
 
-    text += `👤 *Responsável:*\n${incident.responsavel}`;
+    text += `👤 *Responsável:*\n${inc.responsavel}`;
 
     return text;
   };
 
+  useEffect(() => {
+    if (isOpen && incident) {
+      setEditableText(generateWhatsappText(incident));
+    }
+  }, [isOpen, incident]);
+
+  if (!isOpen || !incident) return null;
+
   const handleCopy = () => {
-    navigator.clipboard.writeText(generateWhatsappText());
+    navigator.clipboard.writeText(editableText);
     setCopied(true);
     setTimeout(() => setCopied(false), 2500);
   };
@@ -80,23 +87,32 @@ export const WhatsappModal: React.FC<WhatsappModalProps> = ({
               <MessageSquare className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-slate-800">Gerador de Mensagem WhatsApp</h3>
-              <p className="text-xs text-slate-500">Texto formatado para envio no grupo</p>
+              <h3 className="text-base font-bold text-slate-800 flex items-center gap-2">
+                Gerador de Mensagem WhatsApp
+                <span className="text-[10px] font-semibold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-md flex items-center gap-1">
+                  <Edit3 className="w-2.5 h-2.5" /> Editável
+                </span>
+              </h3>
+              <p className="text-xs text-slate-500">Texto totalmente editável para personalização antes de copiar</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-xl transition-colors"
+            className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-xl transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Text Area */}
-        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-4">
-          <pre className="text-xs font-mono text-emerald-900 whitespace-pre-wrap leading-relaxed max-h-72 overflow-y-auto pr-1 select-all">
-            {generateWhatsappText()}
-          </pre>
+        {/* Text Area (Editável pelo Operador) */}
+        <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 mb-4">
+          <textarea
+            value={editableText}
+            onChange={(e) => setEditableText(e.target.value)}
+            rows={12}
+            className="w-full text-xs font-mono text-slate-800 bg-white p-3 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500 leading-relaxed custom-scrollbar resize-y"
+            placeholder="Edite a mensagem antes de copiar..."
+          />
         </div>
 
         {/* Action Buttons */}

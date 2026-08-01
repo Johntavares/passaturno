@@ -130,19 +130,30 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
     return text.trim();
   };
 
+  const [customReportText, setCustomReportText] = useState('');
+  const [isCustomEdited, setIsCustomEdited] = useState(false);
+
+  useEffect(() => {
+    if (!isCustomEdited) {
+      setCustomReportText(generateReportText());
+    }
+  }, [incidents, activeShift, currentUser, carteiraTotal, carteiraAndamento, carteiraAberto, carteiraPendente, equipSemDespacho, equipSemGps, equipPreventiva, equipManutencao, equipeSonda, liderVale, ausencia, isCustomEdited]);
+
   const handleCopy = () => {
-    const text = generateReportText();
-    navigator.clipboard.writeText(text);
+    const textToCopy = customReportText || generateReportText();
+    navigator.clipboard.writeText(textToCopy);
     setCopied(true);
-    setLastSentTime(new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
-    setTimeout(() => setCopied(false), 2500);
+    const nowTime = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    setLastSentTime(nowTime);
+    setTimeout(() => setCopied(false), 3000);
   };
 
   const handleSendWhatsapp = () => {
-    const text = generateReportText();
-    const encodedText = encodeURIComponent(text);
+    const textToSend = customReportText || generateReportText();
+    const encodedText = encodeURIComponent(textToSend);
     window.open(`https://api.whatsapp.com/send?text=${encodedText}`, '_blank');
-    setLastSentTime(new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
+    const nowTime = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    setLastSentTime(nowTime);
   };
 
   return (
@@ -194,15 +205,27 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
         {/* Pré-visualização da Mensagem */}
         <div className="space-y-3">
           <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
-            <span>Pré-visualização da Mensagem (Pronta para Enviar):</span>
+            <span className="flex items-center gap-1.5">
+              <span>Pré-visualização da Mensagem WhatsApp</span>
+              <span className="text-[10px] font-sans font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-950 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800">
+                ✏️ Editável
+              </span>
+            </span>
             <span className="text-[11px] font-medium text-slate-400">
-              Gerada com dados em tempo real da carteira
+              Você pode alterar o texto diretamente antes de copiar ou enviar
             </span>
           </label>
 
-          <div className="bg-slate-900 dark:bg-slate-950 text-slate-100 font-mono text-xs p-4 rounded-2xl border border-slate-800 max-h-72 overflow-y-auto whitespace-pre-wrap leading-relaxed shadow-inner selection:bg-sky-500 selection:text-white">
-            {generateReportText()}
-          </div>
+          <textarea
+            value={customReportText}
+            onChange={(e) => {
+              setIsCustomEdited(true);
+              setCustomReportText(e.target.value);
+            }}
+            rows={10}
+            className="w-full bg-slate-900 dark:bg-slate-950 text-slate-100 font-mono text-xs p-4 rounded-2xl border border-slate-800 focus:outline-none focus:border-emerald-500 leading-relaxed shadow-inner custom-scrollbar resize-y"
+            placeholder="Edite a mensagem do boletim de 2h..."
+          />
         </div>
 
         {/* Configuração Editável dos Números da Carteira de Incidentes */}

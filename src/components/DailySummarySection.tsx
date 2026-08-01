@@ -73,6 +73,9 @@ export const DailySummarySection: React.FC<DailySummarySectionProps> = ({
   const turmaStr = currentTurma;
   const horarioTurnoStr = activeShift?.horarioTurno || '07h às 19h';
 
+  const [customWhatsappText, setCustomWhatsappText] = useState('');
+  const [isCustomEdited, setIsCustomEdited] = useState(false);
+
   // Gerar o formato exato da mensagem de WhatsApp do usuário
   const generateRealWhatsappText = () => {
     let text = `RELATÓRIO DE PASSAGEM DE TURNO:\n`;
@@ -130,8 +133,14 @@ export const DailySummarySection: React.FC<DailySummarySectionProps> = ({
     return text;
   };
 
+  React.useEffect(() => {
+    if (!isCustomEdited) {
+      setCustomWhatsappText(generateRealWhatsappText());
+    }
+  }, [incidents, activeShift, currentUser, selectedDate, isCustomEdited]);
+
   const handleCopyReport = () => {
-    navigator.clipboard.writeText(generateRealWhatsappText());
+    navigator.clipboard.writeText(customWhatsappText || generateRealWhatsappText());
     setCopied(true);
     setTimeout(() => setCopied(false), 2500);
   };
@@ -293,12 +302,22 @@ export const DailySummarySection: React.FC<DailySummarySectionProps> = ({
 
           {/* Coluna 3: Preview da Mensagem Exata do WhatsApp */}
           <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs flex flex-col">
-            <span className="text-xs font-bold text-slate-700 mb-2 block font-mono">
-              Preview da Mensagem (WhatsApp)
+            <span className="text-xs font-bold text-slate-700 mb-2 flex items-center justify-between font-mono">
+              <span>Preview da Mensagem (WhatsApp)</span>
+              <span className="text-[10px] font-sans font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                ✏️ Editável
+              </span>
             </span>
-            <pre className="flex-1 text-[11px] font-mono bg-slate-50 p-3 rounded-xl border border-slate-200/80 text-slate-700 whitespace-pre-wrap leading-relaxed overflow-y-auto max-h-80 select-all">
-              {generateRealWhatsappText()}
-            </pre>
+            <textarea
+              value={customWhatsappText}
+              onChange={(e) => {
+                setIsCustomEdited(true);
+                setCustomWhatsappText(e.target.value);
+              }}
+              rows={12}
+              className="flex-1 w-full text-[11px] font-mono bg-slate-50 p-3 rounded-xl border border-slate-200/80 text-slate-800 leading-relaxed custom-scrollbar resize-y focus:outline-none focus:border-emerald-500"
+              placeholder="Edite a mensagem antes de copiar..."
+            />
           </div>
 
         </div>
