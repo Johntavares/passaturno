@@ -86,7 +86,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   const colAguardando = filteredIncidents.filter((i) => i.status === 'AGUARDANDO');
   const colFinalizados = filteredIncidents.filter((i) => i.status === 'FINALIZADO' || i.status === 'RETROAGIDO');
   const colHerdados = filteredIncidents.filter(
-    (i) => i.status === 'PENDENCIA_PROXIMO_TURNO' || (i.isPendenciaHerdada && i.status !== 'FINALIZADO' && i.status !== 'RETROAGIDO')
+    (i) => i.status === 'PENDENCIA_PROXIMO_TURNO' || (i.isPendenciaHerdada && i.status !== 'EM_ANDAMENTO' && i.status !== 'FINALIZADO' && i.status !== 'RETROAGIDO')
   );
 
   const calculateDowntime = (dataParada: string, dataLiberacao?: string | null) => {

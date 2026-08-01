@@ -157,6 +157,9 @@ export default function Home() {
   const handleStatusChange = async (id: string, newStatus: IncidentStatusType) => {
     const nowIso = new Date().toISOString();
     const isFin = newStatus === 'FINALIZADO' || newStatus === 'RETROAGIDO';
+    const isInherited = newStatus === 'PENDENCIA_PROXIMO_TURNO';
+    const activeTurma = activeShift?.turma || currentUser?.turma;
+    const activeResp = activeShift?.responsavelNome || currentUser?.nome;
 
     updateIncidentsState((prev) =>
       prev.map((item) =>
@@ -164,6 +167,9 @@ export default function Home() {
           ? {
               ...item,
               status: newStatus,
+              isPendenciaHerdada: isInherited,
+              turma: activeTurma && newStatus === 'EM_ANDAMENTO' ? activeTurma : item.turma,
+              responsavel: activeResp && newStatus === 'EM_ANDAMENTO' ? activeResp : item.responsavel,
               dataHoraLiberacao: isFin ? (item.dataHoraLiberacao || nowIso) : item.dataHoraLiberacao,
               atualizadoEm: nowIso,
             }
@@ -172,10 +178,17 @@ export default function Home() {
     );
 
     try {
+      const patchData: any = {
+        status: newStatus,
+        isPendenciaHerdada: isInherited,
+      };
+      if (activeTurma && newStatus === 'EM_ANDAMENTO') patchData.turma = activeTurma;
+      if (activeResp && newStatus === 'EM_ANDAMENTO') patchData.responsavel = activeResp;
+
       const res = await fetch(`/api/atendimentos/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify(patchData),
       });
 
       if (res.ok) {
@@ -215,10 +228,10 @@ export default function Home() {
 
   // Aceitar notificação de prioridade da passagem de turno e mover para a fila Em Andamento
   const handleAcceptPriority = async (incident: IncidentType) => {
-    const targetPriority =
-      incident.prioridade === 'CRITICA' || incident.prioridade === 'ALTA'
-        ? incident.prioridade
-        : 'ALTA';
+    // Preservar a prioridade original definida pelo operador (não forçar 'ALTA')
+    const targetPriority = incident.prioridade || 'MEDIA';
+    const activeTurma = activeShift?.turma || currentUser?.turma || incident.turma;
+    const activeResp = activeShift?.responsavelNome || currentUser?.nome || incident.responsavel;
 
     updateIncidentsState((prev) =>
       prev.map((item) =>
@@ -228,6 +241,8 @@ export default function Home() {
               status: 'EM_ANDAMENTO',
               prioridade: targetPriority,
               isPendenciaHerdada: false,
+              turma: activeTurma,
+              responsavel: activeResp,
               atualizadoEm: new Date().toISOString(),
             }
           : item
@@ -241,8 +256,11 @@ export default function Home() {
         body: JSON.stringify({
           status: 'EM_ANDAMENTO',
           prioridade: targetPriority,
-          logDescription: `Notificação de prioridade da passagem de turno aceita. Atendimento movido para a fila de Em Andamento com status de Prioridade ${targetPriority}.`,
-          logUsuario: activeShift?.responsavelNome || 'John Tavares',
+          isPendenciaHerdada: false,
+          turma: activeTurma,
+          responsavel: activeResp,
+          logDescription: `Pendência da passagem de turno aceita pela Turma ${activeTurma} (${activeResp}). Movido para a fila Em Andamento.`,
+          logUsuario: activeResp,
         }),
       });
 
@@ -424,6 +442,7 @@ export default function Home() {
       try {
         const u = JSON.parse(savedUserStr) as UserSession;
         setCurrentUser(u);
+        if (u.turma) setSelectedTurmaFilter(u.turma.toUpperCase().trim());
         const userKey = `passaturno-theme-${u.id}`;
         const userTheme = (localStorage.getItem(userKey) as ThemeMode) || 'light';
         setTheme(userTheme);
@@ -441,6 +460,7 @@ export default function Home() {
   // Ao trocar de operador ou realizar login, carregar as preferências individuais daquele operador
   const handleLoginSuccess = (user: UserSession) => {
     setCurrentUser(user);
+    if (user.turma) setSelectedTurmaFilter(user.turma.toUpperCase().trim());
     localStorage.setItem('passaturno-user', JSON.stringify(user));
     const userKey = `passaturno-theme-${user.id}`;
     const userSavedTheme = (localStorage.getItem(userKey) as ThemeMode) || 'light';
@@ -532,17 +552,27 @@ export default function Home() {
           };
 
           const displayedIncidents = incidents.filter((item) => {
-            // 1. Filtro por Turma
-            if (selectedTurmaFilter !== 'TODAS') {
-              const itemTurma = (item.turma || 'A').toUpperCase().trim();
-              if (itemTurma !== selectedTurmaFilter) return false;
+            const userTurma = (currentUser?.turma || activeShift?.turma || 'A').toUpperCase().trim();
+            const currentFilter = selectedTurmaFilter === 'TODAS' ? userTurma : selectedTurmaFilter.toUpperCase().trim();
+
+            const itemTurma = (item.turma || 'A').toUpperCase().trim();
+            const isUnacceptedInherited =
+              (item.isPendenciaHerdada || item.status === 'PENDENCIA_PROXIMO_TURNO') &&
+              item.status !== 'FINALIZADO' &&
+              item.status !== 'RETROAGIDO' &&
+              item.status !== 'EM_ANDAMENTO';
+
+            // Garantir a independência da turma:
+            // Exibir apenas ocorrências pertencentes à turma selecionada/ativa
+            // OU pendências herdadas ainda não aceitas pelo novo turno
+            if (itemTurma !== currentFilter && !isUnacceptedInherited) {
+              return false;
             }
 
             const isConcluido = item.status === 'FINALIZADO' || item.status === 'RETROAGIDO';
 
             // 2. Limpeza da Dashboard do Turno Ativo:
-            // Ocorrências concluídas (FINALIZADO ou RETROAGIDO) de turnos anteriores são arquivadas no Histórico.
-            // Ao iniciar/assumir um novo turno, o painel começa zerado!
+            // Ocorrências concluídas de turnos anteriores permanecem apenas no Histórico
             if (isConcluido) {
               if (!activeShift) return false;
 
@@ -619,7 +649,7 @@ export default function Home() {
             <DesktopAdBanner />
 
             {/* 4. Resumo dos Atendimentos Diários & Passagem de Turno (Posicionado na parte inferior) */}
-            <DailySummarySection incidents={incidents} activeShift={activeShift} />
+            <DailySummarySection incidents={incidents} activeShift={activeShift} currentUser={currentUser} />
           </>
           );
         })()}

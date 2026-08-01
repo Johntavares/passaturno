@@ -2,39 +2,80 @@
 
 import React, { useState } from 'react';
 import { IncidentType, ShiftType } from '@/types';
-import { FileText, Copy, Check, ChevronDown, ChevronUp, AlertCircle, CheckCircle2, Clock } from 'lucide-react';
+import { FileText, Copy, Check, ChevronDown, ChevronUp, AlertCircle, CheckCircle2, Clock, Calendar, RotateCcw } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface DailySummarySectionProps {
   incidents: IncidentType[];
   activeShift: ShiftType | null;
+  currentUser?: any;
 }
 
 export const DailySummarySection: React.FC<DailySummarySectionProps> = ({
   incidents,
   activeShift,
+  currentUser,
 }) => {
   const [copied, setCopied] = useState(false);
   const [isExpanded, setIsExpanded] = useState(true);
+  const [selectedDate, setSelectedDate] = useState<string>(''); // Vazio = Turno Ativo Atual
 
-  const importanetes = incidents.filter(
+  const currentTurma = (activeShift?.turma || currentUser?.turma || 'A').toUpperCase().trim();
+
+  // Determinar o momento exato de início do turno ativo atual
+  let shiftStartMs = 0;
+  if (activeShift?.horaInicio) {
+    shiftStartMs = new Date(activeShift.horaInicio).getTime();
+  } else if (activeShift?.criadoEm) {
+    shiftStartMs = new Date(activeShift.criadoEm).getTime();
+  } else {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    shiftStartMs = todayStart.getTime();
+  }
+
+  // Filtragem: Se data for selecionada, consulta histórico por data (YYYY-MM-DD); caso contrário, filtra o turno ativo
+  const filteredIncidents = incidents.filter((item) => {
+    const itemTurma = (item.turma || 'A').toUpperCase().trim();
+    if (itemTurma !== currentTurma) return false;
+
+    if (selectedDate) {
+      // Modo Consulta Histórica por Data Específica
+      const createdDate = item.criadoEm ? item.criadoEm.split('T')[0] : '';
+      const updatedDate = item.atualizadoEm ? item.atualizadoEm.split('T')[0] : createdDate;
+      const finishedDate = item.dataHoraLiberacao ? item.dataHoraLiberacao.split('T')[0] : updatedDate;
+
+      return createdDate === selectedDate || updatedDate === selectedDate || finishedDate === selectedDate;
+    }
+
+    // Modo Turno Ativo Atual (Padrão)
+    const createdMs = new Date(item.criadoEm).getTime();
+    const updatedMs = item.atualizadoEm ? new Date(item.atualizadoEm).getTime() : createdMs;
+    const finishedMs = item.dataHoraLiberacao ? new Date(item.dataHoraLiberacao).getTime() : updatedMs;
+
+    return createdMs >= shiftStartMs || updatedMs >= shiftStartMs || finishedMs >= shiftStartMs;
+  });
+
+  const importanetes = filteredIncidents.filter(
     (i) => (i.prioridade === 'CRITICA' || i.prioridade === 'ALTA') && i.status !== 'FINALIZADO'
   );
-  const emAndamento = incidents.filter(
+  const emAndamento = filteredIncidents.filter(
     (i) => (i.status === 'EM_ANDAMENTO' || i.status === 'AGUARDANDO' || i.status === 'PENDENCIA_PROXIMO_TURNO') &&
       i.prioridade !== 'CRITICA' && i.prioridade !== 'ALTA'
   );
-  const realizados = incidents.filter((i) => i.status === 'FINALIZADO');
+  const realizados = filteredIncidents.filter((i) => i.status === 'FINALIZADO');
 
-  const todayStr = format(new Date(), 'dd/MM/yyyy');
-  const monitoramentoNome = activeShift?.responsavelNome || 'Ronison';
-  const turmaStr = activeShift?.turma || 'A';
+  const displayDateStr = selectedDate
+    ? selectedDate.split('-').reverse().join('/')
+    : format(new Date(), 'dd/MM/yyyy');
+  const monitoramentoNome = activeShift?.responsavelNome || currentUser?.nome || 'Operador';
+  const turmaStr = currentTurma;
   const horarioTurnoStr = activeShift?.horarioTurno || '07h às 19h';
 
   // Gerar o formato exato da mensagem de WhatsApp do usuário
   const generateRealWhatsappText = () => {
     let text = `RELATÓRIO DE PASSAGEM DE TURNO:\n`;
-    text += `Data: ${todayStr}\n`;
+    text += `Data: ${displayDateStr}\n`;
     text += `Turma: ${turmaStr}\n`;
     text += `Monitoramento: ${monitoramentoNome}\n`;
     text += `Turno: ${horarioTurnoStr}\n\n`;
@@ -98,7 +139,7 @@ export const DailySummarySection: React.FC<DailySummarySectionProps> = ({
     <div className="mb-6 bg-white border border-slate-200/80 rounded-2xl shadow-xs overflow-hidden transition-all">
       
       {/* Header Bar */}
-      <div className="p-4 bg-slate-50/80 border-b border-slate-200/80 flex items-center justify-between">
+      <div className="p-4 bg-slate-50/80 border-b border-slate-200/80 flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div className="flex items-center space-x-2.5">
           <div className="p-2 bg-sky-50 text-sky-600 rounded-xl">
             <FileText className="w-5 h-5" />
@@ -116,7 +157,29 @@ export const DailySummarySection: React.FC<DailySummarySectionProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center space-x-2">
+        {/* Filtro por Data e Ações do Cabeçalho */}
+        <div className="flex items-center space-x-2 self-end md:self-auto">
+          {/* Seletor de Data para Consulta Histórica */}
+          <div className="flex items-center space-x-1.5 bg-white border border-slate-200 rounded-xl px-2.5 py-1 text-xs shadow-2xs">
+            <Calendar className="w-3.5 h-3.5 text-slate-400" />
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              title="Filtrar resumo por data específica (Histórico)"
+              className="bg-transparent text-xs font-semibold text-slate-700 focus:outline-none cursor-pointer"
+            />
+            {selectedDate && (
+              <button
+                onClick={() => setSelectedDate('')}
+                className="ml-1 text-[10px] font-bold bg-sky-100 hover:bg-sky-200 text-sky-800 px-2 py-0.5 rounded-md flex items-center gap-1 transition-colors cursor-pointer"
+                title="Voltar para a visualização do Turno Ativo Atual"
+              >
+                <RotateCcw className="w-2.5 h-2.5" />
+                Turno Ativo
+              </button>
+            )}
+          </div>
           <button
             onClick={handleCopyReport}
             className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center"

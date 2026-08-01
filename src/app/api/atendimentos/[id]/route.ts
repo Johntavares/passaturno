@@ -92,6 +92,9 @@ export async function PATCH(
       if (responsavel) updateData.responsavel = responsavel;
       if (observacao !== undefined) updateData.observacao = observacao;
       if (previsaoLiberacao !== undefined) updateData.previsaoLiberacao = previsaoLiberacao;
+      if (body.isPendenciaHerdada !== undefined) updateData.isPendenciaHerdada = body.isPendenciaHerdada;
+      if (body.turma) updateData.turma = body.turma;
+
 
       const updatedIncident = await prisma.incident.update({
         where: { id },
