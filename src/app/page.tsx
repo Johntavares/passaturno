@@ -568,21 +568,21 @@ export default function Home() {
 
           const displayedIncidents = incidents.filter((item) => {
             const activeTurma = (currentUser?.turma || activeShift?.turma || '').toUpperCase().trim();
-            
-            // Se o filtro for TODAS, exibe todas as ocorrências de todas as turmas
-            // Se o filtro for uma turma específica (ex: 'C'), filtra pela turma C
             const currentFilter = selectedTurmaFilter.toUpperCase().trim();
 
-            const itemTurma = (item.turma || 'A').toUpperCase().trim();
+            const itemTurma = (item.turma || '').toUpperCase().trim();
             const isUnacceptedInherited =
               (item.isPendenciaHerdada || item.status === 'PENDENCIA_PROXIMO_TURNO') &&
               item.status !== 'FINALIZADO' &&
               item.status !== 'RETROAGIDO' &&
               item.status !== 'EM_ANDAMENTO';
 
-            // Garantir a independência de cada turma quando um filtro específico estiver selecionado
+            // Garantir que ocorrências criadas pelo operador logado ou ativas para a turma sejam sempre exibidas
             if (currentFilter !== 'TODAS' && currentFilter !== 'GERAL' && currentFilter !== '') {
-              if (itemTurma !== currentFilter && !isUnacceptedInherited) {
+              const isUserIncident = currentUser?.nome && item.responsavel && item.responsavel.toLowerCase().includes(currentUser.nome.toLowerCase());
+              const hasNoTurma = !itemTurma;
+
+              if (itemTurma !== currentFilter && !hasNoTurma && !isUnacceptedInherited && !isUserIncident) {
                 return false;
               }
             }
