@@ -11,6 +11,7 @@ interface CloseShiftModalProps {
   activeShift: ShiftType | null;
   incidents: IncidentType[];
   onShiftClosed: () => void;
+  currentUser?: any;
 }
 
 export const CloseShiftModal: React.FC<CloseShiftModalProps> = ({
@@ -19,20 +20,34 @@ export const CloseShiftModal: React.FC<CloseShiftModalProps> = ({
   activeShift,
   incidents,
   onShiftClosed,
+  currentUser,
 }) => {
-  const [responsavelSaida, setResponsavelSaida] = useState(activeShift?.responsavelNome || 'Ronison');
-  const [turma, setTurma] = useState(activeShift?.turma || 'A');
-  const [monitoramento, setMonitoramento] = useState(activeShift?.monitoramento || activeShift?.responsavelNome || 'Ronison');
+  const getNextTurmaLetter = (t: string) => {
+    const clean = (t || '').toUpperCase().trim();
+    if (clean === 'A') return 'B';
+    if (clean === 'B') return 'C';
+    if (clean === 'C') return 'D';
+    if (clean === 'D') return 'A';
+    return 'B';
+  };
+
+  const initialTurma = (activeShift?.turma || currentUser?.turma || 'C').toUpperCase().trim();
+  const initialResp = activeShift?.responsavelNome || currentUser?.nome || 'Operador';
+
+  const [responsavelSaida, setResponsavelSaida] = useState(initialResp);
+  const [turma, setTurma] = useState(initialTurma);
+  const [proximaTurma, setProximaTurma] = useState(getNextTurmaLetter(initialTurma));
+  const [monitoramento, setMonitoramento] = useState(activeShift?.monitoramento || initialResp);
   const [horarioTurno, setHorarioTurno] = useState(activeShift?.horarioTurno || '07h às 19h');
 
   // Checklist do Malão
   const [checklistMalaoStatus, setChecklistMalaoStatus] = useState('Realizado');
   const [checklistMalaoFaltantes, setChecklistMalaoFaltantes] = useState('');
-  const [checklistMalaoResponsavel, setChecklistMalaoResponsavel] = useState(activeShift?.responsavelNome || 'Ronison');
+  const [checklistMalaoResponsavel, setChecklistMalaoResponsavel] = useState(initialResp);
 
   // Solicitação de Material de Reposição
   const [solicitacaoMaterialStatus, setSolicitacaoMaterialStatus] = useState('');
-  const [solicitacaoMaterialResponsavel, setSolicitacaoMaterialResponsavel] = useState(activeShift?.responsavelNome || 'Ronison');
+  const [solicitacaoMaterialResponsavel, setSolicitacaoMaterialResponsavel] = useState(initialResp);
 
   // Anomalias Identificadas
   const [anomaliasIdentificadas, setAnomaliasIdentificadas] = useState('');
@@ -48,12 +63,16 @@ export const CloseShiftModal: React.FC<CloseShiftModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       setLocalIncidents(incidents);
-      setResponsavelSaida(activeShift?.responsavelNome || 'Ronison');
-      setMonitoramento(activeShift?.monitoramento || activeShift?.responsavelNome || 'Ronison');
-      setChecklistMalaoResponsavel(activeShift?.responsavelNome || 'Ronison');
-      setSolicitacaoMaterialResponsavel(activeShift?.responsavelNome || 'Ronison');
+      const effTurma = (activeShift?.turma || currentUser?.turma || 'C').toUpperCase().trim();
+      const effResp = activeShift?.responsavelNome || currentUser?.nome || 'Operador';
+      setTurma(effTurma);
+      setProximaTurma(getNextTurmaLetter(effTurma));
+      setResponsavelSaida(effResp);
+      setMonitoramento(activeShift?.monitoramento || effResp);
+      setChecklistMalaoResponsavel(effResp);
+      setSolicitacaoMaterialResponsavel(effResp);
     }
-  }, [isOpen, activeShift, incidents]);
+  }, [isOpen, activeShift, currentUser, incidents]);
 
   if (!isOpen) return null;
 
@@ -96,7 +115,8 @@ export const CloseShiftModal: React.FC<CloseShiftModalProps> = ({
     const todayStr = format(new Date(), 'dd/MM/yyyy');
     let text = `RELATÓRIO DE PASSAGEM DE TURNO:\n`;
     text += `Data: ${todayStr}\n`;
-    text += `Turma: ${turma}\n`;
+    text += `Turma de Saída: ${turma}\n`;
+    text += `Próxima Turma (Destino): ${proximaTurma}\n`;
     text += `Monitoramento: ${monitoramento}\n`;
     text += `Turno: ${horarioTurno}\n\n`;
 
@@ -163,6 +183,7 @@ export const CloseShiftModal: React.FC<CloseShiftModalProps> = ({
         body: JSON.stringify({
           responsavelSaida,
           turma,
+          proximaTurma,
           monitoramento,
           horarioTurno,
           checklistMalaoStatus,
@@ -224,17 +245,35 @@ export const CloseShiftModal: React.FC<CloseShiftModalProps> = ({
           {/* Corpo com Scroll Interno */}
           <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3.5 custom-scrollbar">
             
-            {/* Seção 1: Identificação do Turno */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200/80">
+            {/* Seção 1: Identificação do Turno & Turma Destino */}
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200/80">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Turma</label>
-                <input
-                  type="text"
-                  placeholder="ex: A, B, C"
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Turma Atual (Saindo)</label>
+                <select
                   value={turma}
-                  onChange={(e) => setTurma(e.target.value)}
-                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-sky-500"
-                />
+                  onChange={(e) => setTurma(e.target.value.toUpperCase().trim())}
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-800 font-bold focus:outline-none focus:border-sky-500"
+                >
+                  <option value="A">Turma A</option>
+                  <option value="B">Turma B</option>
+                  <option value="C">Turma C</option>
+                  <option value="D">Turma D</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Próxima Turma (Destino)</label>
+                <select
+                  value={proximaTurma}
+                  onChange={(e) => setProximaTurma(e.target.value.toUpperCase().trim())}
+                  className="w-full bg-white border border-amber-300 bg-amber-50/50 rounded-xl px-3 py-1.5 text-xs text-amber-900 font-extrabold focus:outline-none focus:border-amber-500 shadow-2xs"
+                  title="Selecione qual turma receberá as pendências deste encerramento"
+                >
+                  <option value="A">Turma A</option>
+                  <option value="B">Turma B</option>
+                  <option value="C">Turma C</option>
+                  <option value="D">Turma D</option>
+                </select>
               </div>
 
               <div>

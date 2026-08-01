@@ -8,6 +8,7 @@ export async function POST(request: Request) {
     const {
       responsavelSaida,
       turma,
+      proximaTurma,
       monitoramento,
       horarioTurno,
       checklistMalaoStatus,
@@ -49,6 +50,21 @@ export async function POST(request: Request) {
         });
 
         const criticalIncidents = openIncidents.filter((i) => i.prioridade === 'CRITICA' || i.prioridade === 'ALTA');
+
+        const targetProximaTurma = (proximaTurma || '').toUpperCase().trim() ||
+          (turma === 'A' ? 'B' : turma === 'B' ? 'C' : turma === 'C' ? 'D' : 'A');
+
+        // Redirecionar todas as pendências em aberto para a próxima turma que assumirá o turno
+        for (const incident of openIncidents) {
+          await prisma.incident.update({
+            where: { id: incident.id },
+            data: {
+              status: 'PENDENCIA_PROXIMO_TURNO',
+              isPendenciaHerdada: true,
+              turma: targetProximaTurma,
+            },
+          });
+        }
 
         // Se houve atualização de pendências com ações recomendadas
         if (pendenciasAcoes && Array.isArray(pendenciasAcoes)) {

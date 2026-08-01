@@ -702,6 +702,7 @@ export default function Home() {
         activeShift={activeShift}
         incidents={incidents}
         onShiftClosed={loadData}
+        currentUser={currentUser}
       />
 
       <WhatsappModal
