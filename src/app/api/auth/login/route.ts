@@ -37,10 +37,10 @@ export async function POST(request: Request) {
     }
 
     // --- AUTO-ASSUMIR TURNO LOGIC ---
-    if (user.cargo !== 'LIDER' && ['A', 'B', 'C', 'D'].includes(user.turma)) {
+    const userTurma = normalizeTurma(user.turma);
+    if (user.cargo !== 'LIDER' && userTurma) {
       try {
         const { inMemoryStore } = await import('@/lib/inMemoryStore');
-        const userTurma = normalizeTurma(user.turma);
         
         try {
           const activeShiftTurma = await prisma.shift.findFirst({
@@ -51,7 +51,7 @@ export async function POST(request: Request) {
           // Só assume se a própria turma ainda não tiver turno ativo —
           // turnos de OUTRAS turmas são independentes e nunca são tocados.
           if (!activeShiftTurma) {
-            console.log(`Auto-assumindo turno para Turma ${user.turma} via login...`);
+            console.log(`Auto-assumindo turno para Turma ${userTurma} via login...`);
             const today = new Date().toISOString().split('T')[0];
             const equipe = user.equipe;
             const responsavelNome = user.nome;
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
               equipe,
               responsavelNome,
               observacoes,
-              turma: user.turma,
+              turma: userTurma,
               escala,
             });
 
@@ -89,7 +89,7 @@ export async function POST(request: Request) {
               data: {
                 equipe,
                 responsavelNome,
-                turma: user.turma,
+                turma: userTurma,
                 tipoTurno: user.periodoTurno === 'Noite' ? 'Noturno' : 'Diurno',
                 escala,
                 horarioTurno: user.horarioTurno,

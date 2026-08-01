@@ -26,6 +26,7 @@ import { LiderDashboardView } from '@/components/LiderDashboardView';
 import { LeaderMessageNotification } from '@/components/LeaderMessageNotification';
 import { EditTurmaProfileModal } from '@/components/EditTurmaProfileModal';
 import { SettingsModal } from '@/components/SettingsModal';
+import { normalizeTurma } from '@/lib/turma';
 
 export default function Home() {
   const [incidents, setIncidents] = useState<IncidentType[]>([]);
@@ -244,7 +245,7 @@ export default function Home() {
   const handleAcceptPriority = async (incident: IncidentType) => {
     // Preservar a prioridade original definida pelo operador (não forçar 'ALTA')
     const targetPriority = incident.prioridade || 'MEDIA';
-    const activeTurma = activeShift?.turma || currentUser?.turma || incident.turma;
+    const activeTurma = normalizeTurma(activeShift?.turma) || normalizeTurma(currentUser?.turma) || normalizeTurma(incident.turma) || '';
     const activeResp = activeShift?.responsavelNome || currentUser?.nome || incident.responsavel;
 
     updateIncidentsState((prev) =>
@@ -455,7 +456,7 @@ export default function Home() {
       try {
         const u = JSON.parse(savedUserStr) as UserSession;
         setCurrentUser(u);
-        if (u.turma) setSelectedTurmaFilter(u.turma.toUpperCase().trim());
+        if (u.turma) setSelectedTurmaFilter(normalizeTurma(u.turma) || u.turma.toUpperCase().trim());
         const userKey = `passaturno-theme-${u.id}`;
         const userTheme = (localStorage.getItem(userKey) as ThemeMode) || 'light';
         setTheme(userTheme);
@@ -473,7 +474,7 @@ export default function Home() {
   // Ao trocar de operador ou realizar login, carregar as preferências individuais daquele operador
   const handleLoginSuccess = (user: UserSession) => {
     setCurrentUser(user);
-    if (user.turma) setSelectedTurmaFilter(user.turma.toUpperCase().trim());
+    if (user.turma) setSelectedTurmaFilter(normalizeTurma(user.turma) || user.turma.toUpperCase().trim());
     localStorage.setItem('passaturno-user', JSON.stringify(user));
     const userKey = `passaturno-theme-${user.id}`;
     const userSavedTheme = (localStorage.getItem(userKey) as ThemeMode) || 'light';
@@ -567,10 +568,10 @@ export default function Home() {
           };
 
           const displayedIncidents = incidents.filter((item) => {
-            const activeTurma = (currentUser?.turma || activeShift?.turma || '').toUpperCase().trim();
-            const currentFilter = selectedTurmaFilter.toUpperCase().trim();
+            const activeTurma = normalizeTurma(currentUser?.turma) || normalizeTurma(activeShift?.turma) || '';
+            const currentFilter = normalizeTurma(selectedTurmaFilter) || selectedTurmaFilter.toUpperCase().trim();
 
-            const itemTurma = (item.turma || '').toUpperCase().trim();
+            const itemTurma = normalizeTurma(item.turma) || (item.turma || '').toUpperCase().trim();
             const isUnacceptedInherited =
               (item.isPendenciaHerdada || item.status === 'PENDENCIA_PROXIMO_TURNO') &&
               item.status !== 'FINALIZADO' &&

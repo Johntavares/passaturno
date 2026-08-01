@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { IncidentType, ShiftType } from '@/types';
 import { FileText, Copy, Check, ChevronDown, ChevronUp, AlertCircle, CheckCircle2, Clock, Calendar, RotateCcw } from 'lucide-react';
 import { format } from 'date-fns';
+import { normalizeTurma } from '@/lib/turma';
 
 interface DailySummarySectionProps {
   incidents: IncidentType[];
@@ -20,7 +21,7 @@ export const DailySummarySection: React.FC<DailySummarySectionProps> = ({
   const [isExpanded, setIsExpanded] = useState(true);
   const [selectedDate, setSelectedDate] = useState<string>(''); // Vazio = Turno Ativo Atual
 
-  const currentTurma = (activeShift?.turma || currentUser?.turma || 'A').toUpperCase().trim();
+  const currentTurma = normalizeTurma(activeShift?.turma) || normalizeTurma(currentUser?.turma) || 'A';
 
   // Determinar o momento exato de início do turno ativo atual
   let shiftStartMs = 0;
@@ -36,7 +37,7 @@ export const DailySummarySection: React.FC<DailySummarySectionProps> = ({
 
   // Filtragem: Se data for selecionada, consulta histórico por data (YYYY-MM-DD); caso contrário, filtra o turno ativo
   const filteredIncidents = incidents.filter((item) => {
-    const itemTurma = (item.turma || 'A').toUpperCase().trim();
+    const itemTurma = normalizeTurma(item.turma) || 'A';
     if (itemTurma !== currentTurma) return false;
 
     if (selectedDate) {

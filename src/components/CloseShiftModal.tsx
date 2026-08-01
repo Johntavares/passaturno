@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { IncidentType, ShiftType } from '@/types';
 import { X, Lock, AlertTriangle, Copy, Check, FileText, Star, Flame } from 'lucide-react';
 import { format } from 'date-fns';
+import { normalizeTurma } from '@/lib/turma';
 
 interface CloseShiftModalProps {
   isOpen: boolean;
@@ -31,7 +32,7 @@ export const CloseShiftModal: React.FC<CloseShiftModalProps> = ({
     return 'B';
   };
 
-  const initialTurma = (activeShift?.turma || currentUser?.turma || 'C').toUpperCase().trim();
+  const initialTurma = normalizeTurma(activeShift?.turma) || normalizeTurma(currentUser?.turma) || 'C';
   const initialResp = activeShift?.responsavelNome || currentUser?.nome || 'Operador';
 
   const [responsavelSaida, setResponsavelSaida] = useState(initialResp);
@@ -63,7 +64,7 @@ export const CloseShiftModal: React.FC<CloseShiftModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       setLocalIncidents(incidents);
-      const effTurma = (activeShift?.turma || currentUser?.turma || 'C').toUpperCase().trim();
+      const effTurma = normalizeTurma(activeShift?.turma) || normalizeTurma(currentUser?.turma) || 'C';
       const effResp = activeShift?.responsavelNome || currentUser?.nome || 'Operador';
       setTurma(effTurma);
       setProximaTurma(getNextTurmaLetter(effTurma));
@@ -88,11 +89,11 @@ export const CloseShiftModal: React.FC<CloseShiftModalProps> = ({
     shiftStartMs = todayStart.getTime();
   }
 
-  const currentTurma = (turma || activeShift?.turma || currentUser?.turma || 'C').toUpperCase().trim();
+  const currentTurma = normalizeTurma(turma) || normalizeTurma(activeShift?.turma) || normalizeTurma(currentUser?.turma) || 'C';
 
   // Filtrar ocorrências pertencentes ao turno ativo atual da turma logada
   const shiftIncidents = localIncidents.filter((item) => {
-    const itemTurma = (item.turma || 'A').toUpperCase().trim();
+    const itemTurma = normalizeTurma(item.turma) || 'A';
     if (itemTurma !== currentTurma) return false;
 
     // Se finalizado/retroagido, só exibe no resumo de encerrados se foi concluído DURANTE o turno ativo atual

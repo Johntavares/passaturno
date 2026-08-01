@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { inMemoryStore } from '@/lib/inMemoryStore';
+import { normalizeTurma } from '@/lib/turma';
 
 export async function GET(
   request: Request,
@@ -93,7 +94,7 @@ export async function PATCH(
       if (observacao !== undefined) updateData.observacao = observacao;
       if (previsaoLiberacao !== undefined) updateData.previsaoLiberacao = previsaoLiberacao;
       if (body.isPendenciaHerdada !== undefined) updateData.isPendenciaHerdada = body.isPendenciaHerdada;
-      if (body.turma) updateData.turma = body.turma;
+      if (body.turma) updateData.turma = normalizeTurma(body.turma) || body.turma;
 
 
       const updatedIncident = await prisma.incident.update({
