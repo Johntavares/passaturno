@@ -55,7 +55,7 @@ export async function GET(request: Request) {
         activeShift: shiftTurma === turma ? fallback.activeShift : null,
         lastClosedShift: null,
         openIncidents: (fallback?.openIncidents || []).filter(
-          (i: any) => normalizeTurma(i.turma) === turma
+          (i) => normalizeTurma(i.turma) === turma
         ),
       });
     }

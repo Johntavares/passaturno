@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { inMemoryStore } from '@/lib/inMemoryStore';
-import { normalizeTurma, turmaInFilter } from '@/lib/turma';
+import { turmaInFilter } from '@/lib/turma';
 
 export async function POST(request: Request) {
   try {

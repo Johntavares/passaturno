@@ -69,44 +69,25 @@ export default function Home() {
   const [theme, setTheme] = useState<ThemeMode>('light');
   const [currentUser, setCurrentUser] = useState<UserSession | null>(null);
 
-  const getCurrentTurmaKey = () => {
-    const t = (currentUser?.turma || activeShift?.turma || '').toUpperCase().trim();
-    return t && t !== 'GERAL' ? t : 'TODAS';
-  };
-
   // Cache localStorage para fallback offline (fonte da verdade é o servidor),
   // separado POR TURMA para nunca vazar dados entre turmas.
-  const saveLocalCache = (data: IncidentType[], turmaKey?: string) => {
+  const saveLocalCache = (data: IncidentType[], turmaKey: string) => {
     if (typeof window !== 'undefined') {
       try {
-        const key = turmaKey || getCurrentTurmaKey();
-        localStorage.setItem(`passaturno-incidents-v3-${key}`, JSON.stringify(data));
+        localStorage.setItem(`passaturno-incidents-v3-${turmaKey}`, JSON.stringify(data));
       } catch (e) {
         console.error('Erro ao persistir cache:', e);
       }
     }
   };
 
-  const loadLocalCache = (turmaKey?: string): IncidentType[] => {
+  const loadLocalCache = (turmaKey: string): IncidentType[] => {
     if (typeof window !== 'undefined') {
       try {
-        const key = turmaKey || getCurrentTurmaKey();
-        const saved = localStorage.getItem(`passaturno-incidents-v3-${key}`);
+        const saved = localStorage.getItem(`passaturno-incidents-v3-${turmaKey}`);
         if (saved) {
           const parsed = JSON.parse(saved);
           if (Array.isArray(parsed)) return parsed;
-        }
-        if (key !== 'TODAS') {
-          const legacy = localStorage.getItem('passaturno-incidents-v2');
-          if (legacy) {
-            const parsedLegacy = JSON.parse(legacy);
-            if (Array.isArray(parsedLegacy)) {
-              const filtered = parsedLegacy.filter(
-                (i: IncidentType) => (i.turma || 'A').toUpperCase().trim() === key
-              );
-              if (filtered.length > 0) return filtered;
-            }
-          }
         }
       } catch (e) {
         console.error('Erro ao ler cache:', e);
@@ -119,7 +100,7 @@ export default function Home() {
     const ids = new Set<string>();
     if (typeof window !== 'undefined') {
       try {
-        const saved = localStorage.getItem('passaturno-deleted-incidents-v2');
+        const saved = localStorage.getItem('passaturno-deleted-incidents-v3');
         if (saved) (JSON.parse(saved) as string[]).forEach((d) => ids.add(d.toUpperCase().trim()));
       } catch (e) {
         console.error('Erro ao ler excluídos:', e);
@@ -128,10 +109,15 @@ export default function Home() {
     return ids;
   };
 
+  const getCurrentTurmaKey = () => {
+    const t = (currentUser?.turma || activeShift?.turma || '').toUpperCase().trim();
+    return t && t !== 'GERAL' ? t : 'TODAS';
+  };
+
   const updateIncidentsState = (updater: (prev: IncidentType[]) => IncidentType[]) => {
     setIncidents((prev) => {
       const updated = updater(prev);
-      saveLocalCache(updated);
+      saveLocalCache(updated, 'GLOBAL');
       return updated;
     });
   };
@@ -140,26 +126,22 @@ export default function Home() {
     setIsRefreshing(true);
     const deletedIds = getDeletedIds();
 
-    const turmaRaw = turmaOverride || currentUser?.turma || '';
-    const turmaKey = turmaRaw.toUpperCase().trim();
-    const hasTurma = turmaKey !== '' && turmaKey !== 'GERAL';
-    const turmaQuery = hasTurma ? `?turma=${encodeURIComponent(turmaKey)}` : '';
-
     try {
       const [incRes, eqRes, shiftRes] = await Promise.all([
-        fetch(`/api/atendimentos${turmaQuery}`),
+        fetch('/api/atendimentos'),
         fetch('/api/equipamentos'),
-        fetch(`/api/turnos/ativo${turmaQuery}`),
+        fetch('/api/turnos/ativo'),
       ]);
 
       if (incRes.ok) {
-        const incData = (await incRes.json() as IncidentType[]).filter(
-          (item) => !deletedIds.has(item.id.toUpperCase().trim()) && !deletedIds.has(item.tag.toUpperCase().trim())
+        const rawInc = (await incRes.json()) as IncidentType[];
+        const incData = rawInc.filter(
+          (item) => !deletedIds.has(item.id.toUpperCase().trim())
         );
         setIncidents(incData);
-        saveLocalCache(incData, hasTurma ? turmaKey : 'TODAS');
+        saveLocalCache(incData, 'GLOBAL');
       } else {
-        const cached = loadLocalCache(hasTurma ? turmaKey : 'TODAS');
+        const cached = loadLocalCache('GLOBAL');
         if (cached.length > 0) setIncidents(cached);
       }
 
@@ -173,13 +155,13 @@ export default function Home() {
       }
     } catch (err) {
       console.error('Error loading CCO data:', err);
-      const cached = loadLocalCache(hasTurma ? turmaKey : 'TODAS');
+      const cached = loadLocalCache('GLOBAL');
       if (cached.length > 0) setIncidents(cached);
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [currentUser?.turma]);
+  }, []);
 
   useEffect(() => {
     loadData();
@@ -400,30 +382,33 @@ export default function Home() {
     }
   };
 
-  // Excluir Atendimento permanentemente
-  const handleDeleteIncident = async (id: string) => {
-    const targetIncident = incidents.find((i) => i.id === id);
-    const tagToDelete = targetIncident?.tag;
-
-    // Guardar ID e TAG no registro permanente de excluídos no localStorage
+  // Limpeza de registros legados de excluídos corrompidos no localStorage
+  useEffect(() => {
     if (typeof window !== 'undefined') {
       try {
-        const savedDeleted = JSON.parse(localStorage.getItem('passaturno-deleted-incidents-v2') || '[]');
+        localStorage.removeItem('passaturno-deleted-incidents-v2');
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  }, []);
+
+  // Excluir Atendimento permanentemente
+  const handleDeleteIncident = async (id: string) => {
+    // Guardar APENAS o ID único da ocorrência no registro de excluídos
+    if (typeof window !== 'undefined') {
+      try {
+        const savedDeleted = JSON.parse(localStorage.getItem('passaturno-deleted-incidents-v3') || '[]');
         const updatedDeleted = Array.from(
-          new Set([...savedDeleted, id, tagToDelete].filter(Boolean).map((x) => String(x).toUpperCase().trim()))
+          new Set([...savedDeleted, id].filter(Boolean).map((x) => String(x).toUpperCase().trim()))
         );
-        localStorage.setItem('passaturno-deleted-incidents-v2', JSON.stringify(updatedDeleted));
+        localStorage.setItem('passaturno-deleted-incidents-v3', JSON.stringify(updatedDeleted));
       } catch (e) {
         console.error('Erro ao guardar ID excluido:', e);
       }
     }
 
-    updateIncidentsState((prev) =>
-      prev.filter(
-        (item) =>
-          item.id !== id && (tagToDelete ? item.tag.toUpperCase().trim() !== tagToDelete.toUpperCase().trim() : true)
-      )
-    );
+    updateIncidentsState((prev) => prev.filter((item) => item.id !== id));
 
     try {
       await fetch(`/api/atendimentos/${id}`, {
