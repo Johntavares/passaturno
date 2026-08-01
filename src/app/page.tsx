@@ -26,6 +26,7 @@ import { LiderDashboardView } from '@/components/LiderDashboardView';
 import { LeaderMessageNotification } from '@/components/LeaderMessageNotification';
 import { EditTurmaProfileModal } from '@/components/EditTurmaProfileModal';
 import { SettingsModal } from '@/components/SettingsModal';
+import { TeamsCheckModal } from '@/components/TeamsCheckModal';
 import { normalizeTurma } from '@/lib/turma';
 
 export default function Home() {
@@ -42,6 +43,7 @@ export default function Home() {
   const [isEquipmentManagerOpen, setIsEquipmentManagerOpen] = useState(false);
   const [isOneNoteRoutineOpen, setIsOneNoteRoutineOpen] = useState(false);
   const [isTwoHourReportOpen, setIsTwoHourReportOpen] = useState(false);
+  const [isTeamsCheckOpen, setIsTeamsCheckOpen] = useState(false);
   const [isGpsDiagnosticOpen, setIsGpsDiagnosticOpen] = useState(false);
   const [isHistoryTabOpen, setIsHistoryTabOpen] = useState(false);
   const [isLiderTurmaOpen, setIsLiderTurmaOpen] = useState(false);
@@ -535,6 +537,7 @@ export default function Home() {
         onOpenAssumeShift={() => setIsAssumeShiftOpen(true)}
         onOpenCloseShift={() => setIsCloseShiftOpen(true)}
         onOpenTwoHourReport={() => setIsTwoHourReportOpen(true)}
+        onOpenTeamsCheck={() => setIsTeamsCheckOpen(true)}
         onOpenSettings={() => setIsSettingsOpen(true)}
         unacceptedCount={unacceptedCount}
         onRestoreNotifications={handleRestoreNotifications}
@@ -889,6 +892,14 @@ export default function Home() {
           setIsTimelineOpen(true);
         }}
         onDeleteIncident={handleDeleteIncident}
+      />
+
+      {/* Modal Check de Equipes (Início de Turno) */}
+      <TeamsCheckModal
+        isOpen={isTeamsCheckOpen}
+        onClose={() => setIsTeamsCheckOpen(false)}
+        activeShift={activeShift}
+        currentUser={currentUser}
       />
 
     </div>

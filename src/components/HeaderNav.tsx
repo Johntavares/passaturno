@@ -10,7 +10,8 @@ import {
   ShieldCheck, 
   LogOut, 
   Settings,
-  Bell
+  Bell,
+  Users
 } from 'lucide-react';
 
 export type ThemeMode = 'light' | 'dark' | 'mina';
@@ -31,6 +32,7 @@ export interface HeaderNavProps {
   onOpenAssumeShift: () => void;
   onOpenCloseShift: () => void;
   onOpenTwoHourReport?: () => void;
+  onOpenTeamsCheck?: () => void;
   onOpenSettings: () => void;
   unacceptedCount?: number;
   onRestoreNotifications?: () => void;
@@ -45,6 +47,7 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
   onOpenAssumeShift,
   onOpenCloseShift,
   onOpenTwoHourReport,
+  onOpenTeamsCheck,
   onOpenSettings,
   unacceptedCount = 0,
   onRestoreNotifications,
@@ -135,6 +138,18 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
               >
                 <Bell className="w-4 h-4 mr-1 text-rose-600 animate-bounce" />
                 <span>{unacceptedCount} Pendente{unacceptedCount > 1 ? 's' : ''}</span>
+              </button>
+            )}
+
+            {/* 0. Check de Equipes (Início de Turno) */}
+            {onOpenTeamsCheck && (
+              <button
+                onClick={onOpenTeamsCheck}
+                title="Relatório Inicial de Turno (Check das Equipes)"
+                className="inline-flex items-center px-3 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-emerald-700 dark:text-emerald-300 font-bold text-xs rounded-xl border border-emerald-200 dark:border-emerald-800 transition-all cursor-pointer"
+              >
+                <Users className="w-4 h-4 mr-1 text-emerald-600" />
+                <span className="hidden sm:inline">Check de Equipes</span>
               </button>
             )}
 
