@@ -8,13 +8,12 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { equipe, responsavelNome, observacoes, turma, escala } = body;
 
-    if (!equipe || !responsavelNome) {
-      return NextResponse.json({ error: 'Equipe e Nome do Responsável são obrigatórios' }, { status: 400 });
-    }
+    const equipeFinal = equipe || `Automação ${turma || 'A'}`;
+    const respFinal = responsavelNome || 'Operador';
 
     // Deriva a turma da equipe selecionada (ex: 'Automação C' => 'C'),
     // garantindo que turma e equipe nunca fiquem inconsistentes.
-    const turmaDaEquipe = (equipe || '')
+    const turmaDaEquipe = (equipeFinal || '')
       .replace(/Automação\s*/i, '')
       .replace(/& CCO.*/i, '')
       .trim()
@@ -25,8 +24,8 @@ export async function POST(request: Request) {
 
     // 1. Atualizar a memória do servidor para resposta imediata
     const inMemShift = inMemoryStore.startShift({
-      equipe: equipe || 'Automação B',
-      responsavelNome: responsavelNome || 'Operador',
+      equipe: equipeFinal,
+      responsavelNome: respFinal,
       observacoes: observacoes || '',
       turma: turmaFinal,
       escala: escala,
@@ -44,24 +43,6 @@ export async function POST(request: Request) {
           data: {
             status: 'ENCERRADO',
             horaFim: new Date(),
-          },
-        });
-      }
-
-      // Marcar como pendências herdadas apenas as ocorrências abertas DA PRÓPRIA TURMA
-      const openIncidents = await prisma.incident.findMany({
-        where: {
-          turma: turmaInFilter(turmaFinal),
-          status: { in: ['EM_ANDAMENTO', 'AGUARDANDO'] },
-        },
-      });
-
-      for (const incident of openIncidents) {
-        await prisma.incident.update({
-          where: { id: incident.id },
-          data: {
-            isPendenciaHerdada: true,
-            status: 'PENDENCIA_PROXIMO_TURNO',
           },
         });
       }
