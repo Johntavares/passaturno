@@ -29,12 +29,27 @@ export async function POST(request: Request) {
       const turmaTurno = normalizeTurma(turma);
       const turmaWhere = turmaTurno ? { turma: turmaInFilter(turmaTurno) } : {};
 
-      const activeShift = await prisma.shift.findFirst({
+      let activeShift = await prisma.shift.findFirst({
         where: { status: 'ATIVO', ...turmaWhere },
         include: {
           incidents: true,
         },
       });
+
+      if (!activeShift && turmaTurno) {
+        // Fallback: se o body.turma não bate com nenhum turno ativo,
+        // encerra o turno ativo real para não deixar pendências órfãs.
+        const anyActive = await prisma.shift.findFirst({
+          where: { status: 'ATIVO' },
+          include: { incidents: true },
+        });
+        if (anyActive) {
+          activeShift = anyActive;
+          console.warn(
+            `Fechamento: body.turma='${turma}' não bateu; usando turno ativo real da turma ${anyActive.turma}.`
+          );
+        }
+      }
 
       if (activeShift) {
         const shiftTurma = normalizeTurma(activeShift.turma);
@@ -61,7 +76,7 @@ export async function POST(request: Request) {
         const criticalIncidents = openIncidents.filter((i) => i.prioridade === 'CRITICA' || i.prioridade === 'ALTA');
 
         const targetProximaTurma = (proximaTurma || '').toUpperCase().trim() ||
-          (turma === 'A' ? 'B' : turma === 'B' ? 'C' : turma === 'C' ? 'D' : 'A');
+          (shiftTurma === 'A' ? 'B' : shiftTurma === 'B' ? 'C' : shiftTurma === 'C' ? 'D' : 'A');
 
         // Redirecionar todas as pendências em aberto para a próxima turma que assumirá o turno
         for (const incident of openIncidents) {
