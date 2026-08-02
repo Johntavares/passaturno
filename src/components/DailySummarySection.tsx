@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { IncidentType, ShiftType } from '@/types';
 import { FileText, Copy, Check, ChevronDown, ChevronUp, AlertCircle, CheckCircle2, Clock, Calendar, RotateCcw } from 'lucide-react';
 import { format } from 'date-fns';
-import { normalizeTurma } from '@/lib/turma';
+import { normalizeTurma, isIncidentFromToday } from '@/lib/turma';
 
 interface DailySummarySectionProps {
   incidents: IncidentType[];
@@ -46,8 +46,9 @@ export const DailySummarySection: React.FC<DailySummarySectionProps> = ({
       return createdDate === selectedDate || updatedDate === selectedDate || finishedDate === selectedDate;
     }
 
-    // Modo Turno Ativo Atual (Padrão): Exibe 100% dos incidentes ativos da dashboard (Concluídos, Aguardando e Em Andamento)
-    return true;
+    // Modo Turno Ativo Atual (Padrão): Apenas atendimentos de HOJE (ou pendências herdadas ainda em aberto)
+    return isIncidentFromToday(item) ||
+      (item.isPendenciaHerdada && item.status !== 'FINALIZADO' && item.status !== 'RETROAGIDO');
   });
 
   const importanetes = filteredIncidents.filter(
