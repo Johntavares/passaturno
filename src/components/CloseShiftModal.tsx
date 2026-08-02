@@ -92,10 +92,13 @@ export const CloseShiftModal: React.FC<CloseShiftModalProps> = ({
 
   const currentTurma = normalizeTurma(turma) || normalizeTurma(activeShift?.turma) || normalizeTurma(currentUser?.turma) || 'C';
 
-  // Filtrar ocorrências pertencentes ao turno ativo atual da turma logada
+  // Filtrar ocorrências pertencentes ao turno ativo atual da turma logada (incluindo pendências do início de turno)
   const shiftIncidents = (localIncidents || []).filter((item) => {
     const itemTurma = normalizeTurma(item.turma) || 'A';
-    if (itemTurma !== currentTurma) return false;
+    const isUserMatch = currentUser?.nome && item.responsavel && item.responsavel.toLowerCase().includes(currentUser.nome.toLowerCase());
+    const isTurmaMatch = !itemTurma || itemTurma === currentTurma || isUserMatch;
+
+    if (!isTurmaMatch) return false;
 
     if (item.status === 'FINALIZADO' || item.status === 'RETROAGIDO') {
       const itemTimeMs = item.dataHoraLiberacao

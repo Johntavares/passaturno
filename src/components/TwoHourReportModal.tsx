@@ -91,7 +91,10 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
     const nomeOperador = currentUser?.nome || activeShift?.responsavelNome || 'John Tavares';
     const letraTurma = activeShift?.turma || currentUser?.turma || 'A';
 
-    const activeIncidents = (incidents || []).filter(i => i.status === 'EM_ANDAMENTO');
+    // Incluir todas as atividades do turno (Em Andamento, Em Aberto e Pendências do Início do Turno)
+    const activeIncidents = (incidents || []).filter(
+      (i) => i.status !== 'FINALIZADO' && i.status !== 'RETROAGIDO'
+    );
 
     let text = `TURNO: ${tipoTurno}\n`;
     text += `HORÁRIO: ${horarioTurno}\n`;
@@ -121,7 +124,7 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
 
         text += `Equipamento: ${inc.tag}\n`;
         text += `Ocorrência: ${inc.falha.toUpperCase()}\n`;
-        text += `Diagnóstico: ${inc.sintoma || inc.observacao || ''}\n\n`;
+        text += `Diagnóstico: ${inc.sintoma || inc.observacao || ''}\n`;
         text += `Hora da Parada: ${horaParada}\n`;
         text += `Hora de Acionamento: ${horaAcionamento}\n`;
         text += `Previsão de Liberação: ${previsao}\n\n`;
