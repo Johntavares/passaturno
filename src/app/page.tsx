@@ -301,6 +301,10 @@ export default function Home() {
     const nowIso = new Date().toISOString();
     const isFin = targetStatus === 'FINALIZADO' || targetStatus === 'RETROAGIDO';
 
+    const activeTurma = normalizeTurma(activeShift?.turma) || normalizeTurma(currentUser?.turma) || 'A';
+    const isInherited = targetStatus === 'PENDENCIA_PROXIMO_TURNO';
+    const targetTurma = targetStatus === 'PENDENCIA_PROXIMO_TURNO' ? getNextTurma(activeTurma) : undefined;
+
     // 1. Fechar o modal IMEDIATAMENTE (resposta instantânea na UI sem travar o operador)
     setIsEditIncidentOpen(false);
     setSelectedEditIncident(null);
@@ -313,6 +317,8 @@ export default function Home() {
               ...item,
               status: targetStatus,
               solucao: targetSolucao,
+              isPendenciaHerdada: isInherited,
+              turma: targetTurma || item.turma,
               dataHoraLiberacao: isFin ? (item.dataHoraLiberacao || nowIso) : item.dataHoraLiberacao,
               atualizadoEm: nowIso,
             }
@@ -322,13 +328,17 @@ export default function Home() {
 
     // 3. Persistir no servidor em segundo plano
     try {
+      const patchBody: any = {
+        status: targetStatus,
+        solucao: targetSolucao,
+        isPendenciaHerdada: isInherited,
+      };
+      if (targetTurma) patchBody.turma = targetTurma;
+
       await fetch(`/api/atendimentos/${incidentId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          status: targetStatus,
-          solucao: targetSolucao,
-        }),
+        body: JSON.stringify(patchBody),
       });
     } catch (err) {
       console.error('Erro ao salvar alteração de atendimento:', err);
@@ -582,10 +592,9 @@ export default function Home() {
 
             const itemTurma = normalizeTurma(item.turma) || (item.turma || '').toUpperCase().trim();
             const isUnacceptedInherited =
-              (item.isPendenciaHerdada || item.status === 'PENDENCIA_PROXIMO_TURNO') &&
-              item.status !== 'FINALIZADO' &&
-              item.status !== 'RETROAGIDO' &&
-              item.status !== 'EM_ANDAMENTO';
+              item.isPendenciaHerdada &&
+              item.status === 'PENDENCIA_PROXIMO_TURNO' &&
+              itemTurma === currentFilter;
 
             // Garantir que ocorrências criadas pelo operador logado ou ativas para a turma sejam sempre exibidas
             if (currentFilter !== 'TODAS' && currentFilter !== 'GERAL' && currentFilter !== '') {
