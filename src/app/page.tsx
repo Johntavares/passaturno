@@ -27,7 +27,7 @@ import { LeaderMessageNotification } from '@/components/LeaderMessageNotificatio
 import { EditTurmaProfileModal } from '@/components/EditTurmaProfileModal';
 import { SettingsModal } from '@/components/SettingsModal';
 import { TeamsCheckModal } from '@/components/TeamsCheckModal';
-import { normalizeTurma, getNextTurma } from '@/lib/turma';
+import { normalizeTurma, getNextTurma, isSameDayAsToday } from '@/lib/turma';
 
 export default function Home() {
   const [incidents, setIncidents] = useState<IncidentType[]>([]);
@@ -609,21 +609,20 @@ export default function Home() {
             const isConcluido = item.status === 'FINALIZADO' || item.status === 'RETROAGIDO';
 
             // 2. Limpeza da Dashboard do Turno Ativo:
-            // Ocorrências concluídas de turnos anteriores permanecem apenas no Histórico
+            // Ocorrências concluídas HOJE ou durante o turno ativo continuam exibidas para geração do relatório do turno.
+            // Ocorrências de dias/turnos anteriores permanecem acessíveis no Histórico.
             if (isConcluido) {
-              if (!activeShift) return false;
+              const itemDateStr = item.dataHoraLiberacao || item.atualizadoEm || item.criadoEm;
+              const isToday = isSameDayAsToday(itemDateStr);
 
-              const shiftStartTime = activeShift.horaInicio || activeShift.criadoEm;
-              if (shiftStartTime) {
-                const shiftStartMs = new Date(shiftStartTime).getTime();
-                const itemTimeMs = item.dataHoraLiberacao 
-                  ? new Date(item.dataHoraLiberacao).getTime() 
-                  : new Date(item.atualizadoEm || item.criadoEm).getTime();
-
-                // Exibe no painel do turno APENAS o que for concluído APÓS o início do turno ativo atual
-                if (itemTimeMs <= shiftStartMs) return false;
+              if (activeShift?.horaInicio) {
+                const shiftStartMs = new Date(activeShift.horaInicio).getTime();
+                const itemTimeMs = itemDateStr ? new Date(itemDateStr).getTime() : 0;
+                if (!isToday && (shiftStartMs === 0 || itemTimeMs < shiftStartMs)) {
+                  return false;
+                }
               } else {
-                return false;
+                if (!isToday) return false;
               }
             }
 

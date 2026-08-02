@@ -24,3 +24,19 @@ export function getNextTurma(currentTurma?: string | null): string {
 export function turmaInFilter(turma: string): { in: string[] } {
   return { in: [turma, `Turma ${turma}`, `TURMA ${turma}`] };
 }
+
+// Verifica se uma data em ISO ou string refere-se ao dia de HOJE
+export function isSameDayAsToday(dateStr?: string | null): boolean {
+  if (!dateStr) return false;
+  try {
+    const d = new Date(dateStr);
+    const today = new Date();
+    return (
+      d.getDate() === today.getDate() &&
+      d.getMonth() === today.getMonth() &&
+      d.getFullYear() === today.getFullYear()
+    );
+  } catch {
+    return false;
+  }
+}

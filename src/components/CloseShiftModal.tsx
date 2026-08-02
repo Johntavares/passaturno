@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { IncidentType, ShiftType } from '@/types';
 import { X, Lock, AlertTriangle, Copy, Check, FileText, Star, Flame } from 'lucide-react';
 import { format } from 'date-fns';
-import { normalizeTurma } from '@/lib/turma';
+import { normalizeTurma, isSameDayAsToday } from '@/lib/turma';
 
 interface CloseShiftModalProps {
   isOpen: boolean;
@@ -101,7 +101,11 @@ export const CloseShiftModal: React.FC<CloseShiftModalProps> = ({
       const itemTimeMs = item.dataHoraLiberacao
         ? new Date(item.dataHoraLiberacao).getTime()
         : new Date(item.atualizadoEm || item.criadoEm).getTime();
-      return itemTimeMs >= shiftStartMs;
+
+      const itemDateStr = item.dataHoraLiberacao || item.atualizadoEm || item.criadoEm;
+      const isToday = isSameDayAsToday(itemDateStr);
+
+      return isToday || (shiftStartMs > 0 && itemTimeMs >= shiftStartMs);
     }
 
     return true;
