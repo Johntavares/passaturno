@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { inMemoryStore } from '@/lib/inMemoryStore';
-import { normalizeTurma, turmaInFilter } from '@/lib/turma';
+import { normalizeTurma, turmaInFilter, getNextTurma } from '@/lib/turma';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -107,6 +107,10 @@ export async function POST(request: Request) {
         },
       });
 
+      const isPendencia = status === 'PENDENCIA_PROXIMO_TURNO';
+      const activeTurmaClean = turmaNormalizada || (activeShift?.turma ? normalizeTurma(activeShift.turma) : 'A');
+      const finalTurma = isPendencia ? getNextTurma(activeTurmaClean) : activeTurmaClean;
+
       const incident = await prisma.incident.create({
         data: {
           tag: tag.toUpperCase().trim(),
@@ -127,8 +131,8 @@ export async function POST(request: Request) {
           localizacaoAtualOpcional,
           observacao,
           shiftId: activeShift?.id || null,
-          turma: turmaNormalizada || (activeShift?.turma ? normalizeTurma(activeShift.turma) : null),
-          isPendenciaHerdada: false,
+          turma: finalTurma,
+          isPendenciaHerdada: isPendencia,
           historico: {
             create: {
               tipoEvento: 'ABERTURA',

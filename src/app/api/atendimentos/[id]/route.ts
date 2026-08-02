@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { inMemoryStore } from '@/lib/inMemoryStore';
-import { normalizeTurma } from '@/lib/turma';
+import { normalizeTurma, getNextTurma } from '@/lib/turma';
 
 export async function GET(
   request: Request,
@@ -68,7 +68,12 @@ export async function PATCH(
         eventType = 'ALTERACAO_STATUS';
         defaultLogDesc = `Status alterado de ${currentIncident.status} para ${status}.`;
 
-        if (status === 'FINALIZADO') {
+        if (status === 'PENDENCIA_PROXIMO_TURNO') {
+          updateData.isPendenciaHerdada = true;
+          if (!body.turma) {
+            updateData.turma = getNextTurma(currentIncident.turma);
+          }
+        } else if (status === 'FINALIZADO') {
           updateData.dataHoraLiberacao = new Date();
           eventType = 'LIBERACAO';
           defaultLogDesc = `Equipamento liberado por ${logUsuario || responsavel || currentIncident.responsavel}.`;

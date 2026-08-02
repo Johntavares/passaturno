@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { IncidentType, EquipmentType, ShiftType, IncidentStatusType, PriorityLevel, IncidentHistoryType } from '@/types';
-import { HeaderNav, UserSession } from '@/components/HeaderNav';
+import { HeaderNav, UserSession, ThemeMode } from '@/components/HeaderNav';
 import { DashboardStats } from '@/components/DashboardStats';
 import { DailySummarySection } from '@/components/DailySummarySection';
 import { CriticalPriorities } from '@/components/CriticalPriorities';
@@ -27,12 +27,14 @@ import { LeaderMessageNotification } from '@/components/LeaderMessageNotificatio
 import { EditTurmaProfileModal } from '@/components/EditTurmaProfileModal';
 import { SettingsModal } from '@/components/SettingsModal';
 import { TeamsCheckModal } from '@/components/TeamsCheckModal';
-import { normalizeTurma } from '@/lib/turma';
+import { normalizeTurma, getNextTurma } from '@/lib/turma';
 
 export default function Home() {
   const [incidents, setIncidents] = useState<IncidentType[]>([]);
   const [equipments, setEquipments] = useState<EquipmentType[]>([]);
   const [activeShift, setActiveShift] = useState<ShiftType | null>(null);
+  const [currentUser, setCurrentUser] = useState<UserSession | null>(null);
+  const [theme, setTheme] = useState<'light' | 'dark' | 'mina'>('light');
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -68,33 +70,24 @@ export default function Home() {
   const [editSolucao, setEditSolucao] = useState('');
   const [editStatus, setEditStatus] = useState<IncidentStatusType>('EM_ANDAMENTO');
 
-  type ThemeMode = 'light' | 'dark' | 'mina';
-  const [theme, setTheme] = useState<ThemeMode>('light');
-  const [currentUser, setCurrentUser] = useState<UserSession | null>(null);
-
-  // Cache localStorage para fallback offline (fonte da verdade é o servidor),
-  // separado POR TURMA para nunca vazar dados entre turmas.
-  const saveLocalCache = (data: IncidentType[], turmaKey: string) => {
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem(`passaturno-incidents-v3-${turmaKey}`, JSON.stringify(data));
-      } catch (e) {
-        console.error('Erro ao persistir cache:', e);
-      }
+  const saveLocalCache = (incData: IncidentType[], turmaKey?: string) => {
+    if (typeof window === 'undefined') return;
+    try {
+      const cacheKey = `passaturno-cache-incidents-${turmaKey || 'GLOBAL'}`;
+      localStorage.setItem(cacheKey, JSON.stringify(incData));
+    } catch (e) {
+      console.error('Erro ao salvar cache local:', e);
     }
   };
 
-  const loadLocalCache = (turmaKey: string): IncidentType[] => {
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem(`passaturno-incidents-v3-${turmaKey}`);
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed)) return parsed;
-        }
-      } catch (e) {
-        console.error('Erro ao ler cache:', e);
-      }
+  const loadLocalCache = (turmaKey?: string): IncidentType[] => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const cacheKey = `passaturno-cache-incidents-${turmaKey || 'GLOBAL'}`;
+      const saved = localStorage.getItem(cacheKey);
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.error('Erro ao ler cache local:', e);
     }
     return [];
   };
@@ -175,8 +168,13 @@ export default function Home() {
     const nowIso = new Date().toISOString();
     const isFin = newStatus === 'FINALIZADO' || newStatus === 'RETROAGIDO';
     const isInherited = newStatus === 'PENDENCIA_PROXIMO_TURNO';
-    const activeTurma = activeShift?.turma || currentUser?.turma;
+    const activeTurma = normalizeTurma(activeShift?.turma) || normalizeTurma(currentUser?.turma) || 'A';
     const activeResp = activeShift?.responsavelNome || currentUser?.nome;
+
+    // Quando envia para a fila do próximo turno, direciona a turma do item para a PRÓXIMA turma (ex: C -> D)
+    const targetTurma = newStatus === 'PENDENCIA_PROXIMO_TURNO'
+      ? getNextTurma(activeTurma)
+      : (newStatus === 'EM_ANDAMENTO' ? activeTurma : undefined);
 
     updateIncidentsState((prev) =>
       prev.map((item) =>
@@ -185,7 +183,7 @@ export default function Home() {
               ...item,
               status: newStatus,
               isPendenciaHerdada: isInherited,
-              turma: activeTurma && newStatus === 'EM_ANDAMENTO' ? activeTurma : item.turma,
+              turma: targetTurma || item.turma,
               responsavel: activeResp && newStatus === 'EM_ANDAMENTO' ? activeResp : item.responsavel,
               dataHoraLiberacao: isFin ? (item.dataHoraLiberacao || nowIso) : item.dataHoraLiberacao,
               atualizadoEm: nowIso,
@@ -199,7 +197,7 @@ export default function Home() {
         status: newStatus,
         isPendenciaHerdada: isInherited,
       };
-      if (activeTurma && newStatus === 'EM_ANDAMENTO') patchData.turma = activeTurma;
+      if (targetTurma) patchData.turma = targetTurma;
       if (activeResp && newStatus === 'EM_ANDAMENTO') patchData.responsavel = activeResp;
 
       const res = await fetch(`/api/atendimentos/${id}`, {
