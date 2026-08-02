@@ -37,6 +37,8 @@ export const DailySummarySection: React.FC<DailySummarySectionProps> = ({
 
   // Filtragem: Se data for selecionada, consulta histórico por data (YYYY-MM-DD); caso contrário, usa a lista ativa do turno
   const filteredIncidents = incidents.filter((item) => {
+    if (item.tag && item.tag.toUpperCase().trim() === 'TT92') return false;
+
     if (selectedDate) {
       // Modo Consulta Histórica por Data Específica
       const createdDate = item.criadoEm ? item.criadoEm.split('T')[0] : '';
