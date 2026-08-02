@@ -25,44 +25,50 @@ export function turmaInFilter(turma: string): { in: string[] } {
   return { in: [turma, `Turma ${turma}`, `TURMA ${turma}`] };
 }
 
-// Verifica se uma data em ISO ou string refere-se ao dia de HOJE (suporta fuso horário, ISO e formatos br)
+// Retorna a data de hoje no formato YYYY-MM-DD no fuso horário do Brasil (America/Sao_Paulo)
+export function getTodayYMDInBR(): string {
+  const options: Intl.DateTimeFormatOptions = {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  };
+  return new Intl.DateTimeFormat('en-CA', options).format(new Date());
+}
+
+// Verifica se uma data em ISO ou string refere-se ao dia de HOJE no fuso do Brasil (America/Sao_Paulo)
 export function isSameDayAsToday(dateStr?: string | Date | null): boolean {
   if (!dateStr) return false;
   try {
-    const today = new Date();
-    const tYear = today.getFullYear();
-    const tMonth = today.getMonth();
-    const tDate = today.getDate();
-
-    // Verificação por padrão de texto (ISO YYYY-MM-DD ou BR DD/MM/YYYY)
+    let d: Date;
     if (typeof dateStr === 'string') {
-      const yyyy = String(tYear);
-      const mm = String(tMonth + 1).padStart(2, '0');
-      const dd = String(tDate).padStart(2, '0');
-
-      const isoToday = `${yyyy}-${mm}-${dd}`;
-      if (dateStr.includes(isoToday)) return true;
-
-      const brToday = `${dd}/${mm}/${yyyy}`;
-      if (dateStr.includes(brToday)) return true;
+      // Se for formato ISO simples YYYY-MM-DD...
+      if (/^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
+        const itemYMD = dateStr.slice(0, 10);
+        // Se a string contiver fuso ou Z, convertemos com timezone; caso contrário podemos comparar os 10 caracteres
+        if (!dateStr.includes('Z') && !dateStr.includes('+') && !dateStr.includes('-')) {
+          return itemYMD === getTodayYMDInBR();
+        }
+      }
+      d = new Date(dateStr);
+    } else {
+      d = dateStr;
     }
 
-    const d = new Date(dateStr);
     if (isNaN(d.getTime())) return false;
 
-    // Comparação em fuso local
-    if (d.getFullYear() === tYear && d.getMonth() === tMonth && d.getDate() === tDate) {
-      return true;
-    }
+    const options: Intl.DateTimeFormatOptions = {
+      timeZone: 'America/Sao_Paulo',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    };
 
-    // Comparação em UTC (para datas ISO terminadas em Z)
-    if (d.getUTCFullYear() === today.getUTCFullYear() &&
-        d.getUTCMonth() === today.getUTCMonth() &&
-        d.getUTCDate() === today.getUTCDate()) {
-      return true;
-    }
+    const formatter = new Intl.DateTimeFormat('en-CA', options); // Produz 'YYYY-MM-DD'
+    const itemYMD = formatter.format(d);
+    const todayYMD = formatter.format(new Date());
 
-    return false;
+    return itemYMD === todayYMD;
   } catch {
     return false;
   }
