@@ -25,18 +25,66 @@ export function turmaInFilter(turma: string): { in: string[] } {
   return { in: [turma, `Turma ${turma}`, `TURMA ${turma}`] };
 }
 
-// Verifica se uma data em ISO ou string refere-se ao dia de HOJE
-export function isSameDayAsToday(dateStr?: string | null): boolean {
+// Verifica se uma data em ISO ou string refere-se ao dia de HOJE (suporta fuso horário, ISO e formatos br)
+export function isSameDayAsToday(dateStr?: string | Date | null): boolean {
   if (!dateStr) return false;
   try {
-    const d = new Date(dateStr);
     const today = new Date();
-    return (
-      d.getDate() === today.getDate() &&
-      d.getMonth() === today.getMonth() &&
-      d.getFullYear() === today.getFullYear()
-    );
+    const tYear = today.getFullYear();
+    const tMonth = today.getMonth();
+    const tDate = today.getDate();
+
+    // Verificação por padrão de texto (ISO YYYY-MM-DD ou BR DD/MM/YYYY)
+    if (typeof dateStr === 'string') {
+      const yyyy = String(tYear);
+      const mm = String(tMonth + 1).padStart(2, '0');
+      const dd = String(tDate).padStart(2, '0');
+
+      const isoToday = `${yyyy}-${mm}-${dd}`;
+      if (dateStr.includes(isoToday)) return true;
+
+      const brToday = `${dd}/${mm}/${yyyy}`;
+      if (dateStr.includes(brToday)) return true;
+    }
+
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return false;
+
+    // Comparação em fuso local
+    if (d.getFullYear() === tYear && d.getMonth() === tMonth && d.getDate() === tDate) {
+      return true;
+    }
+
+    // Comparação em UTC (para datas ISO terminadas em Z)
+    if (d.getUTCFullYear() === today.getUTCFullYear() &&
+        d.getUTCMonth() === today.getUTCMonth() &&
+        d.getUTCDate() === today.getUTCDate()) {
+      return true;
+    }
+
+    return false;
   } catch {
     return false;
   }
+}
+
+// Verifica se qualquer um dos campos de data de um atendimento pertence ao dia de HOJE
+export function isIncidentFromToday(item: any): boolean {
+  if (!item) return false;
+
+  const dateFields = [
+    item.dataHoraParada,
+    item.criadoEm,
+    item.atualizadoEm,
+    item.dataHoraLiberacao,
+    item.dataHoraAcionamento,
+  ];
+
+  for (const dateVal of dateFields) {
+    if (dateVal && isSameDayAsToday(dateVal)) {
+      return true;
+    }
+  }
+
+  return false;
 }

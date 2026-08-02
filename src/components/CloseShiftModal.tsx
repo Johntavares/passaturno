@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { IncidentType, ShiftType } from '@/types';
 import { X, Lock, AlertTriangle, Copy, Check, FileText, Star, Flame } from 'lucide-react';
 import { format } from 'date-fns';
-import { normalizeTurma, isSameDayAsToday } from '@/lib/turma';
+import { normalizeTurma, isSameDayAsToday, isIncidentFromToday } from '@/lib/turma';
 
 interface CloseShiftModalProps {
   isOpen: boolean;
@@ -92,8 +92,8 @@ export const CloseShiftModal: React.FC<CloseShiftModalProps> = ({
 
   const currentTurma = normalizeTurma(turma) || normalizeTurma(activeShift?.turma) || normalizeTurma(currentUser?.turma) || 'C';
 
-  // Considerar 100% das ocorrências ativas da dashboard do turno atual
-  const shiftIncidents = localIncidents || [];
+  // Considerar estritamente apenas ocorrências da data de HOJE (ou pendências herdadas)
+  const shiftIncidents = (localIncidents || []).filter((item) => isIncidentFromToday(item) || item.isPendenciaHerdada);
 
   const pendentesLista = shiftIncidents.filter((i) => i.status !== 'FINALIZADO' && i.status !== 'RETROAGIDO');
   const importanetes = shiftIncidents.filter(

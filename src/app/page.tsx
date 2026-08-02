@@ -27,7 +27,7 @@ import { LeaderMessageNotification } from '@/components/LeaderMessageNotificatio
 import { EditTurmaProfileModal } from '@/components/EditTurmaProfileModal';
 import { SettingsModal } from '@/components/SettingsModal';
 import { TeamsCheckModal } from '@/components/TeamsCheckModal';
-import { normalizeTurma, getNextTurma, isSameDayAsToday } from '@/lib/turma';
+import { normalizeTurma, getNextTurma, isSameDayAsToday, isIncidentFromToday } from '@/lib/turma';
 
 export default function Home() {
   const [incidents, setIncidents] = useState<IncidentType[]>([]);
@@ -599,15 +599,8 @@ export default function Home() {
               item.status === 'PENDENCIA_PROXIMO_TURNO' &&
               (itemTurma === currentFilter || !currentFilter || currentFilter === 'TODAS');
 
-            // 1. FILTRO RIGOROSO DE DIA: Apenas ocorrências criadas, atualizadas ou concluídas HOJE (ou pendências herdadas)
-            const createdDateStr = item.criadoEm;
-            const updatedDateStr = item.atualizadoEm || createdDateStr;
-            const finishedDateStr = item.dataHoraLiberacao || updatedDateStr;
-
-            const isTodayIncident =
-              isSameDayAsToday(createdDateStr) ||
-              isSameDayAsToday(updatedDateStr) ||
-              isSameDayAsToday(finishedDateStr);
+            // 1. FILTRO RIGOROSO DE HOJE: Apenas ocorrências com qualquer data pertencente ao dia de HOJE
+            const isTodayIncident = isIncidentFromToday(item);
 
             // Descartar tudo que for de dias anteriores (fica disponível apenas no Histórico)
             if (!isTodayIncident && !isUnacceptedInherited) {
