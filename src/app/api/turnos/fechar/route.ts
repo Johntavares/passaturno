@@ -66,10 +66,24 @@ export async function POST(request: Request) {
           },
         });
 
+        // Buscar todas as pendências ativas do turno atual e pendências não aceitas da passagem de turno
         const openIncidents = await prisma.incident.findMany({
           where: {
-            status: { in: ['EM_ANDAMENTO', 'AGUARDANDO', 'PENDENCIA_PROXIMO_TURNO'] },
-            ...shiftTurmaWhere,
+            OR: [
+              {
+                status: { in: ['EM_ANDAMENTO', 'AGUARDANDO'] },
+                ...shiftTurmaWhere,
+              },
+              {
+                status: 'PENDENCIA_PROXIMO_TURNO',
+                ...shiftTurmaWhere,
+              },
+              {
+                isPendenciaHerdada: true,
+                status: { notIn: ['FINALIZADO', 'RETROAGIDO', 'EM_ANDAMENTO'] },
+                ...shiftTurmaWhere,
+              },
+            ],
           },
         });
 
@@ -78,7 +92,7 @@ export async function POST(request: Request) {
         const targetProximaTurma = (proximaTurma || '').toUpperCase().trim() ||
           (shiftTurma === 'A' ? 'B' : shiftTurma === 'B' ? 'C' : shiftTurma === 'C' ? 'D' : 'A');
 
-        // Redirecionar todas as pendências em aberto para a próxima turma que assumirá o turno
+        // Redirecionar em cascata todas as pendências não aceitas para a próxima turma que assumirá o turno
         for (const incident of openIncidents) {
           await prisma.incident.update({
             where: { id: incident.id },

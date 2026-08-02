@@ -422,10 +422,18 @@ export default function Home() {
     }
   };
 
-  // Contagem de itens herdados da turma anterior pendentes de aceite pelo NOVO operador.
-  // Itens que o operador ATUAL enviou para o próximo turno (isPendenciaHerdada = false) NÃO contam.
+  // Contagem de itens herdados pendentes de aceite DIRECIONADOS PARA A TURMA DO OPERADOR LOGADO/ATIVO.
+  // Itens que o operador ATUAL enviou para outra turma (ex: Turma D) NÃO aparecem como alerta para ele.
+  const userTargetTurma = normalizeTurma(currentUser?.turma) || normalizeTurma(activeShift?.turma) || normalizeTurma(selectedTurmaFilter);
+
   const unacceptedCount = incidents.filter((i) => {
+    const itemTurmaClean = normalizeTurma(i.turma);
+    const matchesTurma = userTargetTurma && userTargetTurma !== 'GERAL'
+      ? itemTurmaClean === userTargetTurma
+      : true;
+
     return i.isPendenciaHerdada
+      && matchesTurma
       && i.status !== 'FINALIZADO'
       && i.status !== 'RETROAGIDO'
       && i.status !== 'EM_ANDAMENTO';
@@ -626,6 +634,7 @@ export default function Home() {
             {/* 2. Prioridades Críticas / Notificação da Passagem de Turno */}
             <CriticalPriorities
               incidents={displayedIncidents}
+              currentTurma={userTargetTurma || selectedTurmaFilter}
               onOpenWhatsapp={(inc) => {
                 setSelectedWhatsappIncident(inc);
                 setIsWhatsappOpen(true);

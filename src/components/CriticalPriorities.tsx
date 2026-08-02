@@ -16,11 +16,14 @@ import {
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
+import { normalizeTurma } from '@/lib/turma';
+
 interface CriticalPrioritiesProps {
   incidents: IncidentType[];
   onOpenWhatsapp: (incident: IncidentType) => void;
   onOpenTimeline: (incident: IncidentType) => void;
   onAcceptPriority: (incident: IncidentType) => void;
+  currentTurma?: string;
 }
 
 export const CriticalPriorities: React.FC<CriticalPrioritiesProps> = ({
@@ -28,6 +31,7 @@ export const CriticalPriorities: React.FC<CriticalPrioritiesProps> = ({
   onOpenWhatsapp,
   onOpenTimeline,
   onAcceptPriority,
+  currentTurma,
 }) => {
   const [dismissedIds, setDismissedIds] = useState<string[]>([]);
 
@@ -72,11 +76,18 @@ export const CriticalPriorities: React.FC<CriticalPrioritiesProps> = ({
     }
   };
 
-  // Apenas itens herdados da turma anterior (isPendenciaHerdada = true).
-  // Itens que o operador ATUAL marcou como PENDENCIA_PROXIMO_TURNO NÃO devem alarmar para ele,
-  // apenas para o PRÓXIMO turno que assumir (quando isPendenciaHerdada ficará true).
+  // Apenas itens herdados direcionados para a turma atual (isPendenciaHerdada = true).
+  // Se o operador da Turma C enviou para a Turma D, o alerta DEVE APARECER APENAS para a Turma D.
+  const targetTurmaClean = normalizeTurma(currentTurma);
+
   const allUnacceptedItems = incidents.filter((i) => {
+    const itemTurmaClean = normalizeTurma(i.turma);
+    const matchesTurma = targetTurmaClean && targetTurmaClean !== 'GERAL' 
+      ? itemTurmaClean === targetTurmaClean 
+      : true;
+
     return i.isPendenciaHerdada
+      && matchesTurma
       && i.status !== 'FINALIZADO'
       && i.status !== 'RETROAGIDO'
       && i.status !== 'EM_ANDAMENTO';
