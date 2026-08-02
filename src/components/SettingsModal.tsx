@@ -17,10 +17,22 @@ import {
   Activity, 
   RefreshCw,
   ShieldCheck,
-  Check
+  Check,
+  Tags,
+  Plus,
+  Trash2,
+  Edit2,
+  RotateCcw
 } from 'lucide-react';
 import { ShiftType } from '@/types';
 import { ThemeMode, UserSession } from './HeaderNav';
+import { 
+  getFailureCategories, 
+  addFailureCategory, 
+  removeFailureCategory, 
+  updateFailureCategory, 
+  resetFailureCategories 
+} from '@/lib/categories';
 
 
 interface SettingsModalProps {
@@ -56,7 +68,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onRefreshData,
   onProfileUpdated,
 }) => {
-  const [activeTab, setActiveTab] = useState<'profile' | 'fleet' | 'reports' | 'theme'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'categories' | 'fleet' | 'reports' | 'theme'>('profile');
 
   // Form states for profile editing
   const [nome, setNome] = useState(currentUser?.nome || '');
@@ -66,6 +78,49 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [escala, setEscala] = useState((currentUser as any)?.escala || '3x3');
   const [diaEscala, setDiaEscala] = useState((currentUser as any)?.diaEscala || '1º Dia');
   const [savedMsg, setSavedMsg] = useState('');
+
+  // Categories management state
+  const [categoriesList, setCategoriesList] = useState<string[]>([]);
+  const [newCatInput, setNewCatInput] = useState('');
+  const [editingCatIndex, setEditingCatIndex] = useState<number | null>(null);
+  const [editingCatValue, setEditingCatValue] = useState('');
+
+  React.useEffect(() => {
+    if (isOpen) {
+      setCategoriesList(getFailureCategories());
+    }
+  }, [isOpen]);
+
+  const handleAddCategory = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCatInput.trim()) return;
+    const updated = addFailureCategory(newCatInput);
+    setCategoriesList(updated);
+    setNewCatInput('');
+  };
+
+  const handleRemoveCategory = (catName: string) => {
+    const updated = removeFailureCategory(catName);
+    setCategoriesList(updated);
+  };
+
+  const handleStartEditCategory = (index: number, catName: string) => {
+    setEditingCatIndex(index);
+    setEditingCatValue(catName);
+  };
+
+  const handleSaveEditCategory = (oldName: string) => {
+    if (!editingCatValue.trim()) return;
+    const updated = updateFailureCategory(oldName, editingCatValue);
+    setCategoriesList(updated);
+    setEditingCatIndex(null);
+    setEditingCatValue('');
+  };
+
+  const handleResetCategories = () => {
+    const updated = resetFailureCategories();
+    setCategoriesList(updated);
+  };
 
   React.useEffect(() => {
     if (currentUser) {
@@ -151,10 +206,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         {/* Abas de Navegação das Configurações */}
         <div className="flex items-center gap-1 px-6 pt-3 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-x-auto">
           {[
-            { id: 'profile', label: 'Perfil do Turno', icon: User },
-            { id: 'fleet',   label: 'Frota & Equipamentos', icon: Truck },
-            { id: 'reports', label: 'Relatórios & Ferramentas', icon: Clock },
-            { id: 'theme',   label: 'Aparência', icon: Sun },
+            { id: 'profile',    label: 'Perfil do Turno', icon: User },
+            { id: 'categories', label: 'Categorias de Falhas', icon: Tags },
+            { id: 'fleet',      label: 'Frota & Equipamentos', icon: Truck },
+            { id: 'reports',    label: 'Relatórios & Ferramentas', icon: Clock },
+            { id: 'theme',      label: 'Aparência', icon: Sun },
           ].map(({ id, label, icon: Icon }) => (
             <button
               key={id}
@@ -349,7 +405,115 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
           )}
 
-          {/* TAB 2: FROTA & EQUIPAMENTOS */}
+          {/* TAB CATEGORIAS DE FALHAS */}
+          {activeTab === 'categories' && (
+            <div className="space-y-4">
+              <div className="p-4 bg-emerald-50/60 dark:bg-emerald-950/40 rounded-2xl border border-emerald-200 dark:border-emerald-800 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-emerald-500 text-white rounded-xl shadow-xs">
+                    <Tags className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-bold text-slate-800 dark:text-white">Gerenciar Categorias de Falhas</h3>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">Adicione, edite ou remova tipos de falhas disponíveis nas ocorrências.</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleResetCategories}
+                  className="px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-slate-900 text-[11px] font-bold rounded-xl flex items-center gap-1.5 transition-all cursor-pointer"
+                  title="Restaurar lista padrão"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>Restaurar Padrão</span>
+                </button>
+              </div>
+
+              {/* Form Adicionar Categoria */}
+              <form onSubmit={handleAddCategory} className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Nova Categoria (ex: Telemetria GPS, Display IHM, Bateria...)"
+                  value={newCatInput}
+                  onChange={(e) => setNewCatInput(e.target.value)}
+                  className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs font-bold text-slate-800 dark:text-white focus:outline-none focus:border-emerald-500"
+                />
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Adicionar</span>
+                </button>
+              </form>
+
+              {/* Lista de Categorias com Edição e Remoção */}
+              <div className="space-y-2 mt-2">
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Categorias Ativas ({categoriesList.length}):</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {categoriesList.map((cat, idx) => {
+                    const isEditing = editingCatIndex === idx;
+                    return (
+                      <div
+                        key={idx}
+                        className="p-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl flex items-center justify-between gap-2 shadow-2xs"
+                      >
+                        {isEditing ? (
+                          <div className="flex items-center gap-1.5 w-full">
+                            <input
+                              type="text"
+                              value={editingCatValue}
+                              onChange={(e) => setEditingCatValue(e.target.value)}
+                              className="flex-1 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1 text-xs font-bold text-slate-900 dark:text-white focus:outline-none"
+                              autoFocus
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleSaveEditCategory(cat)}
+                              className="p-1 bg-emerald-600 text-white rounded-lg text-xs hover:bg-emerald-500 cursor-pointer"
+                            >
+                              <Check className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditingCatIndex(null)}
+                              className="p-1 bg-slate-200 dark:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-xs cursor-pointer"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ) : (
+                          <>
+                            <span className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
+                              🏷️ {cat}
+                            </span>
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => handleStartEditCategory(idx, cat)}
+                                className="p-1 text-slate-400 hover:text-sky-600 dark:hover:text-sky-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
+                                title="Editar categoria"
+                              >
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveCategory(cat)}
+                                className="p-1 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
+                                title="Excluir categoria"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
           {activeTab === 'fleet' && (
             <div className="space-y-4">
               <div className="p-4 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700 flex items-center justify-between">

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { EquipmentType, PriorityLevel, IncidentStatusType } from '@/types';
 import { X, Plus, AlertTriangle, Check, Truck, Save } from 'lucide-react';
+import { getFailureCategories } from '@/lib/categories';
 
 interface NewIncidentModalProps {
   isOpen: boolean;
@@ -24,6 +25,22 @@ export const NewIncidentModal: React.FC<NewIncidentModalProps> = ({
   const [tipoEquipamento, setTipoEquipamento] = useState('Caminhão Fora de Estrada');
   const [area, setArea] = useState('Frota Mina');
   const [saveNewToFleet, setSaveNewToFleet] = useState(true);
+
+  const [categoriesList, setCategoriesList] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (isOpen) {
+      setCategoriesList(getFailureCategories());
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    const handleCategoriesChanged = () => {
+      setCategoriesList(getFailureCategories());
+    };
+    window.addEventListener('categories-updated', handleCategoriesChanged);
+    return () => window.removeEventListener('categories-updated', handleCategoriesChanged);
+  }, []);
 
   const getNowLocalDatetimeString = () => {
     const d = new Date();
@@ -285,16 +302,9 @@ export const NewIncidentModal: React.FC<NewIncidentModalProps> = ({
                 className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-800 font-medium focus:outline-none focus:border-sky-500 shadow-2xs"
               />
               <datalist id="failure-types-list">
-                <option value="Comunicação" />
-                <option value="Rádio / Antena" />
-                <option value="GPS / Posicionamento" />
-                <option value="PLC / Módulo de Controle" />
-                <option value="Inversor / Drive" />
-                <option value="Instrumentação / Sensor" />
-                <option value="Rede Industrial / Fibra" />
-                <option value="Supervisório / CCO" />
-                <option value="Alarme Falso / Calibração" />
-                <option value="Elétrica / Alimentação" />
+                {categoriesList.map((cat, i) => (
+                  <option key={i} value={cat} />
+                ))}
               </datalist>
             </div>
 
