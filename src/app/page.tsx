@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { IncidentType, EquipmentType, ShiftType, IncidentStatusType, PriorityLevel, IncidentHistoryType } from '@/types';
 import { HeaderNav, UserSession, ThemeMode } from '@/components/HeaderNav';
 import { DashboardStats } from '@/components/DashboardStats';
@@ -52,6 +52,12 @@ export default function Home() {
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [selectedTurmaFilter, setSelectedTurmaFilter] = useState<string>('TODAS');
+
+  // Refs para evitar recriação do loadData a cada mudança de estado (previne loop infinito)
+  const currentUserRef = useRef(currentUser);
+  currentUserRef.current = currentUser;
+  const selectedTurmaFilterRef = useRef(selectedTurmaFilter);
+  selectedTurmaFilterRef.current = selectedTurmaFilter;
 
   const [selectedTimelineIncident, setSelectedTimelineIncident] = useState<IncidentType | null>(null);
   const [isTimelineOpen, setIsTimelineOpen] = useState(false);
@@ -131,7 +137,7 @@ export default function Home() {
       } catch (e) {}
     }
 
-    const userTurmaClean = normalizeTurma(turmaOverride) || normalizeTurma(currentUser?.turma) || normalizeTurma(savedUserTurma) || normalizeTurma(selectedTurmaFilter);
+    const userTurmaClean = normalizeTurma(turmaOverride) || normalizeTurma(currentUserRef.current?.turma) || normalizeTurma(savedUserTurma) || normalizeTurma(selectedTurmaFilterRef.current);
     const shiftApiUrl = userTurmaClean ? `/api/turnos/ativo?turma=${encodeURIComponent(userTurmaClean)}` : '/api/turnos/ativo';
 
     try {
@@ -181,18 +187,15 @@ export default function Home() {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [currentUser, selectedTurmaFilter]);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Alterar status diretamente no Kanban
   const handleStatusChange = async (id: string, newStatus: IncidentStatusType) => {
     const nowIso = new Date().toISOString();
     const isFin = newStatus === 'FINALIZADO' || newStatus === 'RETROAGIDO';
     const isInherited = newStatus === 'PENDENCIA_PROXIMO_TURNO';
-    const activeTurma = normalizeTurma(activeShift?.turma) || normalizeTurma(currentUser?.turma) || 'A';
+    const activeTurma = normalizeTurma(currentUser?.turma) || normalizeTurma(activeShift?.turma) || normalizeTurma(selectedTurmaFilter) || 'A';
     const activeResp = activeShift?.responsavelNome || currentUser?.nome;
 
     // Quando envia para a fila do próximo turno, direciona para a PRÓXIMA turma (ex: C -> D)
@@ -326,7 +329,7 @@ export default function Home() {
     const nowIso = new Date().toISOString();
     const isFin = targetStatus === 'FINALIZADO' || targetStatus === 'RETROAGIDO';
 
-    const activeTurma = normalizeTurma(activeShift?.turma) || normalizeTurma(currentUser?.turma) || 'A';
+    const activeTurma = normalizeTurma(currentUser?.turma) || normalizeTurma(activeShift?.turma) || normalizeTurma(selectedTurmaFilter) || 'A';
     const isInherited = targetStatus === 'PENDENCIA_PROXIMO_TURNO';
     const targetTurma = targetStatus === 'PENDENCIA_PROXIMO_TURNO'
       ? getNextTurma(activeTurma)
@@ -494,7 +497,7 @@ export default function Home() {
     }
   };
 
-  // Carregar usuário salvo no localStorage
+  // Carregar usuário salvo no localStorage (roda apenas UMA vez na montagem)
   useEffect(() => {
     const savedUserStr = localStorage.getItem('passaturno-user');
     if (savedUserStr) {
@@ -518,7 +521,8 @@ export default function Home() {
       applyTheme(guestTheme);
     }
     loadData();
-  }, [loadData]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Ao trocar de operador ou realizar login, carregar as preferências individuais daquele operador
   const handleLoginSuccess = (user: UserSession) => {
@@ -640,10 +644,13 @@ export default function Home() {
             if (currentFilter !== 'TODAS' && currentFilter !== 'GERAL' && currentFilter !== '') {
               const isUserIncident = currentUser?.nome && item.responsavel && item.responsavel.toLowerCase().includes(currentUser.nome.toLowerCase());
               const hasNoTurma = !itemTurma;
-              const isCompletedForTurma = isFin && (itemTurma === currentFilter || hasNoTurma || isUserIncident);
 
-              if (itemTurma !== currentFilter && !hasNoTurma && !isUnacceptedInherited && !isUserIncident && !isCompletedForTurma) {
-                return false;
+              // Atendimentos em andamento de outras turmas são filtrados,
+              // mas pendências herdadas, atendimentos do próprio usuário e finalizados permanecem acessíveis
+              if (itemTurma !== currentFilter && !hasNoTurma && !isUnacceptedInherited && !isUserIncident) {
+                if (!isFin) {
+                  return false;
+                }
               }
             }
 
@@ -724,7 +731,7 @@ export default function Home() {
         isOpen={isNewIncidentOpen}
         onClose={() => setIsNewIncidentOpen(false)}
         equipments={equipments}
-        turma={currentUser?.turma || activeShift?.turma || 'A'}
+        turma={normalizeTurma(currentUser?.turma) || normalizeTurma(activeShift?.turma) || (selectedTurmaFilter !== 'TODAS' ? normalizeTurma(selectedTurmaFilter) : 'A')}
         onIncidentCreated={loadData}
       />
 

@@ -37,54 +37,48 @@ export function getTodayYMDInBR(): string {
 }
 
 // Verifica se uma data em ISO ou string refere-se ao dia de HOJE no fuso do Brasil (America/Sao_Paulo)
-export function isSameDayAsToday(dateStr?: string | Date | null): boolean {
-  if (!dateStr) return false;
+export function isSameDayAsToday(dateVal?: string | Date | null): boolean {
+  if (!dateVal) return false;
   try {
     const todayYMD = getTodayYMDInBR();
+    let d: Date;
 
-    if (typeof dateStr === 'string') {
-      const trimmed = dateStr.trim();
-      // Comparação direta de prefixo YYYY-MM-DD
-      if (trimmed.length >= 10 && /^\d{4}-\d{2}-\d{2}/.test(trimmed)) {
-        if (trimmed.slice(0, 10) === todayYMD) {
-          return true;
-        }
+    if (dateVal instanceof Date) {
+      d = dateVal;
+    } else if (typeof dateVal === 'string') {
+      const trimmed = dateVal.trim();
+      if (!trimmed) return false;
+
+      // Se for formato simples YYYY-MM-DD sem horário
+      if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+        return trimmed === todayYMD;
       }
 
-      // Comparação por DD/MM/YYYY
+      // Se contiver data em formato DD/MM/YYYY
       const todayDate = new Date();
       const dd = String(todayDate.getDate()).padStart(2, '0');
       const mm = String(todayDate.getMonth() + 1).padStart(2, '0');
       const yyyy = String(todayDate.getFullYear());
       const brToday = `${dd}/${mm}/${yyyy}`;
-
       if (trimmed.includes(brToday)) {
         return true;
       }
 
-      const d = new Date(trimmed);
-      if (!isNaN(d.getTime())) {
-        const options: Intl.DateTimeFormatOptions = {
-          timeZone: 'America/Sao_Paulo',
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit',
-        };
-        const itemYMD = new Intl.DateTimeFormat('en-CA', options).format(d);
-        return itemYMD === todayYMD;
-      }
-    } else if (dateStr instanceof Date && !isNaN(dateStr.getTime())) {
-      const options: Intl.DateTimeFormatOptions = {
-        timeZone: 'America/Sao_Paulo',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-      };
-      const itemYMD = new Intl.DateTimeFormat('en-CA', options).format(dateStr);
-      return itemYMD === todayYMD;
+      d = new Date(trimmed);
+    } else {
+      return false;
     }
 
-    return false;
+    if (isNaN(d.getTime())) return false;
+
+    const options: Intl.DateTimeFormatOptions = {
+      timeZone: 'America/Sao_Paulo',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    };
+    const itemYMD = new Intl.DateTimeFormat('en-CA', options).format(d);
+    return itemYMD === todayYMD;
   } catch {
     return false;
   }

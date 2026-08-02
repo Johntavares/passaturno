@@ -529,9 +529,11 @@ export const inMemoryStore = {
       localizacaoAtualOpcional: data.localizacaoAtualOpcional || null,
       observacao: data.observacao || null,
       shiftId: globalStore.inMemoryShift?.id || null,
-      turma: globalStore.inMemoryShift?.turma
-        ? globalStore.inMemoryShift.turma.replace('Turma ', '').replace('TURMA ', '').trim()
-        : null,
+      turma: data.turma
+        ? data.turma.replace('Turma ', '').replace('TURMA ', '').trim()
+        : (globalStore.inMemoryShift?.turma
+          ? globalStore.inMemoryShift.turma.replace('Turma ', '').replace('TURMA ', '').trim()
+          : 'A'),
       isPendenciaHerdada: false,
       criadoEm: nowIso,
       atualizadoEm: nowIso,
