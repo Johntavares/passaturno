@@ -92,27 +92,8 @@ export const CloseShiftModal: React.FC<CloseShiftModalProps> = ({
 
   const currentTurma = normalizeTurma(turma) || normalizeTurma(activeShift?.turma) || normalizeTurma(currentUser?.turma) || 'C';
 
-  // Filtrar ocorrências pertencentes ao turno ativo atual da turma logada (incluindo pendências do início de turno)
-  const shiftIncidents = (localIncidents || []).filter((item) => {
-    const itemTurma = normalizeTurma(item.turma) || 'A';
-    const isUserMatch = currentUser?.nome && item.responsavel && item.responsavel.toLowerCase().includes(currentUser.nome.toLowerCase());
-    const isTurmaMatch = !itemTurma || itemTurma === currentTurma || isUserMatch;
-
-    if (!isTurmaMatch) return false;
-
-    if (item.status === 'FINALIZADO' || item.status === 'RETROAGIDO') {
-      const itemTimeMs = item.dataHoraLiberacao
-        ? new Date(item.dataHoraLiberacao).getTime()
-        : new Date(item.atualizadoEm || item.criadoEm).getTime();
-
-      const itemDateStr = item.dataHoraLiberacao || item.atualizadoEm || item.criadoEm;
-      const isToday = isSameDayAsToday(itemDateStr);
-
-      return isToday || (shiftStartMs > 0 && itemTimeMs >= shiftStartMs);
-    }
-
-    return true;
-  });
+  // Considerar 100% das ocorrências ativas da dashboard do turno atual
+  const shiftIncidents = localIncidents || [];
 
   const pendentesLista = shiftIncidents.filter((i) => i.status !== 'FINALIZADO' && i.status !== 'RETROAGIDO');
   const importanetes = shiftIncidents.filter(

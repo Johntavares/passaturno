@@ -35,11 +35,8 @@ export const DailySummarySection: React.FC<DailySummarySectionProps> = ({
     shiftStartMs = todayStart.getTime();
   }
 
-  // Filtragem: Se data for selecionada, consulta histórico por data (YYYY-MM-DD); caso contrário, filtra o turno ativo
+  // Filtragem: Se data for selecionada, consulta histórico por data (YYYY-MM-DD); caso contrário, usa a lista ativa do turno
   const filteredIncidents = incidents.filter((item) => {
-    const itemTurma = normalizeTurma(item.turma) || 'A';
-    if (itemTurma !== currentTurma) return false;
-
     if (selectedDate) {
       // Modo Consulta Histórica por Data Específica
       const createdDate = item.criadoEm ? item.criadoEm.split('T')[0] : '';
@@ -49,22 +46,18 @@ export const DailySummarySection: React.FC<DailySummarySectionProps> = ({
       return createdDate === selectedDate || updatedDate === selectedDate || finishedDate === selectedDate;
     }
 
-    // Modo Turno Ativo Atual (Padrão)
-    const createdMs = new Date(item.criadoEm).getTime();
-    const updatedMs = item.atualizadoEm ? new Date(item.atualizadoEm).getTime() : createdMs;
-    const finishedMs = item.dataHoraLiberacao ? new Date(item.dataHoraLiberacao).getTime() : updatedMs;
-
-    return createdMs >= shiftStartMs || updatedMs >= shiftStartMs || finishedMs >= shiftStartMs;
+    // Modo Turno Ativo Atual (Padrão): Exibe 100% dos incidentes ativos da dashboard (Concluídos, Aguardando e Em Andamento)
+    return true;
   });
 
   const importanetes = filteredIncidents.filter(
-    (i) => (i.prioridade === 'CRITICA' || i.prioridade === 'ALTA') && i.status !== 'FINALIZADO'
+    (i) => (i.prioridade === 'CRITICA' || i.prioridade === 'ALTA') && i.status !== 'FINALIZADO' && i.status !== 'RETROAGIDO'
   );
   const emAndamento = filteredIncidents.filter(
     (i) => (i.status === 'EM_ANDAMENTO' || i.status === 'AGUARDANDO' || i.status === 'PENDENCIA_PROXIMO_TURNO') &&
       i.prioridade !== 'CRITICA' && i.prioridade !== 'ALTA'
   );
-  const realizados = filteredIncidents.filter((i) => i.status === 'FINALIZADO');
+  const realizados = filteredIncidents.filter((i) => i.status === 'FINALIZADO' || i.status === 'RETROAGIDO');
 
   const displayDateStr = selectedDate
     ? selectedDate.split('-').reverse().join('/')
