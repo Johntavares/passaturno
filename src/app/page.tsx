@@ -122,11 +122,23 @@ export default function Home() {
     setIsRefreshing(true);
     const deletedIds = getDeletedIds();
 
+    const savedUserStr = typeof window !== 'undefined' ? localStorage.getItem('passaturno-user') : null;
+    let savedUserTurma = '';
+    if (savedUserStr) {
+      try {
+        const u = JSON.parse(savedUserStr);
+        savedUserTurma = u.turma || '';
+      } catch (e) {}
+    }
+
+    const userTurmaClean = normalizeTurma(turmaOverride) || normalizeTurma(currentUser?.turma) || normalizeTurma(savedUserTurma) || normalizeTurma(selectedTurmaFilter);
+    const shiftApiUrl = userTurmaClean ? `/api/turnos/ativo?turma=${encodeURIComponent(userTurmaClean)}` : '/api/turnos/ativo';
+
     try {
       const [incRes, eqRes, shiftRes] = await Promise.all([
         fetch('/api/atendimentos'),
         fetch('/api/equipamentos'),
-        fetch('/api/turnos/ativo'),
+        fetch(shiftApiUrl),
       ]);
 
       if (incRes.ok) {
@@ -147,7 +159,19 @@ export default function Home() {
 
       if (shiftRes.ok) {
         const shiftData = await shiftRes.json();
-        setActiveShift(shiftData.activeShift || null);
+        const activeS = shiftData.activeShift || null;
+        // Isolamento de segurança: Se o usuário logado for da Turma C,
+        // só aceita o activeShift se ele for da própria Turma C!
+        if (userTurmaClean && userTurmaClean !== 'GERAL' && activeS) {
+          const shiftTurmaClean = normalizeTurma(activeS.turma);
+          if (shiftTurmaClean && shiftTurmaClean !== userTurmaClean) {
+            setActiveShift(null);
+          } else {
+            setActiveShift(activeS);
+          }
+        } else {
+          setActiveShift(activeS);
+        }
       }
     } catch (err) {
       console.error('Error loading CCO data:', err);
@@ -157,7 +181,7 @@ export default function Home() {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, []);
+  }, [currentUser, selectedTurmaFilter]);
 
   useEffect(() => {
     loadData();
@@ -477,11 +501,14 @@ export default function Home() {
       try {
         const u = JSON.parse(savedUserStr) as UserSession;
         setCurrentUser(u);
-        if (u.turma) setSelectedTurmaFilter(normalizeTurma(u.turma) || u.turma.toUpperCase().trim());
+        const uTurma = normalizeTurma(u.turma) || u.turma?.toUpperCase().trim() || 'A';
+        setSelectedTurmaFilter(uTurma);
         const userKey = `passaturno-theme-${u.id}`;
         const userTheme = (localStorage.getItem(userKey) as ThemeMode) || 'light';
         setTheme(userTheme);
         applyTheme(userTheme);
+        loadData(uTurma);
+        return;
       } catch (e) {
         console.error('Erro ao carregar sessão do usuário:', e);
       }
@@ -490,18 +517,20 @@ export default function Home() {
       setTheme(guestTheme);
       applyTheme(guestTheme);
     }
-  }, []);
+    loadData();
+  }, [loadData]);
 
   // Ao trocar de operador ou realizar login, carregar as preferências individuais daquele operador
   const handleLoginSuccess = (user: UserSession) => {
     setCurrentUser(user);
-    if (user.turma) setSelectedTurmaFilter(normalizeTurma(user.turma) || user.turma.toUpperCase().trim());
+    const uTurma = normalizeTurma(user.turma) || user.turma?.toUpperCase().trim() || 'A';
+    setSelectedTurmaFilter(uTurma);
     localStorage.setItem('passaturno-user', JSON.stringify(user));
     const userKey = `passaturno-theme-${user.id}`;
     const userSavedTheme = (localStorage.getItem(userKey) as ThemeMode) || 'light';
     setTheme(userSavedTheme);
     applyTheme(userSavedTheme);
-    loadData(user.turma);
+    loadData(uTurma);
   };
 
   const handleLogout = () => {
