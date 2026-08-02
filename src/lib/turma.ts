@@ -68,19 +68,19 @@ export function isSameDayAsToday(dateStr?: string | Date | null): boolean {
   }
 }
 
-// Verifica se qualquer um dos campos de data de um atendimento pertence ao dia de HOJE
+// Verifica se a OCORRÊNCIA (parada, liberação ou criação) pertence estritamente ao dia de HOJE
 export function isIncidentFromToday(item: any): boolean {
   if (!item) return false;
 
-  const dateFields = [
+  // Apenas campos de negócio de data da ocorrência (NÃO checar atualizadoEm!)
+  const businessDateFields = [
+    item.dataHoraLiberacao,
     item.dataHoraParada,
     item.criadoEm,
-    item.atualizadoEm,
-    item.dataHoraLiberacao,
     item.dataHoraAcionamento,
   ];
 
-  for (const dateVal of dateFields) {
+  for (const dateVal of businessDateFields) {
     if (dateVal && isSameDayAsToday(dateVal)) {
       return true;
     }
