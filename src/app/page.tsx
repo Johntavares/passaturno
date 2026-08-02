@@ -628,10 +628,10 @@ export default function Home() {
               item.status === 'PENDENCIA_PROXIMO_TURNO' &&
               (itemTurma === currentFilter || !currentFilter || currentFilter === 'TODAS');
 
-            // 1. FILTRO RIGOROSO DE HOJE: Apenas ocorrências com qualquer data pertencente ao dia de HOJE
+            const isFin = item.status === 'FINALIZADO' || item.status === 'RETROAGIDO';
             const isTodayIncident = isIncidentFromToday(item);
 
-            // Descartar tudo que for de dias anteriores (fica disponível apenas no Histórico)
+            // 1. Descartar apenas o que for de dias anteriores (fica disponível apenas no Histórico)
             if (!isTodayIncident && !isUnacceptedInherited) {
               return false;
             }
@@ -640,8 +640,9 @@ export default function Home() {
             if (currentFilter !== 'TODAS' && currentFilter !== 'GERAL' && currentFilter !== '') {
               const isUserIncident = currentUser?.nome && item.responsavel && item.responsavel.toLowerCase().includes(currentUser.nome.toLowerCase());
               const hasNoTurma = !itemTurma;
+              const isCompletedForTurma = isFin && (itemTurma === currentFilter || hasNoTurma || isUserIncident);
 
-              if (itemTurma !== currentFilter && !hasNoTurma && !isUnacceptedInherited && !isUserIncident) {
+              if (itemTurma !== currentFilter && !hasNoTurma && !isUnacceptedInherited && !isUserIncident && !isCompletedForTurma) {
                 return false;
               }
             }
