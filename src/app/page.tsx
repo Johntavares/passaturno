@@ -171,10 +171,11 @@ export default function Home() {
     const activeTurma = normalizeTurma(activeShift?.turma) || normalizeTurma(currentUser?.turma) || 'A';
     const activeResp = activeShift?.responsavelNome || currentUser?.nome;
 
-    // Quando envia para a fila do próximo turno, direciona a turma do item para a PRÓXIMA turma (ex: C -> D)
+    // Quando envia para a fila do próximo turno, direciona para a PRÓXIMA turma (ex: C -> D)
+    // Quando finaliza ou retroage, direciona para a TURMA ATUAL (ex: C)
     const targetTurma = newStatus === 'PENDENCIA_PROXIMO_TURNO'
       ? getNextTurma(activeTurma)
-      : (newStatus === 'EM_ANDAMENTO' ? activeTurma : undefined);
+      : (newStatus === 'EM_ANDAMENTO' || isFin ? activeTurma : undefined);
 
     updateIncidentsState((prev) =>
       prev.map((item) =>
@@ -184,7 +185,7 @@ export default function Home() {
               status: newStatus,
               isPendenciaHerdada: isInherited,
               turma: targetTurma || item.turma,
-              responsavel: activeResp && newStatus === 'EM_ANDAMENTO' ? activeResp : item.responsavel,
+              responsavel: activeResp && (newStatus === 'EM_ANDAMENTO' || isFin) ? (item.responsavel || activeResp) : item.responsavel,
               dataHoraLiberacao: isFin ? (item.dataHoraLiberacao || nowIso) : item.dataHoraLiberacao,
               atualizadoEm: nowIso,
             }
@@ -198,7 +199,7 @@ export default function Home() {
         isPendenciaHerdada: isInherited,
       };
       if (targetTurma) patchData.turma = targetTurma;
-      if (activeResp && newStatus === 'EM_ANDAMENTO') patchData.responsavel = activeResp;
+      if (activeResp && (newStatus === 'EM_ANDAMENTO' || isFin)) patchData.responsavel = activeResp;
 
       const res = await fetch(`/api/atendimentos/${id}`, {
         method: 'PATCH',
@@ -303,7 +304,9 @@ export default function Home() {
 
     const activeTurma = normalizeTurma(activeShift?.turma) || normalizeTurma(currentUser?.turma) || 'A';
     const isInherited = targetStatus === 'PENDENCIA_PROXIMO_TURNO';
-    const targetTurma = targetStatus === 'PENDENCIA_PROXIMO_TURNO' ? getNextTurma(activeTurma) : undefined;
+    const targetTurma = targetStatus === 'PENDENCIA_PROXIMO_TURNO'
+      ? getNextTurma(activeTurma)
+      : (isFin ? activeTurma : undefined);
 
     // 1. Fechar o modal IMEDIATAMENTE (resposta instantânea na UI sem travar o operador)
     setIsEditIncidentOpen(false);
@@ -596,25 +599,25 @@ export default function Home() {
               item.status === 'PENDENCIA_PROXIMO_TURNO' &&
               itemTurma === currentFilter;
 
+            const isConcluido = item.status === 'FINALIZADO' || item.status === 'RETROAGIDO';
+            const itemDateStr = item.dataHoraLiberacao || item.atualizadoEm || item.criadoEm;
+            const isToday = isSameDayAsToday(itemDateStr);
+
             // Garantir que ocorrências criadas pelo operador logado ou ativas para a turma sejam sempre exibidas
             if (currentFilter !== 'TODAS' && currentFilter !== 'GERAL' && currentFilter !== '') {
               const isUserIncident = currentUser?.nome && item.responsavel && item.responsavel.toLowerCase().includes(currentUser.nome.toLowerCase());
               const hasNoTurma = !itemTurma;
+              const isCompletedTodayForUser = isConcluido && isToday && (isUserIncident || itemTurma === currentFilter);
 
-              if (itemTurma !== currentFilter && !hasNoTurma && !isUnacceptedInherited && !isUserIncident) {
+              if (itemTurma !== currentFilter && !hasNoTurma && !isUnacceptedInherited && !isUserIncident && !isCompletedTodayForUser) {
                 return false;
               }
             }
-
-            const isConcluido = item.status === 'FINALIZADO' || item.status === 'RETROAGIDO';
 
             // 2. Limpeza da Dashboard do Turno Ativo:
             // Ocorrências concluídas HOJE ou durante o turno ativo continuam exibidas para geração do relatório do turno.
             // Ocorrências de dias/turnos anteriores permanecem acessíveis no Histórico.
             if (isConcluido) {
-              const itemDateStr = item.dataHoraLiberacao || item.atualizadoEm || item.criadoEm;
-              const isToday = isSameDayAsToday(itemDateStr);
-
               if (activeShift?.horaInicio) {
                 const shiftStartMs = new Date(activeShift.horaInicio).getTime();
                 const itemTimeMs = itemDateStr ? new Date(itemDateStr).getTime() : 0;
