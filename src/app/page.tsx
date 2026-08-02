@@ -597,35 +597,30 @@ export default function Home() {
             const isUnacceptedInherited =
               item.isPendenciaHerdada &&
               item.status === 'PENDENCIA_PROXIMO_TURNO' &&
-              itemTurma === currentFilter;
+              (itemTurma === currentFilter || !currentFilter || currentFilter === 'TODAS');
 
-            const isConcluido = item.status === 'FINALIZADO' || item.status === 'RETROAGIDO';
-            const itemDateStr = item.dataHoraLiberacao || item.atualizadoEm || item.criadoEm;
-            const isToday = isSameDayAsToday(itemDateStr);
+            // 1. FILTRO RIGOROSO DE DIA: Apenas ocorrências criadas, atualizadas ou concluídas HOJE (ou pendências herdadas)
+            const createdDateStr = item.criadoEm;
+            const updatedDateStr = item.atualizadoEm || createdDateStr;
+            const finishedDateStr = item.dataHoraLiberacao || updatedDateStr;
 
-            // Garantir que ocorrências criadas pelo operador logado ou ativas para a turma sejam sempre exibidas
+            const isTodayIncident =
+              isSameDayAsToday(createdDateStr) ||
+              isSameDayAsToday(updatedDateStr) ||
+              isSameDayAsToday(finishedDateStr);
+
+            // Descartar tudo que for de dias anteriores (fica disponível apenas no Histórico)
+            if (!isTodayIncident && !isUnacceptedInherited) {
+              return false;
+            }
+
+            // 2. Filtro por Turma
             if (currentFilter !== 'TODAS' && currentFilter !== 'GERAL' && currentFilter !== '') {
               const isUserIncident = currentUser?.nome && item.responsavel && item.responsavel.toLowerCase().includes(currentUser.nome.toLowerCase());
               const hasNoTurma = !itemTurma;
-              const isCompletedTodayForUser = isConcluido && isToday && (isUserIncident || itemTurma === currentFilter);
 
-              if (itemTurma !== currentFilter && !hasNoTurma && !isUnacceptedInherited && !isUserIncident && !isCompletedTodayForUser) {
+              if (itemTurma !== currentFilter && !hasNoTurma && !isUnacceptedInherited && !isUserIncident) {
                 return false;
-              }
-            }
-
-            // 2. Limpeza da Dashboard do Turno Ativo:
-            // Ocorrências concluídas HOJE ou durante o turno ativo continuam exibidas para geração do relatório do turno.
-            // Ocorrências de dias/turnos anteriores permanecem acessíveis no Histórico.
-            if (isConcluido) {
-              if (activeShift?.horaInicio) {
-                const shiftStartMs = new Date(activeShift.horaInicio).getTime();
-                const itemTimeMs = itemDateStr ? new Date(itemDateStr).getTime() : 0;
-                if (!isToday && (shiftStartMs === 0 || itemTimeMs < shiftStartMs)) {
-                  return false;
-                }
-              } else {
-                if (!isToday) return false;
               }
             }
 
