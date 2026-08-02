@@ -31,14 +31,14 @@ export const DesktopAdBanner: React.FC<DesktopAdBannerProps> = ({
   }, []);
 
   useEffect(() => {
-    if (isDesktop && typeof window !== 'undefined') {
+    if (isDesktop && adSlot && adSlot !== 'YYYYYYYYYY' && typeof window !== 'undefined') {
       try {
         ((window as any).adsbygoogle = (window as any).adsbygoogle || []).push({});
       } catch (err) {
         console.warn('Google AdSense error:', err);
       }
     }
-  }, [isDesktop]);
+  }, [isDesktop, adSlot]);
 
   // Se não for dispositivo desktop, não renderiza absolutamente nada (0% de impacto no celular)
   if (!isDesktop) return null;
