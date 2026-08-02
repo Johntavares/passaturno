@@ -57,7 +57,7 @@ export const OneNoteRoutineModal: React.FC<OneNoteRoutineModalProps> = ({
 
   // Diagnóstico GPS & Despacho
   const [equipSemDespacho, setEquipSemDespacho] = useState('EC10, PZ15, PZ20, PZ21, PZ42, PZ43, TT52, TT53, TT81, TT84');
-  const [equipSemGps, setEquipSemGps] = useState('TT57, TT92');
+  const [equipSemGps, setEquipSemGps] = useState('TT57');
   const [equipPreventiva, setEquipPreventiva] = useState('EC17, PZ02, TT84, TT85');
   const [equipManutencao, setEquipManutencao] = useState('PZ14, PZ47, TT56');
 
@@ -481,7 +481,7 @@ Materiais faltantes: ${checklistMalaoFaltantes}
                   type="text"
                   value={equipSemGps}
                   onChange={(e) => setEquipSemGps(e.target.value)}
-                  placeholder="ex: TT57, TT92"
+                  placeholder="ex: TT57"
                   className="w-full bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 rounded-xl px-3 py-1.5 text-xs text-amber-900 dark:text-amber-200 font-mono"
                 />
               </div>

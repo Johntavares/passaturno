@@ -43,7 +43,7 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
 
   // Estados personalizáveis de GPS e Despacho
   const [equipSemDespacho, setEquipSemDespacho] = useState('EC10, PZ15, PZ20, PZ21, PZ42, PZ43, TT52, TT53, TT81, TT84');
-  const [equipSemGps, setEquipSemGps] = useState('TT57, TT92');
+  const [equipSemGps, setEquipSemGps] = useState('TT57');
   const [equipPreventiva, setEquipPreventiva] = useState('EC17, PZ02, TT84, TT85');
   const [equipManutencao, setEquipManutencao] = useState('PZ14, PZ47, TT56');
 
