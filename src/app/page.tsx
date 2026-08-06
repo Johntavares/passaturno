@@ -749,6 +749,7 @@ export default function Home() {
         onClose={() => setIsNewIncidentOpen(false)}
         equipments={equipments}
         turma={normalizeTurma(currentUser?.turma) || normalizeTurma(activeShift?.turma) || (selectedTurmaFilter !== 'TODAS' ? normalizeTurma(selectedTurmaFilter) : 'A')}
+        currentUser={currentUser}
         onIncidentCreated={loadData}
       />
 

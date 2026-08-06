@@ -5,11 +5,14 @@ import { EquipmentType, PriorityLevel, IncidentStatusType } from '@/types';
 import { X, Plus, AlertTriangle, Check, Truck, Save } from 'lucide-react';
 import { getFailureCategories } from '@/lib/categories';
 
+import { UserSession } from '@/components/HeaderNav';
+
 interface NewIncidentModalProps {
   isOpen: boolean;
   onClose: () => void;
   equipments: EquipmentType[];
   turma?: string;
+  currentUser?: UserSession | null;
   onIncidentCreated: () => void;
 }
 
@@ -18,6 +21,7 @@ export const NewIncidentModal: React.FC<NewIncidentModalProps> = ({
   onClose,
   equipments,
   turma,
+  currentUser,
   onIncidentCreated,
 }) => {
   const [tag, setTag] = useState('');
@@ -64,6 +68,17 @@ export const NewIncidentModal: React.FC<NewIncidentModalProps> = ({
   const [observacao, setObservacao] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+
+  // Sempre que o modal abre, atualizar a data/hora e o responsável para o usuário logado
+  useEffect(() => {
+    if (isOpen) {
+      setDataHoraParada(getNowLocalDatetimeString());
+      setErrorMsg('');
+      if (currentUser?.nome) {
+        setResponsavel(currentUser.nome);
+      }
+    }
+  }, [isOpen, currentUser]);
 
   // Lista completa de Tipos de Equipamento da Frota da Mina
   const fleetTypes = [
@@ -173,6 +188,10 @@ export const NewIncidentModal: React.FC<NewIncidentModalProps> = ({
         }
       }
 
+      const safeDataHoraParada = dataHoraParada && !isNaN(new Date(dataHoraParada).getTime())
+        ? new Date(dataHoraParada).toISOString()
+        : new Date().toISOString();
+
       // 3. Registrar o atendimento
       const res = await fetch('/api/atendimentos', {
         method: 'POST',
@@ -184,7 +203,7 @@ export const NewIncidentModal: React.FC<NewIncidentModalProps> = ({
           tipoFalha,
           falha,
           sintoma,
-          dataHoraParada: new Date(dataHoraParada).toISOString(),
+          dataHoraParada: safeDataHoraParada,
           previsaoLiberacao: previsaoLiberacao.trim() || null,
           prioridade,
           status,
