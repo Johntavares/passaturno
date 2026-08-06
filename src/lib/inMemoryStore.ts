@@ -46,6 +46,7 @@ export interface InMemoryIncident {
   shiftId?: string | null;
   turma?: string | null;
   isPendenciaHerdada: boolean;
+  isFallback?: boolean;
   historico: InMemoryIncidentHistory[];
   criadoEm: string;
   atualizadoEm: string;
@@ -535,6 +536,7 @@ export const inMemoryStore = {
           ? globalStore.inMemoryShift.turma.replace('Turma ', '').replace('TURMA ', '').trim()
           : 'A'),
       isPendenciaHerdada: false,
+      isFallback: true,
       criadoEm: nowIso,
       atualizadoEm: nowIso,
       historico: [
