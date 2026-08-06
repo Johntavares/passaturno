@@ -195,6 +195,17 @@ export default function Home() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const handleIncidentCreated = (newInc?: IncidentType) => {
+    if (newInc) {
+      updateIncidentsState((prev) => {
+        const exists = prev.some((i) => i.id === newInc.id);
+        if (exists) return prev;
+        return [newInc, ...prev];
+      });
+    }
+    loadData();
+  };
+
   // Alterar status diretamente no Kanban
   const handleStatusChange = async (id: string, newStatus: IncidentStatusType) => {
     const nowIso = new Date().toISOString();
@@ -750,7 +761,7 @@ export default function Home() {
         equipments={equipments}
         turma={normalizeTurma(currentUser?.turma) || normalizeTurma(activeShift?.turma) || (selectedTurmaFilter !== 'TODAS' ? normalizeTurma(selectedTurmaFilter) : 'A')}
         currentUser={currentUser}
-        onIncidentCreated={loadData}
+        onIncidentCreated={handleIncidentCreated}
       />
 
       <IncidentTimelineModal

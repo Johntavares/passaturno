@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { EquipmentType, PriorityLevel, IncidentStatusType } from '@/types';
+import { EquipmentType, PriorityLevel, IncidentStatusType, IncidentType } from '@/types';
 import { X, Plus, AlertTriangle, Check, Truck, Save } from 'lucide-react';
 import { getFailureCategories } from '@/lib/categories';
 
@@ -13,7 +13,7 @@ interface NewIncidentModalProps {
   equipments: EquipmentType[];
   turma?: string;
   currentUser?: UserSession | null;
-  onIncidentCreated: () => void;
+  onIncidentCreated: (createdIncident?: IncidentType) => void;
 }
 
 export const NewIncidentModal: React.FC<NewIncidentModalProps> = ({
@@ -74,9 +74,8 @@ export const NewIncidentModal: React.FC<NewIncidentModalProps> = ({
     if (isOpen) {
       setDataHoraParada(getNowLocalDatetimeString());
       setErrorMsg('');
-      if (currentUser?.nome) {
-        setResponsavel(currentUser.nome);
-      }
+      const defaultResp = currentUser?.nome || (currentUser?.email ? currentUser.email.split('@')[0] : 'John Tavares');
+      setResponsavel(defaultResp);
     }
   }, [isOpen, currentUser]);
 
@@ -96,17 +95,6 @@ export const NewIncidentModal: React.FC<NewIncidentModalProps> = ({
     { label: '⚙️ Outro / Equipamento Manual', value: 'Outros', defaultNome: 'Equipamento Auxiliar' },
   ];
 
-  const failureTypes = [
-    'Comunicação',
-    'PLC',
-    'Inversor',
-    'Instrumentação',
-    'Rede Industrial',
-    'Sensor',
-    'Supervisório',
-    'Outro',
-  ];
-
   const areasList = [
     'Frota Mina', 
     'Praça de Carga', 
@@ -117,14 +105,6 @@ export const NewIncidentModal: React.FC<NewIncidentModalProps> = ({
   ];
 
   const [previsaoLiberacao, setPrevisaoLiberacao] = useState('');
-
-  // Sempre que o modal abre, atualizar a data/hora da parada para a hora atual
-  useEffect(() => {
-    if (isOpen) {
-      setDataHoraParada(getNowLocalDatetimeString());
-      setErrorMsg('');
-    }
-  }, [isOpen]);
 
   // Ao digitar a TAG, auto-completar os dados se o equipamento já existir na frota (ex: '306' encontra 'CA306')
   useEffect(() => {
@@ -142,15 +122,6 @@ export const NewIncidentModal: React.FC<NewIncidentModalProps> = ({
     }
   }, [tag, equipments]);
 
-  // Ao alterar o tipo de equipamento (se o nome estiver vazio), preencher sugestão
-  const handleSelectTipo = (novoTipo: string) => {
-    setTipoEquipamento(novoTipo);
-    const item = fleetTypes.find((f) => f.value === novoTipo);
-    if (item && (!equipamentoNome || fleetTypes.some((f) => f.defaultNome === equipamentoNome))) {
-      setEquipamentoNome(item.defaultNome);
-    }
-  };
-
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -158,9 +129,13 @@ export const NewIncidentModal: React.FC<NewIncidentModalProps> = ({
     setErrorMsg('');
 
     const formattedTag = tag.toUpperCase().trim();
+    const effectiveResponsavel =
+      responsavel.trim() ||
+      currentUser?.nome ||
+      (currentUser?.email ? currentUser.email.split('@')[0] : 'John Tavares');
 
-    if (!formattedTag || !falha || !responsavel) {
-      setErrorMsg('Por favor, preencha a TAG, a Descrição da Falha e o Responsável.');
+    if (!formattedTag || !falha) {
+      setErrorMsg('Por favor, preencha a TAG e a Descrição da Falha.');
       return;
     }
 
@@ -207,7 +182,7 @@ export const NewIncidentModal: React.FC<NewIncidentModalProps> = ({
           previsaoLiberacao: previsaoLiberacao.trim() || null,
           prioridade,
           status,
-          responsavel,
+          responsavel: effectiveResponsavel,
           motivoEspera,
           proximaAcao,
           observacao,
@@ -220,7 +195,17 @@ export const NewIncidentModal: React.FC<NewIncidentModalProps> = ({
         throw new Error(err.error || 'Falha ao registrar atendimento');
       }
 
-      onIncidentCreated();
+      const createdIncident = await res.json();
+
+      // Limpar formulário para próximo uso
+      setTag('');
+      setFalha('');
+      setSintoma('');
+      setMotivoEspera('');
+      setProximaAcao('');
+      setObservacao('');
+
+      onIncidentCreated(createdIncident);
       onClose();
     } catch (err: any) {
       setErrorMsg(err.message || 'Erro de conexão com o servidor');
