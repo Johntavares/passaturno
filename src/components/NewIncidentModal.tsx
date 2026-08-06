@@ -173,10 +173,6 @@ export const NewIncidentModal: React.FC<NewIncidentModalProps> = ({
         }
       }
 
-      const safeDataHoraParada = dataHoraParada && !isNaN(new Date(dataHoraParada).getTime())
-        ? new Date(dataHoraParada).toISOString()
-        : new Date().toISOString();
-
       // 3. Registrar o atendimento
       const res = await fetch('/api/atendimentos', {
         method: 'POST',
@@ -188,7 +184,7 @@ export const NewIncidentModal: React.FC<NewIncidentModalProps> = ({
           tipoFalha,
           falha,
           sintoma,
-          dataHoraParada: safeDataHoraParada,
+          dataHoraParada: new Date(dataHoraParada).toISOString(),
           previsaoLiberacao: previsaoLiberacao.trim() || null,
           prioridade,
           status,
