@@ -150,7 +150,7 @@ export default function Home() {
       if (incRes.ok) {
         const rawInc = (await incRes.json()) as IncidentType[];
         const incData = rawInc.filter(
-          (item) => !deletedIds.has(item.id.toUpperCase().trim()) && !deletedIds.has((item.tag || '').toUpperCase().trim())
+          (item) => !deletedIds.has(item.id.toUpperCase().trim())
         );
         setIncidents(incData);
         saveLocalCache(incData, 'GLOBAL');
@@ -158,7 +158,7 @@ export default function Home() {
         const cached = loadLocalCache('GLOBAL');
         if (cached.length > 0) {
           const validCached = cached.filter(
-            (item) => !deletedIds.has(item.id.toUpperCase().trim()) && !deletedIds.has((item.tag || '').toUpperCase().trim())
+            (item) => !deletedIds.has(item.id.toUpperCase().trim())
           );
           setIncidents(validCached);
         }
@@ -456,14 +456,10 @@ export default function Home() {
 
   // Excluir Atendimento permanentemente
   const handleDeleteIncident = async (id: string) => {
-    const targetItem = incidents.find((i) => i.id === id || i.tag.toUpperCase().trim() === id.toUpperCase().trim());
-    const itemTag = targetItem?.tag ? targetItem.tag.toUpperCase().trim() : (id.toUpperCase().trim().startsWith('INC-') ? '' : id.toUpperCase().trim());
-
     if (typeof window !== 'undefined') {
       try {
         const savedDeleted = JSON.parse(localStorage.getItem('passaturno-deleted-incidents-v3') || '[]');
-        const toAdd = [id, itemTag, 'TT92'].filter(Boolean).map((x) => String(x).toUpperCase().trim());
-        const updatedDeleted = Array.from(new Set([...savedDeleted, ...toAdd]));
+        const updatedDeleted = Array.from(new Set([...savedDeleted, String(id).toUpperCase().trim()]));
         localStorage.setItem('passaturno-deleted-incidents-v3', JSON.stringify(updatedDeleted));
       } catch (e) {
         console.error('Erro ao guardar ID excluido:', e);
@@ -471,18 +467,13 @@ export default function Home() {
     }
 
     updateIncidentsState((prev) =>
-      prev.filter((item) => item.id !== id && item.tag.toUpperCase().trim() !== id.toUpperCase().trim() && (itemTag ? item.tag.toUpperCase().trim() !== itemTag : true))
+      prev.filter((item) => item.id !== id)
     );
 
     try {
       await fetch(`/api/atendimentos/${id}`, {
         method: 'DELETE',
       });
-      if (itemTag) {
-        await fetch(`/api/atendimentos/${itemTag}`, {
-          method: 'DELETE',
-        }).catch(() => {});
-      }
     } catch (err) {
       console.error('Erro ao excluir atendimento:', err);
     }
