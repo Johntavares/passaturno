@@ -15,6 +15,8 @@ import {
   ArrowRight,
   CheckCircle2
 } from 'lucide-react';
+import { X } from 'lucide-react';
+
 interface UserSession {
   id: string;
   nome: string;
@@ -27,10 +29,12 @@ interface UserSession {
 
 interface LoginModalProps {
   onLoginSuccess: (user: UserSession) => void;
+  onClose?: () => void;
 }
 
-export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess }) => {
+export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess, onClose }) => {
   const [mode, setMode] = useState<'signin' | 'signup_leader'>('signin');
+
 
   // Sign In Form States
   const [loginInput, setLoginInput] = useState('');
@@ -199,18 +203,41 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess }) => {
                 </p>
               </div>
 
-              {/* Botão para alternar entre Login e Cadastro do Líder */}
-              <button
-                type="button"
-                onClick={() => {
-                  setMode(mode === 'signin' ? 'signup_leader' : 'signin');
-                  setErrorMsg('');
-                  setSuccessMsg('');
-                }}
-                className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
-              >
-                {mode === 'signin' ? 'Criar Líder' : 'Voltar ao Login'}
-              </button>
+              <div className="flex items-center gap-2">
+                {/* Botão para alternar entre Login e Cadastro do Líder */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode(mode === 'signin' ? 'signup_leader' : 'signin');
+                    setErrorMsg('');
+                    setSuccessMsg('');
+                  }}
+                  className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 hover:underline cursor-pointer flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/50 px-2.5 py-1.5 rounded-xl border border-emerald-200 dark:border-emerald-800 transition-all"
+                >
+                  {mode === 'signin' ? (
+                    <>
+                      <UserPlus className="w-3.5 h-3.5" />
+                      <span>Cadastrar Líder</span>
+                    </>
+                  ) : (
+                    <>
+                      <LogIn className="w-3.5 h-3.5" />
+                      <span>Fazer Login</span>
+                    </>
+                  )}
+                </button>
+
+                {onClose && (
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-xl transition-colors cursor-pointer"
+                    title="Fechar modal de login"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Mensagem de Erro */}

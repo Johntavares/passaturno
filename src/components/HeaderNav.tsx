@@ -55,6 +55,20 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
   currentUser,
   onLogout,
 }) => {
+
+  const [isUserDropdownOpen, setIsUserDropdownOpen] = React.useState(false);
+  const userMenuRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setIsUserDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   return (
     <header className="theme-header sticky top-0 z-40 shadow-xs border-b">
       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
@@ -126,8 +140,10 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
             )}
           </div>
 
+
           {/* LADO DIREITO: APENAS AS AÇÕES PRINCIPAIS & CONFIGURAÇÕES */}
           <div className="flex items-center gap-1.5 sm:gap-2 justify-end">
+
             
             {/* Alerta de Ativos Pendentes */}
             {unacceptedCount > 0 && (

@@ -34,6 +34,8 @@ export default function Home() {
   const [equipments, setEquipments] = useState<EquipmentType[]>([]);
   const [activeShift, setActiveShift] = useState<ShiftType | null>(null);
   const [currentUser, setCurrentUser] = useState<UserSession | null>(null);
+  const [loggedInUsers, setLoggedInUsers] = useState<UserSession[]>([]);
+  const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark' | 'mina'>('light');
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -198,12 +200,187 @@ export default function Home() {
   const handleIncidentCreated = (newInc?: IncidentType) => {
     if (newInc) {
       updateIncidentsState((prev) => {
-        const exists = prev.some((i) => i.id === newInc.id);
-        if (exists) return prev;
-        return [newInc, ...prev];
+        const filtered = prev.filter((i) => i.id !== newInc.id);
+        return [newInc, ...filtered];
       });
     }
     loadData();
+  };
+
+  // Limpeza de registros legados e inclusão preventiva de TAGs excluídas
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem('passaturno-deleted-incidents-v2');
+        const saved = JSON.parse(localStorage.getItem('passaturno-deleted-incidents-v3') || '[]');
+        if (!saved.includes('TT92')) {
+          localStorage.setItem('passaturno-deleted-incidents-v3', JSON.stringify([...saved, 'TT92']));
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  }, []);
+
+  // Excluir Atendimento permanentemente
+  const handleDeleteIncident = async (id: string) => {
+    if (typeof window !== 'undefined') {
+      try {
+        const savedDeleted = JSON.parse(localStorage.getItem('passaturno-deleted-incidents-v3') || '[]');
+        const updatedDeleted = Array.from(new Set([...savedDeleted, String(id).toUpperCase().trim()]));
+        localStorage.setItem('passaturno-deleted-incidents-v3', JSON.stringify(updatedDeleted));
+      } catch (e) {
+        console.error('Erro ao guardar ID excluido:', e);
+      }
+    }
+
+    updateIncidentsState((prev) =>
+      prev.filter((item) => item.id !== id)
+    );
+
+    try {
+      await fetch(`/api/atendimentos/${id}`, {
+        method: 'DELETE',
+      });
+    } catch (err) {
+      console.error('Erro ao excluir atendimento:', err);
+    }
+  };
+
+  // Contagem de itens herdados pendentes de aceite DIRECIONADOS PARA A TURMA DO OPERADOR LOGADO/ATIVO.
+  const userTargetTurma = normalizeTurma(currentUser?.turma) || normalizeTurma(activeShift?.turma) || normalizeTurma(selectedTurmaFilter);
+
+  const unacceptedCount = incidents.filter((i) => {
+    const itemTurmaClean = normalizeTurma(i.turma);
+    const matchesTurma = userTargetTurma && userTargetTurma !== 'GERAL'
+      ? itemTurmaClean === userTargetTurma
+      : true;
+
+    return i.isPendenciaHerdada
+      && matchesTurma
+      && i.status !== 'FINALIZADO'
+      && i.status !== 'RETROAGIDO'
+      && i.status !== 'EM_ANDAMENTO';
+  }).length;
+
+  const handleRestoreNotifications = () => {
+    try {
+      localStorage.removeItem('dismissed_shift_notifications');
+      window.dispatchEvent(new Event('storage'));
+      loadData();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const applyTheme = (newTheme: ThemeMode) => {
+    if (typeof document === 'undefined') return;
+    document.documentElement.classList.remove('dark', 'theme-mina');
+    if (newTheme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else if (newTheme === 'mina') {
+      document.documentElement.classList.add('theme-mina');
+    }
+  };
+
+  // Carregar lista de usuários salvos e usuário ativo (roda na montagem)
+  useEffect(() => {
+    try {
+      const savedList = localStorage.getItem('passaturno-users-list');
+      let usersList: UserSession[] = [];
+      if (savedList) {
+        usersList = JSON.parse(savedList) as UserSession[];
+        setLoggedInUsers(usersList);
+      }
+
+      const savedUserStr = localStorage.getItem('passaturno-user');
+      if (savedUserStr) {
+        const u = JSON.parse(savedUserStr) as UserSession;
+        setCurrentUser(u);
+        
+        // Garantir que u está na lista de loggedInUsers
+        if (!usersList.some((x) => x.id === u.id)) {
+          const newList = [u, ...usersList];
+          setLoggedInUsers(newList);
+          localStorage.setItem('passaturno-users-list', JSON.stringify(newList));
+        }
+
+        const uTurma = normalizeTurma(u.turma) || u.turma?.toUpperCase().trim() || 'A';
+        setSelectedTurmaFilter(uTurma);
+        const userKey = `passaturno-theme-${u.id}`;
+        const userTheme = (localStorage.getItem(userKey) as ThemeMode) || 'light';
+        setTheme(userTheme);
+        applyTheme(userTheme);
+        loadData(uTurma);
+        return;
+      }
+    } catch (e) {
+      console.error('Erro ao carregar sessão do usuário:', e);
+    }
+
+    const guestTheme = (localStorage.getItem('passaturno-theme-guest') as ThemeMode) || 'light';
+    setTheme(guestTheme);
+    applyTheme(guestTheme);
+    loadData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Ao realizar login de um operador
+  const handleLoginSuccess = (user: UserSession) => {
+    setCurrentUser(user);
+    setLoggedInUsers((prev) => {
+      const filtered = prev.filter((u) => u.id !== user.id);
+      const newList = [user, ...filtered];
+      localStorage.setItem('passaturno-users-list', JSON.stringify(newList));
+      return newList;
+    });
+    localStorage.setItem('passaturno-user', JSON.stringify(user));
+    setIsAddUserModalOpen(false);
+
+    const uTurma = normalizeTurma(user.turma) || user.turma?.toUpperCase().trim() || 'A';
+    setSelectedTurmaFilter(uTurma);
+    const userKey = `passaturno-theme-${user.id}`;
+    const userSavedTheme = (localStorage.getItem(userKey) as ThemeMode) || 'light';
+    setTheme(userSavedTheme);
+    applyTheme(userSavedTheme);
+    loadData(uTurma);
+  };
+
+  // Alternar para outro usuário que já está logado
+  const handleSelectUser = (user: UserSession) => {
+    setCurrentUser(user);
+    localStorage.setItem('passaturno-user', JSON.stringify(user));
+    const uTurma = normalizeTurma(user.turma) || user.turma?.toUpperCase().trim() || 'A';
+    setSelectedTurmaFilter(uTurma);
+    const userKey = `passaturno-theme-${user.id}`;
+    const userSavedTheme = (localStorage.getItem(userKey) as ThemeMode) || 'light';
+    setTheme(userSavedTheme);
+    applyTheme(userSavedTheme);
+    loadData(uTurma);
+  };
+
+  const handleLogout = () => {
+    if (currentUser) {
+      const updatedList = loggedInUsers.filter((u) => u.id !== currentUser.id);
+      setLoggedInUsers(updatedList);
+      localStorage.setItem('passaturno-users-list', JSON.stringify(updatedList));
+
+      const nextUser = updatedList[0] || null;
+      setCurrentUser(nextUser);
+
+      if (nextUser) {
+        localStorage.setItem('passaturno-user', JSON.stringify(nextUser));
+        const uTurma = normalizeTurma(nextUser.turma) || 'A';
+        setSelectedTurmaFilter(uTurma);
+        loadData(uTurma);
+      } else {
+        localStorage.removeItem('passaturno-user');
+        const guestTheme = (localStorage.getItem('passaturno-theme-guest') as ThemeMode) || 'light';
+        setTheme(guestTheme);
+        applyTheme(guestTheme);
+        loadData();
+      }
+    }
   };
 
   // Alterar status diretamente no Kanban
@@ -467,131 +644,7 @@ export default function Home() {
     }
   };
 
-  // Limpeza de registros legados e inclusão preventiva de TAGs excluídas
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.removeItem('passaturno-deleted-incidents-v2');
-        const saved = JSON.parse(localStorage.getItem('passaturno-deleted-incidents-v3') || '[]');
-        if (!saved.includes('TT92')) {
-          localStorage.setItem('passaturno-deleted-incidents-v3', JSON.stringify([...saved, 'TT92']));
-        }
-      } catch (e) {
-        console.error(e);
-      }
-    }
-  }, []);
 
-  // Excluir Atendimento permanentemente
-  const handleDeleteIncident = async (id: string) => {
-    if (typeof window !== 'undefined') {
-      try {
-        const savedDeleted = JSON.parse(localStorage.getItem('passaturno-deleted-incidents-v3') || '[]');
-        const updatedDeleted = Array.from(new Set([...savedDeleted, String(id).toUpperCase().trim()]));
-        localStorage.setItem('passaturno-deleted-incidents-v3', JSON.stringify(updatedDeleted));
-      } catch (e) {
-        console.error('Erro ao guardar ID excluido:', e);
-      }
-    }
-
-    updateIncidentsState((prev) =>
-      prev.filter((item) => item.id !== id)
-    );
-
-    try {
-      await fetch(`/api/atendimentos/${id}`, {
-        method: 'DELETE',
-      });
-    } catch (err) {
-      console.error('Erro ao excluir atendimento:', err);
-    }
-  };
-
-  // Contagem de itens herdados pendentes de aceite DIRECIONADOS PARA A TURMA DO OPERADOR LOGADO/ATIVO.
-  // Itens que o operador ATUAL enviou para outra turma (ex: Turma D) NÃO aparecem como alerta para ele.
-  const userTargetTurma = normalizeTurma(currentUser?.turma) || normalizeTurma(activeShift?.turma) || normalizeTurma(selectedTurmaFilter);
-
-  const unacceptedCount = incidents.filter((i) => {
-    const itemTurmaClean = normalizeTurma(i.turma);
-    const matchesTurma = userTargetTurma && userTargetTurma !== 'GERAL'
-      ? itemTurmaClean === userTargetTurma
-      : true;
-
-    return i.isPendenciaHerdada
-      && matchesTurma
-      && i.status !== 'FINALIZADO'
-      && i.status !== 'RETROAGIDO'
-      && i.status !== 'EM_ANDAMENTO';
-  }).length;
-
-  const handleRestoreNotifications = () => {
-    try {
-      localStorage.removeItem('dismissed_shift_notifications');
-      window.dispatchEvent(new Event('storage'));
-      loadData();
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const applyTheme = (newTheme: ThemeMode) => {
-    if (typeof document === 'undefined') return;
-    document.documentElement.classList.remove('dark', 'theme-mina');
-    if (newTheme === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else if (newTheme === 'mina') {
-      document.documentElement.classList.add('theme-mina');
-    }
-  };
-
-  // Carregar usuário salvo no localStorage (roda apenas UMA vez na montagem)
-  useEffect(() => {
-    const savedUserStr = localStorage.getItem('passaturno-user');
-    if (savedUserStr) {
-      try {
-        const u = JSON.parse(savedUserStr) as UserSession;
-        setCurrentUser(u);
-        const uTurma = normalizeTurma(u.turma) || u.turma?.toUpperCase().trim() || 'A';
-        setSelectedTurmaFilter(uTurma);
-        const userKey = `passaturno-theme-${u.id}`;
-        const userTheme = (localStorage.getItem(userKey) as ThemeMode) || 'light';
-        setTheme(userTheme);
-        applyTheme(userTheme);
-        loadData(uTurma);
-        return;
-      } catch (e) {
-        console.error('Erro ao carregar sessão do usuário:', e);
-      }
-    } else {
-      const guestTheme = (localStorage.getItem('passaturno-theme-guest') as ThemeMode) || 'light';
-      setTheme(guestTheme);
-      applyTheme(guestTheme);
-    }
-    loadData();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Ao trocar de operador ou realizar login, carregar as preferências individuais daquele operador
-  const handleLoginSuccess = (user: UserSession) => {
-    setCurrentUser(user);
-    const uTurma = normalizeTurma(user.turma) || user.turma?.toUpperCase().trim() || 'A';
-    setSelectedTurmaFilter(uTurma);
-    localStorage.setItem('passaturno-user', JSON.stringify(user));
-    const userKey = `passaturno-theme-${user.id}`;
-    const userSavedTheme = (localStorage.getItem(userKey) as ThemeMode) || 'light';
-    setTheme(userSavedTheme);
-    applyTheme(userSavedTheme);
-    loadData(uTurma);
-  };
-
-  const handleLogout = () => {
-    setCurrentUser(null);
-    localStorage.removeItem('passaturno-user');
-    const guestTheme = (localStorage.getItem('passaturno-theme-guest') as ThemeMode) || 'light';
-    setTheme(guestTheme);
-    applyTheme(guestTheme);
-    loadData();
-  };
 
   // Salvar a alteração de tema estritamente no perfil do usuário logado
   const handleThemeChange = (newTheme: ThemeMode) => {
@@ -624,9 +677,11 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)] flex flex-col selection:bg-sky-500 selection:text-white transition-colors duration-300">
       
-      {/* Modal de Login (bloqueia o sistema caso o operador não esteja autenticado) */}
+      {/* Modal de Login (bloqueia se nenhum operador estiver autenticado) */}
       {!currentUser && (
-        <LoginModal onLoginSuccess={handleLoginSuccess} />
+        <LoginModal 
+          onLoginSuccess={handleLoginSuccess}
+        />
       )}
 
       {/* Top Navbar */}
@@ -644,6 +699,8 @@ export default function Home() {
         currentUser={currentUser}
         onLogout={handleLogout}
       />
+
+
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">

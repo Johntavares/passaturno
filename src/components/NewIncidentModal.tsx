@@ -57,7 +57,9 @@ export const NewIncidentModal: React.FC<NewIncidentModalProps> = ({
   };
 
   const [tipoFalha, setTipoFalha] = useState('Comunicação');
+  const [divisaoAtuacao, setDivisaoAtuacao] = useState<'MONITORAMENTO' | 'CORRETIVA_CAMPO'>('MONITORAMENTO');
   const [falha, setFalha] = useState('');
+
   const [sintoma, setSintoma] = useState('');
   const [dataHoraParada, setDataHoraParada] = useState(getNowLocalDatetimeString());
   const [prioridade, setPrioridade] = useState<PriorityLevel>('MEDIA');
@@ -189,7 +191,9 @@ export const NewIncidentModal: React.FC<NewIncidentModalProps> = ({
           proximaAcao,
           observacao,
           turma,
+          divisaoAtuacao,
         }),
+
       });
 
       if (!res.ok) {
@@ -220,11 +224,11 @@ export const NewIncidentModal: React.FC<NewIncidentModalProps> = ({
   const isExistingTag = equipments.some((e) => e.tag.toUpperCase().trim() === tag.toUpperCase().trim());
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm overflow-y-auto">
-      <div className="bg-white border border-slate-200 rounded-2xl max-w-3xl w-full p-6 shadow-2xl relative my-8 text-slate-800 animate-fadeIn">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/50 backdrop-blur-sm overflow-hidden">
+      <div className="bg-white border border-slate-200 rounded-2xl max-w-3xl w-full p-4 sm:p-5 shadow-2xl relative text-slate-800 animate-fadeIn max-h-[88vh] flex flex-col">
         
         {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-4">
+        <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-3 shrink-0">
           <div className="flex items-center space-x-2">
             <div className="p-2 bg-sky-50 text-sky-600 rounded-xl">
               <Plus className="w-5 h-5" />
@@ -243,13 +247,48 @@ export const NewIncidentModal: React.FC<NewIncidentModalProps> = ({
         </div>
 
         {errorMsg && (
-          <div className="mb-4 p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 flex items-center">
+          <div className="mb-3 p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 flex items-center shrink-0">
             <AlertTriangle className="w-4 h-4 mr-2 text-rose-600 flex-shrink-0" />
             {errorMsg}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+          
+          <div className="overflow-y-auto pr-1.5 space-y-3 flex-1 scrollbar-thin">
+            {/* SELETOR DE DIVISÃO DE ATUAÇÃO */}
+            <div className="bg-gradient-to-r from-slate-900 to-indigo-950 p-3 rounded-xl border border-slate-800 text-white shadow-md">
+              <label className="text-xs font-bold block mb-1.5 text-slate-200">
+                Divisão de Atuação <span className="text-rose-400">*</span>
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDivisaoAtuacao('MONITORAMENTO')}
+                  className={`p-2 rounded-xl text-xs font-bold flex items-center justify-center gap-2 border transition-all cursor-pointer ${
+                    divisaoAtuacao === 'MONITORAMENTO'
+                      ? 'bg-cyan-600 border-cyan-400 text-white shadow-lg scale-[1.01]'
+                      : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-800'
+                  }`}
+                >
+                  <span>📺</span> Atuação do Monitoramento (NOC)
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setDivisaoAtuacao('CORRETIVA_CAMPO')}
+                  className={`p-2 rounded-xl text-xs font-bold flex items-center justify-center gap-2 border transition-all cursor-pointer ${
+                    divisaoAtuacao === 'CORRETIVA_CAMPO'
+                      ? 'bg-amber-600 border-amber-400 text-white shadow-lg scale-[1.01]'
+                      : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-800'
+                  }`}
+                >
+                  <span>🔧</span> Corretiva de Campo
+                </button>
+              </div>
+            </div>
+
+
           
           {/* Seção 1: Identificação Rápida do Ativo por TAG */}
           <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200/80">
@@ -493,9 +532,13 @@ export const NewIncidentModal: React.FC<NewIncidentModalProps> = ({
               />
             </div>
           </div>
+          </div>
 
-          {/* Footer */}
-          <div className="flex items-center justify-end space-x-3 pt-4 border-t border-slate-100">
+          {/* Footer (Sempre Visível) */}
+
+          <div className="flex items-center justify-end space-x-3 pt-3 border-t border-slate-100 shrink-0 mt-3 bg-white">
+
+
             <button
               type="button"
               onClick={onClose}

@@ -101,6 +101,7 @@ export async function POST(request: Request) {
       observacao,
       turma,
       noCodigo,
+      divisaoAtuacao,
     } = body;
 
     if (!tag || !falha || !responsavel) {
@@ -148,7 +149,9 @@ export async function POST(request: Request) {
           observacao,
           shiftId: activeShift?.id || null,
           turma: finalTurma,
+          divisaoAtuacao: divisaoAtuacao || 'MONITORAMENTO',
           isPendenciaHerdada: isPendencia,
+
           noCodigo: noCodigo === true,
           historico: {
             create: {

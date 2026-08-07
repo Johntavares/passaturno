@@ -28,6 +28,10 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({ incidents }) => 
   // 4. Já Liberados / Retroagidos (Atendimentos concluídos ou retroagidos)
   const jaLiberados = incidents.filter((i) => i.status === 'FINALIZADO' || i.status === 'RETROAGIDO').length;
 
+  // Divisão de Atuações
+  const countMonitoramento = incidents.filter((i) => i.divisaoAtuacao !== 'CORRETIVA_CAMPO').length;
+  const countCampo = incidents.filter((i) => i.divisaoAtuacao === 'CORRETIVA_CAMPO').length;
+
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
       
@@ -46,6 +50,8 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({ incidents }) => 
           <CalendarDays className="w-4 h-4" />
         </div>
       </div>
+
+
 
       {/* 2. Veio do Turno Passado */}
       <div className="bg-white border border-slate-200/80 rounded-xl px-3.5 py-2.5 shadow-2xs hover:border-slate-300 transition-all flex items-center justify-between">

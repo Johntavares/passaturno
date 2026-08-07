@@ -82,6 +82,8 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
     return matchesSearch && matchesArea;
   });
 
+
+
   const areas = ['TODAS', ...Array.from(new Set(incidents.map((i) => i.area)))];
 
   // Separar colunas
@@ -121,7 +123,9 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   return (
     <div className="space-y-4">
       {/* Barra de Filtro e Controle de Exibição */}
+
       <div className="flex flex-col md:flex-row items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-xs">
+
         
         {/* Pesquisa */}
         <div className="relative w-full md:w-80">
@@ -298,6 +302,14 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
           </div>
 
           <div className="flex items-center space-x-1">
+            <span className={`text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded border ${
+              item.divisaoAtuacao === 'CORRETIVA_CAMPO'
+                ? 'bg-amber-100 text-amber-800 border-amber-300'
+                : 'bg-cyan-100 text-cyan-800 border-cyan-300'
+            }`}>
+              {item.divisaoAtuacao === 'CORRETIVA_CAMPO' ? '🔧 Campo' : '📺 NOC'}
+            </span>
+
             <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 font-mono">
               Turma {normalizeTurma(item.turma) || item.turma || 'A'}
             </span>
@@ -307,6 +319,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
               </span>
             )}
           </div>
+
         </div>
 
         {/* ALERTA DE SEGUNDA HORA: Mais de 2h em intervenção (Solicitação de Ajuda Técnica) */}

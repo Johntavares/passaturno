@@ -131,7 +131,7 @@ export const CloseShiftModal: React.FC<CloseShiftModalProps> = ({
     }
   };
 
-  // Gerar o formato exato fornecido pelo usuário
+  // Gerar o formato exato fornecido na imagem de exemplo do usuário
   const generateExactWhatsappText = () => {
     const todayStr = format(new Date(), 'dd/MM/yyyy');
     let text = `RELATÓRIO DE PASSAGEM DE TURNO:\n`;
@@ -143,48 +143,79 @@ export const CloseShiftModal: React.FC<CloseShiftModalProps> = ({
 
     text += `Checklist do Malão:\n`;
     text += `Status: ${checklistMalaoStatus}\n`;
-    text += `Materiais faltantes: ${checklistMalaoFaltantes || ''}\n`;
+    text += `Materiais faltantes: ${checklistMalaoFaltantes || 'N/A'}\n`;
     text += `Responsável: ${checklistMalaoResponsavel}\n\n`;
 
     text += `Solicitação de Material de Reposição:\n`;
-    text += `Status: ${solicitacaoMaterialStatus || ''}\n`;
+    text += `Status: ${solicitacaoMaterialStatus || 'N/A'}\n`;
     text += `Responsável pela Solicitação: ${solicitacaoMaterialResponsavel}\n\n`;
 
-    text += `Anomalias Identificadas: ${anomaliasIdentificadas || ''}\n\n`;
+    text += `Anomalias Identificadas: ${anomaliasIdentificadas || 'Nenhuma'}\n\n`;
 
-    text += `Pendências:\n\n`;
+    // 1. NO TOPO: Pendências Gerais (🔴 Importante & 🟡 Em andamento)
+    const importantesGerais = shiftIncidents.filter(
+      (i) => (i.prioridade === 'CRITICA' || i.prioridade === 'ALTA') && i.status !== 'FINALIZADO' && i.status !== 'RETROAGIDO'
+    );
+    const emAndamentoGerais = shiftIncidents.filter(
+      (i) => i.status !== 'FINALIZADO' && i.status !== 'RETROAGIDO' && i.prioridade !== 'CRITICA' && i.prioridade !== 'ALTA'
+    );
 
     text += `🔴 Importante:\n`;
-    if (importanetes.length === 0) {
-      text += `\n`;
+    if (importantesGerais.length === 0) {
+      text += `Nenhum\n`;
     } else {
-      importanetes.forEach((item) => {
-        text += `🔴${item.tag} - ${item.falha}\n`;
+      importantesGerais.forEach((item) => {
+        text += `🔴 ${item.tag} - ${item.falha}\n`;
       });
     }
 
-    text += `\n🟡Em andamento:\n`;
-    if (emAndamento.length === 0) {
-      text += `\n`;
+    text += `\n🟡 Em andamento:\n`;
+    if (emAndamentoGerais.length === 0) {
+      text += `Nenhum\n`;
     } else {
-      emAndamento.forEach((item) => {
-        text += `🟡${item.tag} ${item.falha}\n`;
+      emAndamentoGerais.forEach((item) => {
+        text += `🟡 ${item.tag} - ${item.falha}\n`;
       });
     }
 
-    text += `\n🟢 Realizado:\n`;
-    if (realizados.length === 0) {
-      text += `\n`;
+    // 2. ABAIXO: Atendimentos Realizados (Concluídos) divididos por Monitoramento (NOC) e Corretiva de Campo
+    const nocRealizados = shiftIncidents.filter(
+      (i) => i.divisaoAtuacao !== 'CORRETIVA_CAMPO' && (i.status === 'FINALIZADO' || i.status === 'RETROAGIDO')
+    );
+    const campoRealizados = shiftIncidents.filter(
+      (i) => i.divisaoAtuacao === 'CORRETIVA_CAMPO' && (i.status === 'FINALIZADO' || i.status === 'RETROAGIDO')
+    );
+
+    text += `\n====================================\n`;
+    text += `📺 ATENDIMENTOS DO MONITORAMENTO (NOC):\n`;
+    text += `====================================\n`;
+    text += `🟢 Realizado:\n`;
+    if (nocRealizados.length === 0) {
+      text += `Nenhum\n`;
     } else {
-      realizados.forEach((item) => {
-        text += `🟢${item.tag} - ${item.falha}\n`;
+      nocRealizados.forEach((item) => {
+        text += `🟢 ${item.tag} - ${item.falha}\n`;
       });
     }
 
-    text += `\n\nObservações Gerais: ${observacoesTurno || ''}\n`;
+    text += `\n====================================\n`;
+    text += `🔧 ATENDIMENTOS DA CORRETIVA DE CAMPO:\n`;
+    text += `====================================\n`;
+    text += `🟢 Realizado:\n`;
+    if (campoRealizados.length === 0) {
+      text += `Nenhum\n`;
+    } else {
+      campoRealizados.forEach((item) => {
+        text += `🟢 ${item.tag} - ${item.falha}\n`;
+      });
+    }
+
+    text += `\nObservações Gerais: ${observacoesTurno || ''}\n`;
 
     return text;
   };
+
+
 
   useEffect(() => {
     if (isOpen && !isCustomEdited) {
@@ -422,44 +453,110 @@ export const CloseShiftModal: React.FC<CloseShiftModalProps> = ({
               {pendentesLista.length === 0 ? (
                 <p className="text-xs text-slate-400 italic py-1">Nenhum atendimento pendente para o próximo turno.</p>
               ) : (
-                <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
-                  {pendentesLista.map((item) => {
-                    const isPriority = item.prioridade === 'ALTA' || item.prioridade === 'CRITICA';
-                    return (
-                      <div
-                        key={item.id}
-                        onClick={() => handleTogglePriority(item.id)}
-                        className={`flex items-center justify-between p-2 rounded-xl border text-xs cursor-pointer transition-all ${
-                          isPriority
-                            ? 'bg-rose-50/90 border-rose-300 text-rose-900 font-semibold shadow-xs'
-                            : 'bg-white border-slate-200/80 hover:bg-slate-100/80 text-slate-700'
-                        }`}
-                      >
-                        <div className="flex items-center space-x-2 truncate">
-                          <span className="font-mono font-bold px-2 py-0.5 rounded-md bg-slate-100 border text-[10px] text-slate-800">
-                            {item.tag}
-                          </span>
-                          <span className="truncate max-w-[280px]">{item.falha}</span>
-                        </div>
+                <div className="space-y-3 max-h-48 overflow-y-auto pr-1">
+                  {/* Bloco NOC */}
+                  {(() => {
+                    const nocPendentes = pendentesLista.filter((i) => i.divisaoAtuacao !== 'CORRETIVA_CAMPO');
+                    const campoPendentes = pendentesLista.filter((i) => i.divisaoAtuacao === 'CORRETIVA_CAMPO');
 
-                        <div className="flex items-center space-x-2">
-                          {isPriority ? (
-                            <span className="text-[10px] font-extrabold bg-rose-600 text-white px-2 py-0.5 rounded-lg uppercase flex items-center gap-1">
-                              <Flame className="w-3 h-3" />
-                              🔴 Importante
-                            </span>
+                    return (
+                      <>
+                        {/* ATENDIMENTOS DO MONITORAMENTO (NOC) */}
+                        <div className="space-y-1">
+                          <span className="text-[10px] font-bold text-cyan-800 uppercase tracking-wider block">
+                            📺 Atendimentos do Monitoramento (NOC) ({nocPendentes.length}):
+                          </span>
+                          {nocPendentes.length === 0 ? (
+                            <span className="text-[11px] text-slate-400 italic block pl-1">Sem pendências no NOC.</span>
                           ) : (
-                            <span className="text-[10px] font-semibold bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-0.5 rounded-lg transition-colors">
-                              🟡 Normal
-                            </span>
+                            nocPendentes.map((item) => {
+                              const isPriority = item.prioridade === 'ALTA' || item.prioridade === 'CRITICA';
+                              return (
+                                <div
+                                  key={item.id}
+                                  onClick={() => handleTogglePriority(item.id)}
+                                  className={`flex items-center justify-between p-2 rounded-xl border text-xs cursor-pointer transition-all ${
+                                    isPriority
+                                      ? 'bg-rose-50/90 border-rose-300 text-rose-900 font-semibold shadow-xs'
+                                      : 'bg-white border-slate-200/80 hover:bg-slate-100/80 text-slate-700'
+                                  }`}
+                                >
+                                  <div className="flex items-center space-x-2 truncate">
+                                    <span className="font-mono font-bold px-2 py-0.5 rounded-md bg-slate-100 border text-[10px] text-slate-800">
+                                      {item.tag}
+                                    </span>
+                                    <span className="truncate max-w-[280px]">{item.falha}</span>
+                                  </div>
+
+                                  <div className="flex items-center space-x-2">
+                                    {isPriority ? (
+                                      <span className="text-[10px] font-extrabold bg-rose-600 text-white px-2 py-0.5 rounded-lg uppercase flex items-center gap-1">
+                                        <Flame className="w-3 h-3" />
+                                        🔴 Importante
+                                      </span>
+                                    ) : (
+                                      <span className="text-[10px] font-semibold bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-0.5 rounded-lg transition-colors">
+                                        🟡 Normal
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })
                           )}
                         </div>
-                      </div>
+
+                        {/* ATENDIMENTOS DA CORRETIVA DE CAMPO (UM EMBAIXO DO OUTRO) */}
+                        <div className="space-y-1 pt-1 border-t border-slate-200">
+                          <span className="text-[10px] font-bold text-amber-800 uppercase tracking-wider block">
+                            🔧 Atendimentos da Corretiva de Campo ({campoPendentes.length}):
+                          </span>
+                          {campoPendentes.length === 0 ? (
+                            <span className="text-[11px] text-slate-400 italic block pl-1">Sem pendências em campo.</span>
+                          ) : (
+                            campoPendentes.map((item) => {
+                              const isPriority = item.prioridade === 'ALTA' || item.prioridade === 'CRITICA';
+                              return (
+                                <div
+                                  key={item.id}
+                                  onClick={() => handleTogglePriority(item.id)}
+                                  className={`flex items-center justify-between p-2 rounded-xl border text-xs cursor-pointer transition-all ${
+                                    isPriority
+                                      ? 'bg-rose-50/90 border-rose-300 text-rose-900 font-semibold shadow-xs'
+                                      : 'bg-white border-slate-200/80 hover:bg-slate-100/80 text-slate-700'
+                                  }`}
+                                >
+                                  <div className="flex items-center space-x-2 truncate">
+                                    <span className="font-mono font-bold px-2 py-0.5 rounded-md bg-slate-100 border text-[10px] text-slate-800">
+                                      {item.tag}
+                                    </span>
+                                    <span className="truncate max-w-[280px]">{item.falha}</span>
+                                  </div>
+
+                                  <div className="flex items-center space-x-2">
+                                    {isPriority ? (
+                                      <span className="text-[10px] font-extrabold bg-rose-600 text-white px-2 py-0.5 rounded-lg uppercase flex items-center gap-1">
+                                        <Flame className="w-3 h-3" />
+                                        🔴 Importante
+                                      </span>
+                                    ) : (
+                                      <span className="text-[10px] font-semibold bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-0.5 rounded-lg transition-colors">
+                                        🟡 Normal
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
+                      </>
                     );
-                  })}
+                  })()}
                 </div>
               )}
             </div>
+
 
             {/* Preview Passagem Exata */}
             <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/80">

@@ -538,44 +538,88 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
               {/* GRID: TABELA DE BASTÃO + RESUMO DAS TURMAS */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2 space-y-6">
-                  {/* CARD COMPACTO: ATIVOS EM ALERTA */}
-                  <div className="bg-white rounded-3xl border border-slate-200 p-5 shadow-xs space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <div className="p-2 bg-amber-50 text-amber-600 rounded-xl border border-amber-200">
+                  {/* CARD PRINCIPAL: ATIVOS EM ALERTA & PASSAGEM DE BASTÃO */}
+                  <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs space-y-4">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-slate-100 pb-3 gap-2">
+                      <div className="flex items-center space-x-3">
+                        <div className="p-2.5 bg-amber-50 text-amber-600 rounded-2xl border border-amber-200">
                           <AlertCircle className="w-5 h-5" />
                         </div>
                         <div>
-                          <h3 className="text-sm font-black text-slate-900">
+                          <h3 className="text-base font-black text-slate-900 leading-tight">
                             Ativos em Alerta & Passagem de Bastão
                           </h3>
+                          <p className="text-xs text-slate-500 font-medium">
+                            Ocorrências pendentes e prioridades repassadas entre turmas
+                          </p>
                         </div>
                       </div>
-                      <span className="text-xs font-bold bg-amber-100 text-amber-800 px-3 py-1 rounded-full border border-amber-300">
-                        {priorityAlerts.length} em atenção
+                      <span className="text-xs font-bold bg-amber-100 text-amber-900 px-3 py-1 rounded-full border border-amber-300">
+                        {priorityAlerts.length} {priorityAlerts.length === 1 ? 'ativo em atenção' : 'ativos em atenção'}
                       </span>
                     </div>
 
                     {priorityAlerts.length === 0 ? (
-                      <div className="py-2 text-center text-xs font-bold text-slate-400 border border-dashed border-slate-200 rounded-xl">
-                        🟢 Nenhum ativo pendente na troca de bastão.
+                      <div className="py-8 text-center text-xs font-bold text-slate-400 border border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
+                        🟢 Nenhum ativo pendente na passagem de bastão.
                       </div>
                     ) : (
-                      <div className="flex flex-wrap gap-2">
-                        {priorityAlerts.map(item => (
-                          <div key={item.id} className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs">
-                            <span className="font-bold text-slate-900">{item.tag}</span>
-                            <span className="text-amber-600 font-medium">{item.falha.substring(0, 25)}{item.falha.length > 25 ? '...' : ''}</span>
-                            <span className="text-[10px] uppercase font-bold bg-white text-slate-500 px-1.5 py-0.5 rounded border border-slate-200">
-                              Turma {item.turma || 'A'} ➔ {getTurmaDestino(item.turma || 'A')}
-                            </span>
-                          </div>
-                        ))}
+                      <div className="space-y-2">
+                        {priorityAlerts.map((item) => {
+                          const turmaOrigem = item.turma || 'A';
+                          const turmaDestino = getTurmaDestino(turmaOrigem);
+                          const isCampo = item.divisaoAtuacao === 'CORRETIVA_CAMPO';
+
+                          return (
+                            <div
+                              key={item.id}
+                              className="flex flex-col md:flex-row items-start md:items-center justify-between bg-amber-50/60 hover:bg-amber-50 border border-amber-200/80 rounded-2xl p-3 transition-all gap-2.5 shadow-2xs"
+                            >
+                              <div className="flex items-center space-x-2 flex-wrap gap-y-1.5">
+                                <span className="font-mono text-xs font-black bg-white text-slate-900 px-2 py-0.5 rounded-md border border-slate-300 shadow-2xs">
+                                  {item.tag}
+                                </span>
+
+                                <span className="text-xs font-bold text-slate-900 truncate max-w-[220px]" title={item.equipamentoNome}>
+                                  {item.equipamentoNome}
+                                </span>
+
+                                <span className="text-xs font-extrabold text-amber-900 bg-amber-100/90 px-2 py-0.5 rounded-md border border-amber-300/80">
+                                  {item.falha}
+                                </span>
+
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${
+                                  isCampo
+                                    ? 'bg-amber-100 text-amber-900 border-amber-300'
+                                    : 'bg-cyan-100 text-cyan-900 border-cyan-300'
+                                }`}>
+                                  {isCampo ? '🔧 Campo' : '📺 NOC'}
+                                </span>
+
+                                <span className="text-[10px] font-extrabold bg-white text-slate-700 px-2 py-0.5 rounded-md border border-slate-200 shadow-2xs">
+                                  Turma {turmaOrigem} ➔ {turmaDestino.startsWith('Turma') ? turmaDestino : `Turma ${turmaDestino}`}
+                                </span>
+                              </div>
+
+                              <div className="flex items-center gap-2 self-end md:self-auto flex-shrink-0">
+                                <button
+                                  onClick={() => onOpenTimeline(item)}
+                                  className="px-3 py-1 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+                                  title="Clique para ver o histórico e as anotações completas na Linha do Tempo"
+                                >
+                                  <History className="w-3.5 h-3.5" />
+                                  <span>Linha do Tempo / Histórico</span>
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
+
                     )}
                   </div>
 
-                  {/* NOVO CARD: ATENDIMENTOS DO DIA (RESUMO) */}
+                  {/* CARD DE ATENDIMENTOS DO DIA COM BOTÕES DE DETALHE */}
                   <div className="bg-white rounded-3xl border border-slate-200 p-5 shadow-xs space-y-4">
                     <div className="flex items-center space-x-2 border-b border-slate-100 pb-3">
                       <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl border border-indigo-200">
@@ -585,29 +629,29 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
                         <h3 className="text-sm font-black text-slate-900">
                           Atendimentos do Dia
                         </h3>
-                        <p className="text-xs text-slate-500 font-medium">Resumo dos status de cada ocorrência hoje</p>
+                        <p className="text-xs text-slate-500 font-medium">Resumo dos status e acompanhamento de ocorrências</p>
                       </div>
                     </div>
 
-                    <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                    <div className="space-y-2.5 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                       {incidents.length === 0 ? (
                         <div className="py-6 text-center text-xs font-bold text-slate-400">
                           Nenhum atendimento registrado hoje.
                         </div>
                       ) : (
                         incidents.slice(0, 15).map(item => (
-                          <div key={item.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100 hover:border-slate-200 transition-colors">
+                          <div key={item.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3.5 bg-slate-50 rounded-2xl border border-slate-100 hover:border-slate-200 transition-colors gap-2">
                             <div className="flex items-center gap-3">
-                              <span className="font-mono text-xs font-bold bg-white text-slate-700 px-2 py-1 rounded-md border border-slate-200">
+                              <span className="font-mono text-xs font-black bg-white text-slate-800 px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs">
                                 {item.tag}
                               </span>
                               <div>
                                 <p className="text-xs font-bold text-slate-800">{item.falha}</p>
-                                <p className="text-[10px] text-slate-500 font-medium mt-0.5">Resp: {item.responsavel}</p>
+                                <p className="text-[10px] text-slate-500 font-medium mt-0.5">Resp: {item.responsavel} • Turma {item.turma || 'A'}</p>
                               </div>
                             </div>
-                            <div className="flex items-center gap-2 text-right">
-                              <span className={`text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wide border ${
+                            <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+                              <span className={`text-[10px] font-bold px-2 py-1 rounded-lg uppercase tracking-wide border ${
                                 item.status === 'FINALIZADO' || item.status === 'RETROAGIDO'
                                   ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                                   : item.status === 'EM_ANDAMENTO'
@@ -616,12 +660,22 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
                               }`}>
                                 {item.status.replace(/_/g, ' ')}
                               </span>
+
+                              <button
+                                onClick={() => onOpenTimeline(item)}
+                                className="px-2.5 py-1 bg-white hover:bg-sky-50 text-sky-700 border border-slate-200 hover:border-sky-300 font-bold text-[11px] rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                                title="Ver linha do tempo da atividade"
+                              >
+                                <History className="w-3 h-3 text-sky-600" />
+                                <span>Detalhes</span>
+                              </button>
                             </div>
                           </div>
                         ))
                       )}
                     </div>
                   </div>
+
                 </div>
 
                 <div className="space-y-6">
@@ -1102,23 +1156,27 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
                               </td>
 
                               <td className="px-4 py-3 align-top text-right">
-                                <div className="flex items-center justify-end space-x-1">
+                                <div className="flex items-center justify-end gap-1.5">
                                   <button
                                     onClick={() => onOpenCommentModal(item)}
-                                    title="Anotações"
-                                    className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors cursor-pointer"
+                                    title="Adicionar anotação do líder"
+                                    className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 font-bold text-[11px] rounded-lg transition-colors flex items-center gap-1 cursor-pointer shadow-2xs"
                                   >
-                                    <MessageSquare className="w-3.5 h-3.5" />
+                                    <MessageSquare className="w-3 h-3 text-amber-700" />
+                                    <span>Anotar</span>
                                   </button>
+
                                   <button
                                     onClick={() => onOpenTimeline(item)}
-                                    title="Linha do Tempo"
-                                    className="p-1.5 bg-slate-100 hover:bg-sky-50 text-sky-600 rounded-lg transition-colors cursor-pointer"
+                                    title="Linha do Tempo e Histórico do Atendimento"
+                                    className="px-2.5 py-1 bg-sky-600 hover:bg-sky-500 text-white font-bold text-[11px] rounded-lg transition-colors flex items-center gap-1 cursor-pointer shadow-xs"
                                   >
-                                    <History className="w-3.5 h-3.5" />
+                                    <History className="w-3 h-3" />
+                                    <span>Linha do Tempo</span>
                                   </button>
                                 </div>
                               </td>
+
                             </tr>
                           );
                         })

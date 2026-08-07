@@ -68,7 +68,9 @@ export interface IncidentType {
   isPendenciaHerdada: boolean;
   noCodigo: boolean;
   turma?: string | null;
+  divisaoAtuacao?: 'MONITORAMENTO' | 'CORRETIVA_CAMPO' | string;
   historico?: IncidentHistoryType[];
+
   criadoEm: string;
   atualizadoEm: string;
 }

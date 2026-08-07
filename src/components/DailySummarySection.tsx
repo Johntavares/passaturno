@@ -61,6 +61,9 @@ export const DailySummarySection: React.FC<DailySummarySectionProps> = ({
   );
   const realizados = filteredIncidents.filter((i) => i.status === 'FINALIZADO' || i.status === 'RETROAGIDO');
 
+  const monitoramentoList = filteredIncidents.filter((i) => i.divisaoAtuacao !== 'CORRETIVA_CAMPO');
+  const campoList = filteredIncidents.filter((i) => i.divisaoAtuacao === 'CORRETIVA_CAMPO');
+
   const displayDateStr = selectedDate
     ? selectedDate.split('-').reverse().join('/')
     : format(new Date(), 'dd/MM/yyyy');
@@ -71,7 +74,7 @@ export const DailySummarySection: React.FC<DailySummarySectionProps> = ({
   const [customWhatsappText, setCustomWhatsappText] = useState('');
   const [isCustomEdited, setIsCustomEdited] = useState(false);
 
-  // Gerar o formato exato da mensagem de WhatsApp do usuário
+  // Gerar o formato exato fornecido na imagem de exemplo do usuário
   const generateRealWhatsappText = () => {
     let text = `RELATÓRIO DE PASSAGEM DE TURNO:\n`;
     text += `Data: ${displayDateStr}\n`;
@@ -94,31 +97,57 @@ export const DailySummarySection: React.FC<DailySummarySectionProps> = ({
 
     text += `Anomalias Identificadas: ${activeShift?.anomaliasIdentificadas || 'Nenhuma'}\n\n`;
 
-    text += `Pendências:\n\n`;
+    // 1. NO TOPO: Pendências Gerais (🔴 Importante & 🟡 Em andamento)
+    const importantesGerais = filteredIncidents.filter(
+      (i) => (i.prioridade === 'CRITICA' || i.prioridade === 'ALTA') && i.status !== 'FINALIZADO' && i.status !== 'RETROAGIDO'
+    );
+    const emAndamentoGerais = filteredIncidents.filter(
+      (i) => (i.status === 'EM_ANDAMENTO' || i.status === 'AGUARDANDO' || i.status === 'PENDENCIA_PROXIMO_TURNO') &&
+        i.prioridade !== 'CRITICA' && i.prioridade !== 'ALTA'
+    );
 
     text += `🔴 Importante:\n`;
-    if (importanetes.length === 0) {
-      text += `Nenhuma pendência crítica.\n`;
+    if (importantesGerais.length === 0) {
+      text += `Nenhum\n`;
     } else {
-      importanetes.forEach((item) => {
+      importantesGerais.forEach((item) => {
         text += `🔴 ${item.tag} - ${item.falha}\n`;
       });
     }
 
     text += `\n🟡 Em andamento:\n`;
-    if (emAndamento.length === 0) {
-      text += `Nenhum atendimento em andamento.\n`;
+    if (emAndamentoGerais.length === 0) {
+      text += `Nenhum\n`;
     } else {
-      emAndamento.forEach((item) => {
+      emAndamentoGerais.forEach((item) => {
         text += `🟡 ${item.tag} - ${item.falha}\n`;
       });
     }
 
-    text += `\n🟢 Realizado:\n`;
-    if (realizados.length === 0) {
-      text += `Nenhum atendimento realizado no turno.\n`;
+    // 2. ABAIXO: Realizados divididos por Monitoramento NOC e Corretiva de Campo
+    const nocRealizados = monitoramentoList.filter((i) => i.status === 'FINALIZADO' || i.status === 'RETROAGIDO');
+    const campoRealizados = campoList.filter((i) => i.status === 'FINALIZADO' || i.status === 'RETROAGIDO');
+
+    text += `\n====================================\n`;
+    text += `📺 ATENDIMENTOS DO MONITORAMENTO (NOC):\n`;
+    text += `====================================\n`;
+    text += `🟢 Realizado:\n`;
+    if (nocRealizados.length === 0) {
+      text += `Nenhum\n`;
     } else {
-      realizados.forEach((item) => {
+      nocRealizados.forEach((item) => {
+        text += `🟢 ${item.tag} - ${item.falha}\n`;
+      });
+    }
+
+    text += `\n====================================\n`;
+    text += `🔧 ATENDIMENTOS DA CORRETIVA DE CAMPO:\n`;
+    text += `====================================\n`;
+    text += `🟢 Realizado:\n`;
+    if (campoRealizados.length === 0) {
+      text += `Nenhum\n`;
+    } else {
+      campoRealizados.forEach((item) => {
         text += `🟢 ${item.tag} - ${item.falha}\n`;
       });
     }
@@ -127,6 +156,8 @@ export const DailySummarySection: React.FC<DailySummarySectionProps> = ({
 
     return text;
   };
+
+
 
   React.useEffect(() => {
     if (!isCustomEdited) {
@@ -218,7 +249,7 @@ export const DailySummarySection: React.FC<DailySummarySectionProps> = ({
           {/* Coluna 1 & 2: Visualização dos Blocos Resumidos */}
           <div className="lg:col-span-2 space-y-3">
             
-            {/* 🔴 Importante */}
+            {/* 🔴 Importante (No topo das pendências) */}
             <div className="bg-white p-3.5 rounded-xl border border-rose-200/80 shadow-xs">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-bold text-rose-700 flex items-center">
@@ -230,7 +261,7 @@ export const DailySummarySection: React.FC<DailySummarySectionProps> = ({
                 </span>
               </div>
               {importanetes.length === 0 ? (
-                <p className="text-xs text-slate-400 italic">Nenhuma pendência crítica registrada no momento.</p>
+                <p className="text-xs text-slate-400 italic">Nenhum</p>
               ) : (
                 <div className="space-y-1.5">
                   {importanetes.map((item) => (
@@ -243,7 +274,7 @@ export const DailySummarySection: React.FC<DailySummarySectionProps> = ({
               )}
             </div>
 
-            {/* 🟡 Em andamento */}
+            {/* 🟡 Em andamento (No topo das pendências) */}
             <div className="bg-white p-3.5 rounded-xl border border-amber-200/80 shadow-xs">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-bold text-amber-700 flex items-center">
@@ -255,7 +286,7 @@ export const DailySummarySection: React.FC<DailySummarySectionProps> = ({
                 </span>
               </div>
               {emAndamento.length === 0 ? (
-                <p className="text-xs text-slate-400 italic">Nenhum atendimento em andamento no momento.</p>
+                <p className="text-xs text-slate-400 italic">Nenhum</p>
               ) : (
                 <div className="space-y-1.5">
                   {emAndamento.map((item) => (
@@ -268,32 +299,67 @@ export const DailySummarySection: React.FC<DailySummarySectionProps> = ({
               )}
             </div>
 
-            {/* 🟢 Realizado */}
-            <div className="bg-white p-3.5 rounded-xl border border-emerald-200/80 shadow-xs">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold text-emerald-700 flex items-center">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 mr-2"></span>
-                  🟢 Realizado (Concluídos)
-                </span>
-                <span className="text-[11px] font-mono font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">
-                  {realizados.length}
-                </span>
-              </div>
-              {realizados.length === 0 ? (
-                <p className="text-xs text-slate-400 italic">Nenhum atendimento concluído hoje ainda.</p>
-              ) : (
-                <div className="space-y-1.5">
-                  {realizados.map((item) => (
-                    <div key={item.id} className="text-xs text-slate-700 bg-emerald-50/40 p-2 rounded-lg border border-emerald-100 flex items-center justify-between">
-                      <span><strong>{item.tag}</strong> — {item.falha}</span>
-                      <span className="text-[10px] text-emerald-700 font-medium">{item.solucao ? 'Resolvido' : 'Concluído'}</span>
+            {/* 📺 Realizados do Monitoramento (NOC) */}
+            {(() => {
+              const nocRea = monitoramentoList.filter((i) => i.status === 'FINALIZADO' || i.status === 'RETROAGIDO');
+              return (
+                <div className="bg-cyan-50/40 p-3.5 rounded-xl border border-cyan-200/80 shadow-xs space-y-2">
+                  <div className="flex items-center justify-between pb-1 border-b border-cyan-200/60">
+                    <span className="text-xs font-bold text-cyan-900 flex items-center gap-1.5 uppercase">
+                      <span>📺</span> Atendimentos do Monitoramento (NOC) — Realizados
+                    </span>
+                    <span className="text-[11px] font-mono font-bold text-cyan-800 bg-cyan-100 px-2 py-0.5 rounded-md">
+                      {nocRea.length}
+                    </span>
+                  </div>
+                  {nocRea.length === 0 ? (
+                    <p className="text-xs text-slate-400 italic">Nenhum</p>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {nocRea.map((item) => (
+                        <div key={item.id} className="text-xs text-slate-700 bg-white p-2 rounded-lg border border-cyan-100 flex items-center justify-between">
+                          <span>🟢 <strong>{item.tag}</strong> — {item.falha}</span>
+                          <span className="text-[10px] text-emerald-700 font-medium">{item.solucao ? 'Resolvido' : 'Concluído'}</span>
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  )}
                 </div>
-              )}
-            </div>
+              );
+            })()}
+
+            {/* 🔧 Realizados da Corretiva de Campo */}
+            {(() => {
+              const campoRea = campoList.filter((i) => i.status === 'FINALIZADO' || i.status === 'RETROAGIDO');
+              return (
+                <div className="bg-amber-50/40 p-3.5 rounded-xl border border-amber-200/80 shadow-xs space-y-2">
+                  <div className="flex items-center justify-between pb-1 border-b border-amber-200/60">
+                    <span className="text-xs font-bold text-amber-900 flex items-center gap-1.5 uppercase">
+                      <span>🔧</span> Atendimentos da Corretiva de Campo — Realizados
+                    </span>
+                    <span className="text-[11px] font-mono font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-md">
+                      {campoRea.length}
+                    </span>
+                  </div>
+                  {campoRea.length === 0 ? (
+                    <p className="text-xs text-slate-400 italic">Nenhum</p>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {campoRea.map((item) => (
+                        <div key={item.id} className="text-xs text-slate-700 bg-white p-2 rounded-lg border border-amber-100 flex items-center justify-between">
+                          <span>🟢 <strong>{item.tag}</strong> — {item.falha}</span>
+                          <span className="text-[10px] text-emerald-700 font-medium">{item.solucao ? 'Resolvido' : 'Concluído'}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
           </div>
+
+
 
           {/* Coluna 3: Preview da Mensagem Exata do WhatsApp */}
           <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs flex flex-col">

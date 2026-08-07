@@ -81,33 +81,73 @@ export const IncidentTimelineModal: React.FC<IncidentTimelineModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm overflow-y-auto">
       <div className="bg-white border border-slate-200 rounded-2xl max-w-xl w-full p-6 shadow-2xl relative my-8 text-slate-800">
         
-        {/* Header */}
-        <div className="flex items-start justify-between pb-4 border-b border-slate-100 mb-4">
+        {/* Header com Detalhes do Atendimento */}
+        <div className="flex items-start justify-between pb-3 border-b border-slate-100 mb-3">
           <div>
-            <div className="flex items-center space-x-2">
-              <span className="badge-tag text-xs px-2.5 py-0.5 rounded-md bg-slate-100 text-slate-800 border border-slate-200">
+            <div className="flex items-center space-x-2 flex-wrap gap-y-1">
+              <span className="badge-tag text-xs px-2.5 py-0.5 rounded-md bg-slate-100 text-slate-800 border border-slate-200 font-mono font-bold">
                 {incident.tag}
               </span>
-              <h3 className="text-base font-bold text-slate-800">{incident.equipamentoNome}</h3>
+              <h3 className="text-sm font-black text-slate-800">{incident.equipamentoNome}</h3>
+
+              {/* Especificação da Divisão de Atuação nos Detalhes */}
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border flex items-center gap-1 ${
+                incident.divisaoAtuacao === 'CORRETIVA_CAMPO'
+                  ? 'bg-amber-50 text-amber-900 border-amber-300'
+                  : 'bg-cyan-50 text-cyan-900 border-cyan-300'
+              }`}>
+                {incident.divisaoAtuacao === 'CORRETIVA_CAMPO' ? '🔧 Corretiva de Campo' : '📺 Atuação Monitoramento (NOC)'}
+              </span>
             </div>
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-xs text-slate-600 font-medium mt-1">
               <strong>Falha:</strong> {incident.falha}
             </p>
           </div>
+
           <button
             onClick={onClose}
-            className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-xl transition-colors"
+            className="p-1 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-lg transition-colors cursor-pointer"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
+        {/* Bloco de Destaque: Anotações do Turno & Solução Aplicada */}
+        <div className="bg-amber-50/80 border border-amber-200/80 rounded-xl p-3 mb-4 space-y-2 text-xs">
+          <div>
+            <span className="text-[10px] font-bold text-amber-900 uppercase tracking-wider block">
+              💬 Anotações / Observação do Turno:
+            </span>
+            {incident.observacao ? (
+              <p className="text-slate-800 font-medium italic mt-0.5">"{incident.observacao}"</p>
+            ) : (
+              <p className="text-slate-400 italic mt-0.5">Nenhuma anotação gravada ainda neste atendimento.</p>
+            )}
+          </div>
+
+          {incident.solucao && (
+            <div className="pt-2 border-t border-amber-200/60">
+              <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider block">
+                ✅ Solução Aplicada:
+              </span>
+              <p className="text-emerald-950 font-bold mt-0.5">{incident.solucao}</p>
+            </div>
+          )}
+
+          {incident.sintoma && (
+            <div className="pt-1 text-[11px] text-slate-600">
+              <strong>Sintoma:</strong> {incident.sintoma}
+            </div>
+          )}
+        </div>
+
         {/* Linha do Tempo Cronológica */}
-        <div className="mb-6 max-h-72 overflow-y-auto pr-2 space-y-4">
+        <div className="mb-4 max-h-64 overflow-y-auto pr-1 space-y-3 custom-scrollbar">
           <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center">
             <History className="w-3.5 h-3.5 mr-1.5 text-sky-600" />
-            Linha do Tempo da Ocorrência
+            Linha do Tempo & Histórico de Atualizações
           </h4>
+
 
           {incident.historico && incident.historico.length > 0 ? (
             <div className="relative border-l-2 border-slate-200 ml-3 pl-5 space-y-3.5">

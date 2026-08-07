@@ -106,7 +106,9 @@ responsavelId           String?
   shiftId                 String?
   shift                   Shift?          @relation(fields: [shiftId], references: [id])
   turma                   String?         // Turma A, B, C ou D (derivada do turno ativo no momento da abertura)
+  divisaoAtuacao          String?         @default("MONITORAMENTO") // MONITORAMENTO, CORRETIVA_CAMPO
   isPendenciaHerdada      Boolean         @default(false)
+
   noCodigo                Boolean         @default(false) // Equipamento no código (time de 2h para acionar cadeia de ajuda)
   historico               IncidentHistory[]
   criadoEm                DateTime        @default(now())

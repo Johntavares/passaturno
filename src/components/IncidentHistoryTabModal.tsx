@@ -44,6 +44,7 @@ export const IncidentHistoryTabModal: React.FC<IncidentHistoryTabModalProps> = (
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('TODOS');
   const [areaFilter, setAreaFilter] = useState<string>('TODAS');
+  const [divisaoFilter, setDivisaoFilter] = useState<string>('TODAS');
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
 
   if (!isOpen) return null;
@@ -63,8 +64,15 @@ export const IncidentHistoryTabModal: React.FC<IncidentHistoryTabModalProps> = (
     const matchesStatus = statusFilter === 'TODOS' || item.status === statusFilter;
     const matchesArea = areaFilter === 'TODAS' || item.area === areaFilter;
 
-    return matchesSearch && matchesStatus && matchesArea;
+    const matchesDivisao =
+      divisaoFilter === 'TODAS' ||
+      (divisaoFilter === 'CORRETIVA_CAMPO'
+        ? item.divisaoAtuacao === 'CORRETIVA_CAMPO'
+        : item.divisaoAtuacao !== 'CORRETIVA_CAMPO');
+
+    return matchesSearch && matchesStatus && matchesArea && matchesDivisao;
   });
+
 
   const areasList = ['TODAS', ...Array.from(new Set(incidents.map((i) => i.area)))];
 
@@ -197,16 +205,28 @@ export const IncidentHistoryTabModal: React.FC<IncidentHistoryTabModalProps> = (
         </div>
 
         {/* Filtros e Barra de Pesquisa */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4 bg-slate-50 dark:bg-slate-800/60 p-3 rounded-2xl border border-slate-200 dark:border-slate-700">
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 mb-4 bg-slate-50 dark:bg-slate-800/60 p-3 rounded-2xl border border-slate-200 dark:border-slate-700">
           <div className="relative">
             <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
             <input
               type="text"
-              placeholder="Buscar por TAG, falha, operador ou solução..."
+              placeholder="Buscar por TAG, falha, operador..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl pl-9 pr-3 py-1.5 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-sky-500 font-medium"
             />
+          </div>
+
+          <div>
+            <select
+              value={divisaoFilter}
+              onChange={(e) => setDivisaoFilter(e.target.value)}
+              className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-800 dark:text-white focus:outline-none focus:border-sky-500 cursor-pointer"
+            >
+              <option value="TODAS">Todas as Atuações</option>
+              <option value="MONITORAMENTO">📺 Monitoramento NOC</option>
+              <option value="CORRETIVA_CAMPO">🔧 Corretiva de Campo</option>
+            </select>
           </div>
 
           <div>
@@ -217,7 +237,7 @@ export const IncidentHistoryTabModal: React.FC<IncidentHistoryTabModalProps> = (
             >
               <option value="TODOS">Todos os Status</option>
               <option value="FINALIZADO">🟢 Concluídos</option>
-              <option value="RETROAGIDO">🟣 Retroagidos (Não era Automação)</option>
+              <option value="RETROAGIDO">🟣 Retroagidos</option>
               <option value="EM_ANDAMENTO">🔴 Em Andamento</option>
               <option value="AGUARDANDO">🟡 Aguardando</option>
               <option value="PENDENCIA_PROXIMO_TURNO">🔵 Pendências Herdadas</option>
@@ -230,6 +250,7 @@ export const IncidentHistoryTabModal: React.FC<IncidentHistoryTabModalProps> = (
               onChange={(e) => setAreaFilter(e.target.value)}
               className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-800 dark:text-white focus:outline-none focus:border-sky-500 cursor-pointer"
             >
+
               {areasList.map((a) => (
                 <option key={a} value={a}>
                   {a === 'TODAS' ? 'Todas as Áreas' : a}

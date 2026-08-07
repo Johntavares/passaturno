@@ -45,7 +45,9 @@ export interface InMemoryIncident {
   observacao?: string | null;
   shiftId?: string | null;
   turma?: string | null;
+  divisaoAtuacao?: string;
   isPendenciaHerdada: boolean;
+
   noCodigo: boolean;
   isFallback?: boolean;
   historico: InMemoryIncidentHistory[];
@@ -219,7 +221,9 @@ const globalStore = global as unknown as {
   inMemoryEquipments?: InMemoryEquipment[];
   inMemoryIncidents?: InMemoryIncident[];
   inMemoryShift?: InMemoryShift;
+  inMemoryShiftsByTurma?: Record<string, InMemoryShift>;
 };
+
 
 if (!globalStore.inMemoryEquipments) {
   globalStore.inMemoryEquipments = initialFleetData;
@@ -617,24 +621,40 @@ export const inMemoryStore = {
     return true;
   },
 
-  getActiveShift: () => {
-    const activeShift = globalStore.inMemoryShift?.status === 'ATIVO' ? globalStore.inMemoryShift : null;
+  getActiveShift: (turmaInput?: string) => {
+    const cleanTurma = (turmaInput || '').toUpperCase().trim();
+    
+    // Buscar o turno ativo da turma específica ou o global
+    let activeShift = globalStore.inMemoryShiftsByTurma?.[cleanTurma] || null;
+    if (!activeShift && globalStore.inMemoryShift && (cleanTurma === '' || globalStore.inMemoryShift.turma === cleanTurma)) {
+      activeShift = globalStore.inMemoryShift.status === 'ATIVO' ? globalStore.inMemoryShift : null;
+    }
+
     const activeIncidents = inMemoryStore.getIncidents({ status: 'EM_ANDAMENTO' });
-    const criticalCount = activeIncidents.filter((i) => i.prioridade === 'CRITICA').length;
-    const inheritedCount = activeIncidents.filter((i) => i.isPendenciaHerdada).length;
+    const turmaIncidents = cleanTurma
+      ? activeIncidents.filter((i) => (i.turma || '').toUpperCase().trim() === cleanTurma)
+      : activeIncidents;
+
+    const criticalCount = turmaIncidents.filter((i) => i.prioridade === 'CRITICA').length;
+    const inheritedCount = turmaIncidents.filter((i) => i.isPendenciaHerdada).length;
 
     return {
       activeShift,
       lastClosedShift: null,
-      openIncidentsCount: activeIncidents.length,
+      openIncidentsCount: turmaIncidents.length,
       criticalCount,
       inheritedCount,
-      openIncidents: activeIncidents,
+      openIncidents: turmaIncidents,
     };
   },
 
-  closeShift: () => {
-    if (globalStore.inMemoryShift) {
+  closeShift: (turmaInput?: string) => {
+    const cleanTurma = (turmaInput || '').toUpperCase().trim();
+    if (cleanTurma && globalStore.inMemoryShiftsByTurma?.[cleanTurma]) {
+      globalStore.inMemoryShiftsByTurma[cleanTurma].status = 'ENCERRADO';
+      globalStore.inMemoryShiftsByTurma[cleanTurma].horaFim = new Date().toISOString();
+    }
+    if (globalStore.inMemoryShift && (!cleanTurma || globalStore.inMemoryShift.turma === cleanTurma)) {
       globalStore.inMemoryShift.status = 'ENCERRADO';
       globalStore.inMemoryShift.horaFim = new Date().toISOString();
     }
@@ -642,10 +662,12 @@ export const inMemoryStore = {
 
   startShift: (data: { equipe: string; responsavelNome: string; observacoes?: string; turma?: string; escala?: string }) => {
     const nowIso = new Date().toISOString();
+    const cleanTurma = (data.turma || data.equipe?.replace('Automação ', '') || 'A').toUpperCase().trim();
+    
     const newShift: InMemoryShift = {
       id: `shift-${Date.now()}`,
-      equipe: data.equipe || 'Automação B',
-      turma: data.turma || data.equipe?.replace('Automação ', '') || 'A',
+      equipe: data.equipe || `Automação ${cleanTurma}`,
+      turma: cleanTurma,
       tipoTurno: 'Diurno',
       escala: data.escala || '3x3',
       horarioTurno: '07h às 19h',
@@ -657,10 +679,18 @@ export const inMemoryStore = {
       criadoEm: nowIso,
     };
 
-    // Atualiza incidentes da memória: transforma abertos em pendências herdadas
+    // Inicializar repositório por turma se necessário
+    if (!globalStore.inMemoryShiftsByTurma) {
+      globalStore.inMemoryShiftsByTurma = {};
+    }
+    globalStore.inMemoryShiftsByTurma[cleanTurma] = newShift;
+    globalStore.inMemoryShift = newShift;
+
+    // Herdar pendências APENAS da turma que está iniciando turno
     if (globalStore.inMemoryIncidents) {
       globalStore.inMemoryIncidents = globalStore.inMemoryIncidents.map((inc) => {
-        if (inc.status !== 'FINALIZADO' && inc.status !== 'RETROAGIDO') {
+        const incTurma = (inc.turma || '').toUpperCase().trim();
+        if (incTurma === cleanTurma && inc.status !== 'FINALIZADO' && inc.status !== 'RETROAGIDO') {
           return {
             ...inc,
             isPendenciaHerdada: true,
@@ -671,7 +701,6 @@ export const inMemoryStore = {
       });
     }
 
-    globalStore.inMemoryShift = newShift;
     return newShift;
   },
 
@@ -681,7 +710,12 @@ export const inMemoryStore = {
         ...globalStore.inMemoryShift,
         ...shiftData,
       };
+      if (globalStore.inMemoryShift.turma && globalStore.inMemoryShiftsByTurma) {
+        const cleanT = globalStore.inMemoryShift.turma.toUpperCase().trim();
+        globalStore.inMemoryShiftsByTurma[cleanT] = globalStore.inMemoryShift;
+      }
     }
     return globalStore.inMemoryShift;
   },
+
 };
