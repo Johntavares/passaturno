@@ -86,8 +86,9 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
   // Separar colunas
   const colNoCodigo = filteredIncidents.filter((i) => i.status === 'EM_ANDAMENTO' && i.noCodigo);
-  const colEmAndamento = filteredIncidents.filter((i) => i.status === 'EM_ANDAMENTO' && !i.noCodigo);
-  const colAguardando = filteredIncidents.filter((i) => i.status === 'AGUARDANDO');
+  const colEmAndamento = filteredIncidents.filter(
+    (i) => (i.status === 'EM_ANDAMENTO' && !i.noCodigo) || i.status === 'AGUARDANDO'
+  );
   const colFinalizados = filteredIncidents.filter((i) => i.status === 'FINALIZADO' || i.status === 'RETROAGIDO');
   const colHerdados = filteredIncidents.filter(
     (i) => i.status === 'PENDENCIA_PROXIMO_TURNO' || (i.isPendenciaHerdada && i.status !== 'EM_ANDAMENTO' && i.status !== 'FINALIZADO' && i.status !== 'RETROAGIDO')
@@ -174,11 +175,11 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
       </div>
 
       {/* Grid de Colunas Kanban Estilo Trello */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         
-        {/* COLUNA 1: 🔵 No Código */}
+        {/* COLUNA 1: 🔴 No Código */}
         <div className="bg-slate-100/80 border border-slate-200/70 rounded-2xl p-3 flex flex-col min-h-[500px]">
-          <div className="bg-sky-700 text-white p-2.5 rounded-xl shadow-xs flex items-center justify-between mb-3">
+          <div className="bg-rose-500 text-white p-2.5 rounded-xl shadow-xs flex items-center justify-between mb-3">
             <h3 className="text-xs font-bold uppercase tracking-wide flex items-center">
               No Código
             </h3>
@@ -196,9 +197,9 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
           </div>
         </div>
 
-        {/* COLUNA 2: 🔴 Em Andamento */}
+        {/* COLUNA 2: 🟡 Em Andamento */}
         <div className="bg-slate-100/80 border border-slate-200/70 rounded-2xl p-3 flex flex-col min-h-[500px]">
-          <div className="bg-rose-500 text-white p-2.5 rounded-xl shadow-xs flex items-center justify-between mb-3">
+          <div className="bg-amber-500 text-white p-2.5 rounded-xl shadow-xs flex items-center justify-between mb-3">
             <h3 className="text-xs font-bold uppercase tracking-wide flex items-center">
               Em Andamento
             </h3>
@@ -216,27 +217,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
           </div>
         </div>
 
-        {/* COLUNA 3: 🟡 Aguardando */}
-        <div className="bg-slate-100/80 border border-slate-200/70 rounded-2xl p-3 flex flex-col min-h-[500px]">
-          <div className="bg-amber-500 text-white p-2.5 rounded-xl shadow-xs flex items-center justify-between mb-3">
-            <h3 className="text-xs font-bold uppercase tracking-wide flex items-center">
-              Aguardando
-            </h3>
-            <span className="bg-white/20 px-2 py-0.5 rounded-md text-[11px] font-bold">
-              {colAguardando.length}
-            </span>
-          </div>
-
-          <div className="space-y-2.5 flex-1 overflow-y-auto max-h-[calc(100vh-280px)] pr-0.5">
-            {colAguardando.length === 0 ? (
-              <div className="text-center py-10 text-xs text-slate-400 italic">Nenhum atendimento aguardando</div>
-            ) : (
-              colAguardando.map((item) => renderCard(item))
-            )}
-          </div>
-        </div>
-
-        {/* COLUNA 4: 🟢 Concluído / Finalizados */}
+        {/* COLUNA 3: 🟢 Concluído / Finalizados */}
         <div className="bg-slate-100/80 border border-slate-200/70 rounded-2xl p-3 flex flex-col min-h-[500px]">
           <div className="bg-emerald-500 text-white p-2.5 rounded-xl shadow-xs flex items-center justify-between mb-3">
             <h3 className="text-xs font-bold uppercase tracking-wide flex items-center">
@@ -256,7 +237,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
           </div>
         </div>
 
-        {/* COLUNA 5: 🔵 Pendências Herdadas */}
+        {/* COLUNA 4: 🔵 Pendências Herdadas */}
         <div className="bg-slate-100/80 border border-slate-200/70 rounded-2xl p-3 flex flex-col min-h-[500px]">
           <div className="bg-sky-500 text-white p-2.5 rounded-xl shadow-xs flex items-center justify-between mb-3">
             <h3 className="text-xs font-bold uppercase tracking-wide flex items-center">
@@ -369,17 +350,17 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                       onClick={() => onNoCodigoChange(item.id, true)}
                       className={`px-2 py-0.5 transition-colors cursor-pointer ${
                         item.noCodigo
-                          ? 'bg-sky-700 text-white'
+                          ? 'bg-rose-600 text-white'
                           : 'bg-slate-50 text-slate-500 hover:bg-slate-100'
                       }`}
                     >
-                      🔵 No Código
+                      🔴 No Código
                     </button>
                     <button
                       onClick={() => onNoCodigoChange(item.id, false)}
                       className={`px-2 py-0.5 transition-colors cursor-pointer border-l border-slate-200 ${
                         !item.noCodigo
-                          ? 'bg-rose-500 text-white'
+                          ? 'bg-amber-500 text-white'
                           : 'bg-slate-50 text-slate-500 hover:bg-slate-100'
                       }`}
                     >
@@ -550,17 +531,17 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                       onClick={() => onNoCodigoChange(item.id, true)}
                       className={`flex-1 px-2 py-1.5 transition-colors cursor-pointer ${
                         item.noCodigo
-                          ? 'bg-sky-700 text-white'
+                          ? 'bg-rose-600 text-white'
                           : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
                       }`}
                     >
-                      🔵 No Código
+                      🔴 No Código
                     </button>
                     <button
                       onClick={() => onNoCodigoChange(item.id, false)}
                       className={`flex-1 px-2 py-1.5 transition-colors cursor-pointer border-l border-slate-200 ${
                         !item.noCodigo
-                          ? 'bg-rose-500 text-white'
+                          ? 'bg-amber-500 text-white'
                           : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
                       }`}
                     >
