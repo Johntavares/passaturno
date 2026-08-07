@@ -67,6 +67,15 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
     userTouchedRef.current = true;
   };
 
+  // Edição dos números da carteira: sempre regenera o texto final com os novos
+  // valores (desbloqueia o preview caso o operador tenha editado a mensagem antes).
+  const handleCarteiraEdit =
+    (setter: (v: string) => void) => (e: React.ChangeEvent<HTMLInputElement>) => {
+      markUserEdited();
+      setIsCustomEdited(false);
+      setter(e.target.value);
+    };
+
   // Restaurar valores salvos no navegador (somente para o dia de HOJE)
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -87,10 +96,9 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
       if (typeof data.equipeSonda === 'string') setEquipeSonda(data.equipeSonda);
       if (typeof data.liderVale === 'string') setLiderVale(data.liderVale);
       if (typeof data.ausencia === 'string') setAusencia(data.ausencia);
-      if (typeof data.customReportText === 'string' && data.customReportText) {
-        setCustomReportText(data.customReportText);
-        setIsCustomEdited(true);
-      }
+      // NOTA: o texto da mensagem NÃO é restaurado nem congelado. Ele é sempre
+      // regenerado dinamicamente a partir dos valores acima, refletindo os números
+      // editados no momento de copiar/enviar.
       userTouchedRef.current = true;
     } catch (e) {
       console.error('Erro ao restaurar boletim de 2h:', e);
@@ -116,13 +124,12 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
           equipeSonda,
           liderVale,
           ausencia,
-          customReportText,
         })
       );
     } catch (e) {
       console.error('Erro ao salvar boletim de 2h:', e);
     }
-  }, [carteiraTotal, carteiraAndamento, carteiraAberto, carteiraPendente, equipSemDespacho, equipSemGps, equipPreventiva, equipManutencao, equipeSonda, liderVale, ausencia, customReportText]);
+  }, [carteiraTotal, carteiraAndamento, carteiraAberto, carteiraPendente, equipSemDespacho, equipSemGps, equipPreventiva, equipManutencao, equipeSonda, liderVale, ausencia]);
 
   // Auto-calcular a CARTEIRA a partir dos atendimentos SOMENTE enquanto o operador
   // não editou nenhum campo (evita sobrescrever os ajustes manuais a cada refresh).
@@ -320,10 +327,7 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
               <input
                 type="text"
                 value={carteiraTotal}
-                onChange={(e) => {
-                  markUserEdited();
-                  setCarteiraTotal(e.target.value);
-                }}
+                onChange={handleCarteiraEdit(setCarteiraTotal)}
                 className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1 text-xs text-slate-900 dark:text-white font-mono font-bold text-center"
               />
             </div>
@@ -333,10 +337,7 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
               <input
                 type="text"
                 value={carteiraAndamento}
-                onChange={(e) => {
-                  markUserEdited();
-                  setCarteiraAndamento(e.target.value);
-                }}
+                onChange={handleCarteiraEdit(setCarteiraAndamento)}
                 className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1 text-xs text-rose-700 dark:text-rose-300 font-mono font-bold text-center"
               />
             </div>
@@ -346,10 +347,7 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
               <input
                 type="text"
                 value={carteiraAberto}
-                onChange={(e) => {
-                  markUserEdited();
-                  setCarteiraAberto(e.target.value);
-                }}
+                onChange={handleCarteiraEdit(setCarteiraAberto)}
                 className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1 text-xs text-amber-700 dark:text-amber-300 font-mono font-bold text-center"
               />
             </div>
@@ -359,10 +357,7 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
               <input
                 type="text"
                 value={carteiraPendente}
-                onChange={(e) => {
-                  markUserEdited();
-                  setCarteiraPendente(e.target.value);
-                }}
+                onChange={handleCarteiraEdit(setCarteiraPendente)}
                 className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1 text-xs text-sky-700 dark:text-sky-300 font-mono font-bold text-center"
               />
             </div>
