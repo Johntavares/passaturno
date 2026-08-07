@@ -62,6 +62,7 @@ export const NewIncidentModal: React.FC<NewIncidentModalProps> = ({
   const [dataHoraParada, setDataHoraParada] = useState(getNowLocalDatetimeString());
   const [prioridade, setPrioridade] = useState<PriorityLevel>('MEDIA');
   const [status, setStatus] = useState<IncidentStatusType>('EM_ANDAMENTO');
+  const [noCodigo, setNoCodigo] = useState(false);
   const [responsavel, setResponsavel] = useState('John Tavares');
   const [motivoEspera, setMotivoEspera] = useState('');
   const [proximaAcao, setProximaAcao] = useState('');
@@ -182,6 +183,7 @@ export const NewIncidentModal: React.FC<NewIncidentModalProps> = ({
           previsaoLiberacao: previsaoLiberacao.trim() || null,
           prioridade,
           status,
+          noCodigo: status === 'EM_ANDAMENTO' && noCodigo,
           responsavel: effectiveResponsavel,
           motivoEspera,
           proximaAcao,
@@ -204,6 +206,7 @@ export const NewIncidentModal: React.FC<NewIncidentModalProps> = ({
       setMotivoEspera('');
       setProximaAcao('');
       setObservacao('');
+      setNoCodigo(false);
 
       onIncidentCreated(createdIncident);
       onClose();
@@ -415,6 +418,44 @@ export const NewIncidentModal: React.FC<NewIncidentModalProps> = ({
               />
             </div>
           </div>
+
+          {status === 'EM_ANDAMENTO' && (
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Este equipamento está <span className="text-sky-700">no Código</span>?
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setNoCodigo(true)}
+                  className={`rounded-xl border px-3 py-2.5 text-xs font-bold transition-colors cursor-pointer text-left ${
+                    noCodigo
+                      ? 'bg-sky-600 border-sky-600 text-white shadow-xs'
+                      : 'bg-white border-slate-200 text-slate-700 hover:border-sky-300'
+                  }`}
+                >
+                  <span className="block text-sm font-extrabold">🔵 No Código</span>
+                  <span className={`mt-0.5 block text-[11px] font-medium ${noCodigo ? 'text-sky-100' : 'text-slate-500'}`}>
+                    Equipamento com time de 2h para acionar cadeia de ajuda
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setNoCodigo(false)}
+                  className={`rounded-xl border px-3 py-2 text-xs transition-colors cursor-pointer text-left ${
+                    !noCodigo
+                      ? 'bg-emerald-600 border-emerald-600 text-white shadow-xs'
+                      : 'bg-white border-slate-200 text-slate-700 hover:border-emerald-300'
+                  }`}
+                >
+                  <span className="block text-sm font-extrabold">⚙️ Em Andamento</span>
+                  <span className={`mt-0.5 block text-[11px] font-medium ${!noCodigo ? 'text-emerald-100' : 'text-slate-500'}`}>
+                    Atividade que não está no código
+                  </span>
+                </button>
+              </div>
+            </div>
+          )}
 
           {status === 'AGUARDANDO' && (
             <div>

@@ -27,6 +27,7 @@ interface KanbanBoardProps {
   incidents: IncidentType[];
   onStatusChange: (id: string, newStatus: IncidentStatusType) => void;
   onPriorityChange: (id: string, newPriority: PriorityLevel) => void;
+  onNoCodigoChange: (id: string, noCodigo: boolean) => void;
   onOpenWhatsapp: (incident: IncidentType) => void;
   onOpenTimeline: (incident: IncidentType) => void;
   onOpenEquipmentHistory: (tag: string) => void;
@@ -39,6 +40,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   incidents,
   onStatusChange,
   onPriorityChange,
+  onNoCodigoChange,
   onOpenWhatsapp,
   onOpenTimeline,
   onOpenEquipmentHistory,
@@ -83,7 +85,8 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   const areas = ['TODAS', ...Array.from(new Set(incidents.map((i) => i.area)))];
 
   // Separar colunas
-  const colEmAndamento = filteredIncidents.filter((i) => i.status === 'EM_ANDAMENTO');
+  const colNoCodigo = filteredIncidents.filter((i) => i.status === 'EM_ANDAMENTO' && i.noCodigo);
+  const colEmAndamento = filteredIncidents.filter((i) => i.status === 'EM_ANDAMENTO' && !i.noCodigo);
   const colAguardando = filteredIncidents.filter((i) => i.status === 'AGUARDANDO');
   const colFinalizados = filteredIncidents.filter((i) => i.status === 'FINALIZADO' || i.status === 'RETROAGIDO');
   const colHerdados = filteredIncidents.filter(
@@ -171,9 +174,29 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
       </div>
 
       {/* Grid de Colunas Kanban Estilo Trello */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
         
-        {/* COLUNA 1: 🔴 Em Andamento */}
+        {/* COLUNA 1: 🔵 No Código */}
+        <div className="bg-slate-100/80 border border-slate-200/70 rounded-2xl p-3 flex flex-col min-h-[500px]">
+          <div className="bg-sky-700 text-white p-2.5 rounded-xl shadow-xs flex items-center justify-between mb-3">
+            <h3 className="text-xs font-bold uppercase tracking-wide flex items-center">
+              No Código
+            </h3>
+            <span className="bg-white/20 px-2 py-0.5 rounded-md text-[11px] font-bold">
+              {colNoCodigo.length}
+            </span>
+          </div>
+
+          <div className="space-y-2.5 flex-1 overflow-y-auto max-h-[calc(100vh-280px)] pr-0.5">
+            {colNoCodigo.length === 0 ? (
+              <div className="text-center py-10 text-xs text-slate-400 italic">Nenhum equipamento no código</div>
+            ) : (
+              colNoCodigo.map((item) => renderCard(item))
+            )}
+          </div>
+        </div>
+
+        {/* COLUNA 2: 🔴 Em Andamento */}
         <div className="bg-slate-100/80 border border-slate-200/70 rounded-2xl p-3 flex flex-col min-h-[500px]">
           <div className="bg-rose-500 text-white p-2.5 rounded-xl shadow-xs flex items-center justify-between mb-3">
             <h3 className="text-xs font-bold uppercase tracking-wide flex items-center">
@@ -193,7 +216,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
           </div>
         </div>
 
-        {/* COLUNA 2: 🟡 Aguardando */}
+        {/* COLUNA 3: 🟡 Aguardando */}
         <div className="bg-slate-100/80 border border-slate-200/70 rounded-2xl p-3 flex flex-col min-h-[500px]">
           <div className="bg-amber-500 text-white p-2.5 rounded-xl shadow-xs flex items-center justify-between mb-3">
             <h3 className="text-xs font-bold uppercase tracking-wide flex items-center">
@@ -213,7 +236,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
           </div>
         </div>
 
-        {/* COLUNA 3: 🟢 Concluído / Finalizados */}
+        {/* COLUNA 4: 🟢 Concluído / Finalizados */}
         <div className="bg-slate-100/80 border border-slate-200/70 rounded-2xl p-3 flex flex-col min-h-[500px]">
           <div className="bg-emerald-500 text-white p-2.5 rounded-xl shadow-xs flex items-center justify-between mb-3">
             <h3 className="text-xs font-bold uppercase tracking-wide flex items-center">
@@ -233,7 +256,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
           </div>
         </div>
 
-        {/* COLUNA 4: 🔵 Pendências Herdadas */}
+        {/* COLUNA 5: 🔵 Pendências Herdadas */}
         <div className="bg-slate-100/80 border border-slate-200/70 rounded-2xl p-3 flex flex-col min-h-[500px]">
           <div className="bg-sky-500 text-white p-2.5 rounded-xl shadow-xs flex items-center justify-between mb-3">
             <h3 className="text-xs font-bold uppercase tracking-wide flex items-center">
@@ -335,6 +358,36 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                 <option value="RETROAGIDO">🟣 Retroagido (Não era Automação)</option>
                 <option value="PENDENCIA_PROXIMO_TURNO">🔵 Pendência Herdada</option>
               </select>
+
+              {item.status === 'EM_ANDAMENTO' && (
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">
+                    Fila:
+                  </span>
+                  <div className="flex rounded-lg overflow-hidden border border-slate-200 text-[10px] font-bold">
+                    <button
+                      onClick={() => onNoCodigoChange(item.id, true)}
+                      className={`px-2 py-0.5 transition-colors cursor-pointer ${
+                        item.noCodigo
+                          ? 'bg-sky-700 text-white'
+                          : 'bg-slate-50 text-slate-500 hover:bg-slate-100'
+                      }`}
+                    >
+                      🔵 No Código
+                    </button>
+                    <button
+                      onClick={() => onNoCodigoChange(item.id, false)}
+                      className={`px-2 py-0.5 transition-colors cursor-pointer border-l border-slate-200 ${
+                        !item.noCodigo
+                          ? 'bg-rose-500 text-white'
+                          : 'bg-slate-50 text-slate-500 hover:bg-slate-100'
+                      }`}
+                    >
+                      ⚙️ Em Andamento
+                    </button>
+                  </div>
+                </div>
+              )}
 
               <div className="flex items-center justify-between text-[11px] text-slate-600 dark:text-slate-300">
                 <span className="font-semibold flex items-center gap-1" title={format(paradaDate, 'dd/MM/yyyy HH:mm')}>
@@ -486,6 +539,36 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                   <option value="PENDENCIA_PROXIMO_TURNO">🔵 Pendência Herdada</option>
                 </select>
               </div>
+
+              {item.status === 'EM_ANDAMENTO' && (
+                <div className="w-full">
+                  <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">
+                    Fila de Atendimento
+                  </label>
+                  <div className="flex rounded-xl overflow-hidden border border-slate-200 text-xs font-bold">
+                    <button
+                      onClick={() => onNoCodigoChange(item.id, true)}
+                      className={`flex-1 px-2 py-1.5 transition-colors cursor-pointer ${
+                        item.noCodigo
+                          ? 'bg-sky-700 text-white'
+                          : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
+                      }`}
+                    >
+                      🔵 No Código
+                    </button>
+                    <button
+                      onClick={() => onNoCodigoChange(item.id, false)}
+                      className={`flex-1 px-2 py-1.5 transition-colors cursor-pointer border-l border-slate-200 ${
+                        !item.noCodigo
+                          ? 'bg-rose-500 text-white'
+                          : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
+                      }`}
+                    >
+                      ⚙️ Em Andamento
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {!isFinished && (
                 <div className="w-full">

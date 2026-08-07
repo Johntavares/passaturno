@@ -66,6 +66,7 @@ export interface IncidentType {
   observacao?: string | null;
   shiftId?: string | null;
   isPendenciaHerdada: boolean;
+  noCodigo: boolean;
   turma?: string | null;
   historico?: IncidentHistoryType[];
   criadoEm: string;

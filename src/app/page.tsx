@@ -285,6 +285,34 @@ export default function Home() {
     }
   };
 
+  // Alternar "No Código" / "Em Andamento" diretamente no Kanban (somente p/ status EM_ANDAMENTO)
+  const handleNoCodigoChange = async (id: string, noCodigo: boolean) => {
+    updateIncidentsState((prev) =>
+      prev.map((item) =>
+        item.id === id
+          ? { ...item, noCodigo, atualizadoEm: new Date().toISOString() }
+          : item
+      )
+    );
+
+    try {
+      const res = await fetch(`/api/atendimentos/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ noCodigo }),
+      });
+
+      if (res.ok) {
+        const updated = await res.json();
+        updateIncidentsState((prev) =>
+          prev.map((item) => (item.id === id ? updated : item))
+        );
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   // Aceitar notificação de prioridade da passagem de turno e mover para a fila Em Andamento
   const handleAcceptPriority = async (incident: IncidentType) => {
     // Preservar a prioridade original definida pelo operador (não forçar 'ALTA')
@@ -704,6 +732,7 @@ export default function Home() {
               incidents={displayedIncidents}
               onStatusChange={handleStatusChange}
               onPriorityChange={handlePriorityChange}
+              onNoCodigoChange={handleNoCodigoChange}
               onOpenWhatsapp={(inc) => {
                 setSelectedWhatsappIncident(inc);
                 setIsWhatsappOpen(true);

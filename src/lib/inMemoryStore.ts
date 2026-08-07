@@ -46,6 +46,7 @@ export interface InMemoryIncident {
   shiftId?: string | null;
   turma?: string | null;
   isPendenciaHerdada: boolean;
+  noCodigo: boolean;
   isFallback?: boolean;
   historico: InMemoryIncidentHistory[];
   criadoEm: string;
@@ -251,6 +252,7 @@ if (!globalStore.inMemoryIncidents || globalStore.inMemoryIncidents.length === 0
       shiftId: 'shift-active-1',
       turma: 'C',
       isPendenciaHerdada: false,
+      noCodigo: false,
       criadoEm: pastOneHour,
       atualizadoEm: nowIso,
       historico: [
@@ -285,6 +287,7 @@ if (!globalStore.inMemoryIncidents || globalStore.inMemoryIncidents.length === 0
       shiftId: 'shift-active-1',
       turma: 'C',
       isPendenciaHerdada: false,
+      noCodigo: false,
       criadoEm: pastOneHour,
       atualizadoEm: nowIso,
       historico: [
@@ -319,6 +322,7 @@ if (!globalStore.inMemoryIncidents || globalStore.inMemoryIncidents.length === 0
       shiftId: 'shift-active-1',
       turma: 'C',
       isPendenciaHerdada: false,
+      noCodigo: false,
       criadoEm: pastTwoHours,
       atualizadoEm: nowIso,
       historico: [
@@ -353,6 +357,7 @@ if (!globalStore.inMemoryIncidents || globalStore.inMemoryIncidents.length === 0
       shiftId: 'shift-active-1',
       turma: 'C',
       isPendenciaHerdada: false,
+      noCodigo: false,
       criadoEm: pastOneHour,
       atualizadoEm: nowIso,
       historico: [
@@ -387,6 +392,7 @@ if (!globalStore.inMemoryIncidents || globalStore.inMemoryIncidents.length === 0
       shiftId: 'shift-active-1',
       turma: 'B',
       isPendenciaHerdada: false,
+      noCodigo: false,
       criadoEm: pastTwoHours,
       atualizadoEm: pastOneHour,
       historico: [
@@ -536,6 +542,7 @@ export const inMemoryStore = {
           ? globalStore.inMemoryShift.turma.replace('Turma ', '').replace('TURMA ', '').trim()
           : 'A'),
       isPendenciaHerdada: false,
+      noCodigo: data.noCodigo === true,
       isFallback: true,
       criadoEm: nowIso,
       atualizadoEm: nowIso,

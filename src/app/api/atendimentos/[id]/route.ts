@@ -99,6 +99,7 @@ export async function PATCH(
       if (observacao !== undefined) updateData.observacao = observacao;
       if (previsaoLiberacao !== undefined) updateData.previsaoLiberacao = previsaoLiberacao;
       if (body.isPendenciaHerdada !== undefined) updateData.isPendenciaHerdada = body.isPendenciaHerdada;
+      if (body.noCodigo !== undefined) updateData.noCodigo = body.noCodigo === true;
       if (body.turma) updateData.turma = normalizeTurma(body.turma) || body.turma;
 
 

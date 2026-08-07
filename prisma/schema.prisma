@@ -96,7 +96,7 @@ model Incident {
   dataHoraLiberacao       DateTime?
   prioridade              String          @default("MEDIA") // BAIXA, MEDIA, ALTA, CRITICA
   status                  String          @default("EM_ANDAMENTO") // EM_ANDAMENTO, AGUARDANDO, FINALIZADO, PENDENCIA_PROXIMO_TURNO
-  responsavelId           String?
+responsavelId           String?
   responsavel             String
   solucao                 String?
   motivoEspera            String?
@@ -107,6 +107,7 @@ model Incident {
   shift                   Shift?          @relation(fields: [shiftId], references: [id])
   turma                   String?         // Turma A, B, C ou D (derivada do turno ativo no momento da abertura)
   isPendenciaHerdada      Boolean         @default(false)
+  noCodigo                Boolean         @default(false) // Equipamento no código (time de 2h para acionar cadeia de ajuda)
   historico               IncidentHistory[]
   criadoEm                DateTime        @default(now())
   atualizadoEm            DateTime        @updatedAt

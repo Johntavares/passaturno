@@ -100,6 +100,7 @@ export async function POST(request: Request) {
       localizacaoAtualOpcional,
       observacao,
       turma,
+      noCodigo,
     } = body;
 
     if (!tag || !falha || !responsavel) {
@@ -148,6 +149,7 @@ export async function POST(request: Request) {
           shiftId: activeShift?.id || null,
           turma: finalTurma,
           isPendenciaHerdada: isPendencia,
+          noCodigo: noCodigo === true,
           historico: {
             create: {
               tipoEvento: 'ABERTURA',
@@ -207,6 +209,7 @@ export async function POST(request: Request) {
             shiftId: activeShift?.id || null,
             turma: finalTurma,
             isPendenciaHerdada: isPendencia,
+            noCodigo: noCodigo === true,
             historico: {
               create: {
                 tipoEvento: 'ABERTURA',
