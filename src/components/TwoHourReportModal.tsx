@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { IncidentType, ShiftType } from '@/types';
 import { 
   X, 
@@ -17,7 +17,9 @@ import {
   Radio,
   FileText
 } from 'lucide-react';
-import { isIncidentFromToday } from '@/lib/turma';
+import { isIncidentFromToday, getTodayYMDInBR } from '@/lib/turma';
+
+const BOLETIM_STORAGE_KEY = 'passaturno-boletim-2h';
 
 interface TwoHourReportModalProps {
   isOpen: boolean;
@@ -56,7 +58,76 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
   const [customReportText, setCustomReportText] = useState('');
   const [isCustomEdited, setIsCustomEdited] = useState(false);
 
+  // Guarda se o operador JÁ editou algum valor neste dia.
+  // A partir do primeiro ajuste manual, os campos NÃO podem mais ser sobrescritos
+  // automaticamente pelos efeitos (carteira) nem pelo sync do turno (equipes).
+  const userTouchedRef = useRef(false);
+
+  const markUserEdited = () => {
+    userTouchedRef.current = true;
+  };
+
+  // Restaurar valores salvos no navegador (somente para o dia de HOJE)
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = localStorage.getItem(BOLETIM_STORAGE_KEY);
+      if (!raw) return;
+      const data = JSON.parse(raw);
+      if (data.dataYmd !== getTodayYMDInBR()) return; // Dados de outro dia: descartar e recalcular
+
+      if (typeof data.carteiraTotal === 'string') setCarteiraTotal(data.carteiraTotal);
+      if (typeof data.carteiraAndamento === 'string') setCarteiraAndamento(data.carteiraAndamento);
+      if (typeof data.carteiraAberto === 'string') setCarteiraAberto(data.carteiraAberto);
+      if (typeof data.carteiraPendente === 'string') setCarteiraPendente(data.carteiraPendente);
+      if (typeof data.equipSemDespacho === 'string') setEquipSemDespacho(data.equipSemDespacho);
+      if (typeof data.equipSemGps === 'string') setEquipSemGps(data.equipSemGps);
+      if (typeof data.equipPreventiva === 'string') setEquipPreventiva(data.equipPreventiva);
+      if (typeof data.equipManutencao === 'string') setEquipManutencao(data.equipManutencao);
+      if (typeof data.equipeSonda === 'string') setEquipeSonda(data.equipeSonda);
+      if (typeof data.liderVale === 'string') setLiderVale(data.liderVale);
+      if (typeof data.ausencia === 'string') setAusencia(data.ausencia);
+      if (typeof data.customReportText === 'string' && data.customReportText) {
+        setCustomReportText(data.customReportText);
+        setIsCustomEdited(true);
+      }
+      userTouchedRef.current = true;
+    } catch (e) {
+      console.error('Erro ao restaurar boletim de 2h:', e);
+    }
+  }, []);
+
+  // Persistir as edições do operador (apenas depois que ele tocar em algum campo)
+  useEffect(() => {
+    if (!userTouchedRef.current) return;
+    try {
+      localStorage.setItem(
+        BOLETIM_STORAGE_KEY,
+        JSON.stringify({
+          dataYmd: getTodayYMDInBR(),
+          carteiraTotal,
+          carteiraAndamento,
+          carteiraAberto,
+          carteiraPendente,
+          equipSemDespacho,
+          equipSemGps,
+          equipPreventiva,
+          equipManutencao,
+          equipeSonda,
+          liderVale,
+          ausencia,
+          customReportText,
+        })
+      );
+    } catch (e) {
+      console.error('Erro ao salvar boletim de 2h:', e);
+    }
+  }, [carteiraTotal, carteiraAndamento, carteiraAberto, carteiraPendente, equipSemDespacho, equipSemGps, equipPreventiva, equipManutencao, equipeSonda, liderVale, ausencia, customReportText]);
+
+  // Auto-calcular a CARTEIRA a partir dos atendimentos SOMENTE enquanto o operador
+  // não editou nenhum campo (evita sobrescrever os ajustes manuais a cada refresh).
+  useEffect(() => {
+    if (userTouchedRef.current) return;
     if (incidents.length > 0) {
       const pad = (n: number) => String(n).padStart(2, '0');
       const todayIncidents = incidents.filter((i) => isIncidentFromToday(i));
@@ -67,8 +138,9 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
     }
   }, [incidents]);
 
+  // Sincronizar dados do turno (equipes/GPS) apenas enquanto o operador não editou
   useEffect(() => {
-    if (activeShift) {
+    if (activeShift && !userTouchedRef.current) {
       if (activeShift.equipeSonda) setEquipeSonda(activeShift.equipeSonda);
       if (activeShift.liderVale) setLiderVale(activeShift.liderVale);
       if (activeShift.ausencias) setAusencia(activeShift.ausencias);
@@ -225,6 +297,7 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
           <textarea
             value={customReportText}
             onChange={(e) => {
+              markUserEdited();
               setIsCustomEdited(true);
               setCustomReportText(e.target.value);
             }}
@@ -247,7 +320,10 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
               <input
                 type="text"
                 value={carteiraTotal}
-                onChange={(e) => setCarteiraTotal(e.target.value)}
+                onChange={(e) => {
+                  markUserEdited();
+                  setCarteiraTotal(e.target.value);
+                }}
                 className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1 text-xs text-slate-900 dark:text-white font-mono font-bold text-center"
               />
             </div>
@@ -257,7 +333,10 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
               <input
                 type="text"
                 value={carteiraAndamento}
-                onChange={(e) => setCarteiraAndamento(e.target.value)}
+                onChange={(e) => {
+                  markUserEdited();
+                  setCarteiraAndamento(e.target.value);
+                }}
                 className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1 text-xs text-rose-700 dark:text-rose-300 font-mono font-bold text-center"
               />
             </div>
@@ -267,7 +346,10 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
               <input
                 type="text"
                 value={carteiraAberto}
-                onChange={(e) => setCarteiraAberto(e.target.value)}
+                onChange={(e) => {
+                  markUserEdited();
+                  setCarteiraAberto(e.target.value);
+                }}
                 className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1 text-xs text-amber-700 dark:text-amber-300 font-mono font-bold text-center"
               />
             </div>
@@ -277,7 +359,10 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
               <input
                 type="text"
                 value={carteiraPendente}
-                onChange={(e) => setCarteiraPendente(e.target.value)}
+                onChange={(e) => {
+                  markUserEdited();
+                  setCarteiraPendente(e.target.value);
+                }}
                 className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1 text-xs text-sky-700 dark:text-sky-300 font-mono font-bold text-center"
               />
             </div>
