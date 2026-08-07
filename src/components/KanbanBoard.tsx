@@ -268,7 +268,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
     const downtimeStr = calculateDowntime(item.dataHoraParada, item.dataHoraLiberacao);
     const isFinished = item.status === 'FINALIZADO' || item.status === 'RETROAGIDO';
     const isExpanded = !!expandedCards[item.id];
-    const isOver2HoursInIntervention = item.status === 'EM_ANDAMENTO' && downtimeMins >= 120;
+    const isOver2HoursInIntervention = item.status === 'EM_ANDAMENTO' && item.noCodigo && downtimeMins >= 120;
 
     return (
       <div
