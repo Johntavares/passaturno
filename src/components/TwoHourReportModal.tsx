@@ -138,9 +138,12 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
     if (incidents.length > 0) {
       const pad = (n: number) => String(n).padStart(2, '0');
       const todayIncidents = incidents.filter((i) => isIncidentFromToday(i));
+      const activeToday = todayIncidents.filter(
+        (i) => i.status !== 'FINALIZADO' && i.status !== 'RETROAGIDO'
+      );
       setCarteiraTotal(pad(todayIncidents.length));
-      setCarteiraAndamento(pad(todayIncidents.filter(i => i.status === 'EM_ANDAMENTO').length));
-      setCarteiraAberto(pad(todayIncidents.filter(i => i.status === 'AGUARDANDO').length));
+      setCarteiraAndamento(pad(activeToday.filter((i) => i.noCodigo).length));
+      setCarteiraAberto(pad(activeToday.filter((i) => !i.noCodigo).length));
       setCarteiraPendente(pad(todayIncidents.filter(i => i.status === 'PENDENCIA_PROXIMO_TURNO').length));
     }
   }, [incidents]);
@@ -177,6 +180,24 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
     const activeIncidents = todayIncidents.filter(
       (i) => i.status !== 'FINALIZADO' && i.status !== 'RETROAGIDO'
     );
+    const noCodigoIncidents = activeIncidents.filter((i) => i.noCodigo);
+    const oportunidadeIncidents = activeIncidents.filter((i) => !i.noCodigo);
+
+    const formatEquipInfo = (inc: IncidentType) => {
+      const horaParada = new Date(inc.dataHoraParada).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      const horaAcionamento = inc.dataHoraAcionamento
+        ? new Date(inc.dataHoraAcionamento).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+        : horaParada;
+      const previsao = inc.previsaoLiberacao || '---';
+
+      let line = `Equipamento: ${inc.tag}\n`;
+      line += `Ocorrência: ${inc.falha.toUpperCase()}\n`;
+      line += `Diagnóstico: ${inc.sintoma || inc.observacao || ''}\n`;
+      line += `Hora da Parada: ${horaParada}\n`;
+      line += `Hora de Acionamento: ${horaAcionamento}\n`;
+      line += `Previsão de Liberação: ${previsao}\n\n`;
+      return line;
+    };
 
     let text = `TURNO: ${tipoTurno}\n`;
     text += `HORÁRIO: ${horarioTurno}\n`;
@@ -189,27 +210,25 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
     text += `\n`;
 
     text += `${carteiraTotal} - INCIDENTES NA CARTEIRA\n`;
-    text += `${carteiraAndamento} - EM ANDAMENTO\n`;
-    text += `${carteiraAberto} - EM ABERTO\n`;
+    text += `${carteiraAndamento} - NO CÓDIGO\n`;
+    text += `${carteiraAberto} - EM OPORTUNIDADE\n`;
     text += `${carteiraPendente} - PENDENTE\n\n`;
 
-    text += `${pad(activeIncidents.length)} - EQUIPAMENTO CÓDIGO DA AUTOMAÇÃO\n\n`;
-    if (activeIncidents.length === 0) {
-      text += `Nenhum equipamento parado no momento.\n\n`;
+    text += `${pad(noCodigoIncidents.length)} - EQUIPAMENTO NO CÓDIGO\n\n`;
+    if (noCodigoIncidents.length === 0) {
+      text += `Nenhum equipamento no código.\n\n`;
     } else {
-      activeIncidents.forEach(inc => {
-        const horaParada = new Date(inc.dataHoraParada).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-        const horaAcionamento = inc.dataHoraAcionamento 
-          ? new Date(inc.dataHoraAcionamento).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-          : horaParada;
-        const previsao = inc.previsaoLiberacao || '---';
+      noCodigoIncidents.forEach((inc) => {
+        text += formatEquipInfo(inc);
+      });
+    }
 
-        text += `Equipamento: ${inc.tag}\n`;
-        text += `Ocorrência: ${inc.falha.toUpperCase()}\n`;
-        text += `Diagnóstico: ${inc.sintoma || inc.observacao || ''}\n`;
-        text += `Hora da Parada: ${horaParada}\n`;
-        text += `Hora de Acionamento: ${horaAcionamento}\n`;
-        text += `Previsão de Liberação: ${previsao}\n\n`;
+    text += `${pad(oportunidadeIncidents.length)} - EQUIPAMENTO EM OPORTUNIDADE\n\n`;
+    if (oportunidadeIncidents.length === 0) {
+      text += `Nenhum equipamento em oportunidade.\n\n`;
+    } else {
+      oportunidadeIncidents.forEach((inc) => {
+        text += formatEquipInfo(inc);
       });
     }
 
@@ -333,7 +352,7 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-[10px] font-bold text-rose-600 dark:text-rose-400 mb-0.5">Em Andamento</label>
+              <label className="block text-[10px] font-bold text-rose-600 dark:text-rose-400 mb-0.5">No Código</label>
               <input
                 type="text"
                 value={carteiraAndamento}
@@ -343,7 +362,7 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-[10px] font-bold text-amber-600 dark:text-amber-400 mb-0.5">Em Aberto</label>
+              <label className="block text-[10px] font-bold text-amber-600 dark:text-amber-400 mb-0.5">Em Oportunidade</label>
               <input
                 type="text"
                 value={carteiraAberto}
