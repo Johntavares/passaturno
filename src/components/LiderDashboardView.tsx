@@ -354,17 +354,13 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
       <aside className="w-56 bg-white flex flex-col justify-between hidden lg:flex flex-shrink-0 min-h-screen border-r border-slate-200 relative z-30">
         <div className="p-4 space-y-5">
 
-          {/* Logo & Brand */}
-          <div className="flex items-center gap-2.5 pb-4 border-b border-slate-100">
-            <div className="w-8 h-8 bg-emerald-500 rounded-xl flex items-center justify-center flex-shrink-0">
-              <ShieldCheck className="w-4 h-4 text-white" />
-            </div>
-            <div>
-              <p className="text-sm font-black text-slate-900 leading-none">
-                PASSA<span className="text-emerald-600">TURNO</span>
-              </p>
-              <p className="text-[10px] text-slate-400 font-semibold mt-0.5">Portal da Liderança</p>
-            </div>
+          {/* Logo */}
+          <div className="pb-4 border-b border-slate-100">
+            <img
+              src="/logo.png"
+              alt="PASSATURNO"
+              className="h-14 w-auto object-contain"
+            />
           </div>
 
           {/* User Info */}
