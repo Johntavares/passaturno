@@ -2,14 +2,29 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import * as XLSX from 'xlsx';
 import { format, differenceInMinutes } from 'date-fns';
+import { getTodayYMDInBR } from '@/lib/turma';
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const status = searchParams.get('status');
-    const prioridade = searchParams.get('prioridade');
+    const status = searchParams.get('status') || undefined;
+    const prioridade = searchParams.get('prioridade') || undefined;
+    // Padrão: apenas o dia de HOJE (Brasil). Opcionalmente `data=YYYY-MM-DD` para consulta histórica.
+    const data = searchParams.get('data') || getTodayYMDInBR();
 
-    const where: any = {};
+    // Limites do dia no fuso do Brasil (UTC-3): 00:00 BR = 03:00 UTC
+    const startMs = Date.parse(`${data}T03:00:00.000Z`);
+    const start = new Date(startMs);
+    const end = new Date(startMs + 24 * 60 * 60 * 1000 - 1);
+
+    const where: any = {
+      OR: [
+        { dataHoraParada: { gte: start, lte: end } },
+        { dataHoraLiberacao: { gte: start, lte: end } },
+        { dataHoraAcionamento: { gte: start, lte: end } },
+        { criadoEm: { gte: start, lte: end } },
+      ],
+    };
     if (status) where.status = status;
     if (prioridade) where.prioridade = prioridade;
 

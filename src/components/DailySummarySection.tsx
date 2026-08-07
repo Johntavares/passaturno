@@ -48,9 +48,8 @@ export const DailySummarySection: React.FC<DailySummarySectionProps> = ({
       return createdDate === selectedDate || updatedDate === selectedDate || finishedDate === selectedDate;
     }
 
-    // Modo Turno Ativo Atual (Padrão): Apenas atendimentos de HOJE (ou pendências herdadas ainda em aberto)
-    return isIncidentFromToday(item) ||
-      (item.isPendenciaHerdada && item.status !== 'FINALIZADO' && item.status !== 'RETROAGIDO');
+    // Modo Turno Ativo Atual (Padrão): Estritamente apenas atendimentos do dia de HOJE
+    return isIncidentFromToday(item);
   });
 
   const importanetes = filteredIncidents.filter(

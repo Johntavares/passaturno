@@ -92,10 +92,9 @@ export const CloseShiftModal: React.FC<CloseShiftModalProps> = ({
 
   const currentTurma = normalizeTurma(turma) || normalizeTurma(activeShift?.turma) || normalizeTurma(currentUser?.turma) || 'C';
 
-  // Considerar estritamente apenas ocorrências da data de HOJE (ou pendências herdadas ainda em aberto)
+  // Considerar estritamente apenas ocorrências do dia de HOJE
   const shiftIncidents = (localIncidents || []).filter(
-    (item) => isIncidentFromToday(item) ||
-      (item.isPendenciaHerdada && item.status !== 'FINALIZADO' && item.status !== 'RETROAGIDO')
+    (item) => isIncidentFromToday(item)
   );
 
   const pendentesLista = shiftIncidents.filter((i) => i.status !== 'FINALIZADO' && i.status !== 'RETROAGIDO');

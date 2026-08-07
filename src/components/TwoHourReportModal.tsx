@@ -17,6 +17,7 @@ import {
   Radio,
   FileText
 } from 'lucide-react';
+import { isIncidentFromToday } from '@/lib/turma';
 
 interface TwoHourReportModalProps {
   isOpen: boolean;
@@ -58,10 +59,11 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
   useEffect(() => {
     if (incidents.length > 0) {
       const pad = (n: number) => String(n).padStart(2, '0');
-      setCarteiraTotal(pad(incidents.length));
-      setCarteiraAndamento(pad(incidents.filter(i => i.status === 'EM_ANDAMENTO').length));
-      setCarteiraAberto(pad(incidents.filter(i => i.status === 'AGUARDANDO').length));
-      setCarteiraPendente(pad(incidents.filter(i => i.status === 'PENDENCIA_PROXIMO_TURNO').length));
+      const todayIncidents = incidents.filter((i) => isIncidentFromToday(i));
+      setCarteiraTotal(pad(todayIncidents.length));
+      setCarteiraAndamento(pad(todayIncidents.filter(i => i.status === 'EM_ANDAMENTO').length));
+      setCarteiraAberto(pad(todayIncidents.filter(i => i.status === 'AGUARDANDO').length));
+      setCarteiraPendente(pad(todayIncidents.filter(i => i.status === 'PENDENCIA_PROXIMO_TURNO').length));
     }
   }, [incidents]);
 
@@ -91,8 +93,9 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
     const nomeOperador = currentUser?.nome || activeShift?.responsavelNome || 'John Tavares';
     const letraTurma = activeShift?.turma || currentUser?.turma || 'A';
 
-    // Incluir todas as atividades do turno (Em Andamento, Em Aberto e Pendências do Início do Turno)
-    const activeIncidents = (incidents || []).filter(
+    // Incluir apenas as atividades do dia atual (estritamente HOJE)
+    const todayIncidents = (incidents || []).filter((i) => isIncidentFromToday(i));
+    const activeIncidents = todayIncidents.filter(
       (i) => i.status !== 'FINALIZADO' && i.status !== 'RETROAGIDO'
     );
 
