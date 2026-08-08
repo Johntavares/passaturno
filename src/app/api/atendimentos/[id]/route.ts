@@ -101,6 +101,7 @@ export async function PATCH(
       if (body.isPendenciaHerdada !== undefined) updateData.isPendenciaHerdada = body.isPendenciaHerdada;
       if (body.noCodigo !== undefined) updateData.noCodigo = body.noCodigo === true;
       if (body.turma) updateData.turma = normalizeTurma(body.turma) || body.turma;
+      if (body.divisaoAtuacao) updateData.divisaoAtuacao = body.divisaoAtuacao;
 
 
       const updatedIncident = await prisma.incident.update({

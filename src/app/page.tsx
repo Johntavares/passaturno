@@ -503,6 +503,40 @@ export default function Home() {
     }
   };
 
+  // Alternar Divisão de Atuação (Monitoramento vs Corretiva de Campo) diretamente no Kanban/Detalhes
+  const handleDivisaoChange = async (id: string, newDivisao: 'MONITORAMENTO' | 'CORRETIVA_CAMPO') => {
+    updateIncidentsState((prev) =>
+      prev.map((item) =>
+        item.id === id
+          ? { ...item, divisaoAtuacao: newDivisao, atualizadoEm: new Date().toISOString() }
+          : item
+      )
+    );
+
+    try {
+      const activeResp = currentUser?.nome || 'Técnico';
+      const labelDiv = newDivisao === 'CORRETIVA_CAMPO' ? 'Corretiva de Campo' : 'Monitoramento (NOC)';
+      const res = await fetch(`/api/atendimentos/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          divisaoAtuacao: newDivisao,
+          logDescription: `Divisão de atuação alterada para ${labelDiv}.`,
+          logUsuario: activeResp,
+        }),
+      });
+
+      if (res.ok) {
+        const updated = await res.json();
+        updateIncidentsState((prev) =>
+          prev.map((item) => (item.id === id ? updated : item))
+        );
+      }
+    } catch (err) {
+      console.error('Erro ao alterar divisão de atuação:', err);
+    }
+  };
+
   // Aceitar notificação de prioridade da passagem de turno e mover para a fila Em Andamento
   const handleAcceptPriority = async (incident: IncidentType) => {
     // Preservar a prioridade original definida pelo operador (não forçar 'ALTA')
@@ -687,6 +721,7 @@ export default function Home() {
           onStatusChange={handleStatusChange}
           onPriorityChange={handlePriorityChange}
           onNoCodigoChange={handleNoCodigoChange}
+          onDivisaoChange={handleDivisaoChange}
           onOpenWhatsapp={(inc) => {
             setSelectedWhatsappIncident(inc);
             setIsWhatsappOpen(true);
@@ -918,6 +953,7 @@ export default function Home() {
               onStatusChange={handleStatusChange}
               onPriorityChange={handlePriorityChange}
               onNoCodigoChange={handleNoCodigoChange}
+              onDivisaoChange={handleDivisaoChange}
               onOpenWhatsapp={(inc) => {
                 setSelectedWhatsappIncident(inc);
                 setIsWhatsappOpen(true);

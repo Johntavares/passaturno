@@ -31,8 +31,35 @@ export const IncidentTimelineModal: React.FC<IncidentTimelineModalProps> = ({
   const [newLogText, setNewLogText] = useState('');
   const [logUser, setLogUser] = useState(incident?.responsavel || 'Técnico Automação');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUpdatingDivisao, setIsUpdatingDivisao] = useState(false);
 
   if (!isOpen || !incident) return null;
+
+  const handleUpdateDivisao = async (newDivisao: 'MONITORAMENTO' | 'CORRETIVA_CAMPO') => {
+    if (!incident || incident.divisaoAtuacao === newDivisao) return;
+
+    setIsUpdatingDivisao(true);
+    try {
+      const labelDiv = newDivisao === 'CORRETIVA_CAMPO' ? 'Corretiva de Campo' : 'Monitoramento (NOC)';
+      const res = await fetch(`/api/atendimentos/${incident.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          divisaoAtuacao: newDivisao,
+          logDescription: `Divisão de atuação alterada para ${labelDiv}.`,
+          logUsuario: logUser,
+        }),
+      });
+
+      if (!res.ok) throw new Error('Erro ao atualizar divisão');
+
+      onTimelineUpdated();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsUpdatingDivisao(false);
+    }
+  };
 
   const handleAddLog = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -112,11 +139,49 @@ export const IncidentTimelineModal: React.FC<IncidentTimelineModalProps> = ({
 
           <button
             onClick={onClose}
-            className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-xl transition-colors cursor-pointer"
-            title="Fechar Modal"
+            className="p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
+        </div>
+
+        {/* SELETOR INTERATIVO DE DIVISÃO DE ATUAÇÃO (MONITORAMENTO VS CORRETIVA) */}
+        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div>
+            <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+              <span>Divisão de Atuação do Atendimento</span>
+            </span>
+            <span className="text-[11px] text-slate-500 font-medium block">
+              Alterne entre Monitoramento (NOC) e Corretiva de Campo com 1 clique:
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1.5 bg-white p-1 rounded-xl border border-slate-200 shadow-2xs">
+            <button
+              type="button"
+              disabled={isUpdatingDivisao}
+              onClick={() => handleUpdateDivisao('MONITORAMENTO')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                incident.divisaoAtuacao === 'MONITORAMENTO' || !incident.divisaoAtuacao
+                  ? 'bg-cyan-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              📺 Monitoramento (NOC)
+            </button>
+            <button
+              type="button"
+              disabled={isUpdatingDivisao}
+              onClick={() => handleUpdateDivisao('CORRETIVA_CAMPO')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                incident.divisaoAtuacao === 'CORRETIVA_CAMPO'
+                  ? 'bg-amber-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              🔧 Corretiva de Campo
+            </button>
+          </div>
         </div>
 
         {/* ANOTAÇÕES DO TURNO E SOLUÇÃO APLICADA */}

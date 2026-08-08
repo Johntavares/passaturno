@@ -28,6 +28,7 @@ interface KanbanBoardProps {
   onStatusChange: (id: string, newStatus: IncidentStatusType) => void;
   onPriorityChange: (id: string, newPriority: PriorityLevel) => void;
   onNoCodigoChange: (id: string, noCodigo: boolean) => void;
+  onDivisaoChange?: (id: string, newDivisao: 'MONITORAMENTO' | 'CORRETIVA_CAMPO') => void;
   onOpenWhatsapp: (incident: IncidentType) => void;
   onOpenTimeline: (incident: IncidentType) => void;
   onOpenEquipmentHistory: (tag: string) => void;
@@ -41,6 +42,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   onStatusChange,
   onPriorityChange,
   onNoCodigoChange,
+  onDivisaoChange,
   onOpenWhatsapp,
   onOpenTimeline,
   onOpenEquipmentHistory,
@@ -366,7 +368,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
             : 'border-slate-200/80'
         }`}
       >
-        {/* LINHA 1: TAG, Nome do Equipamento & Prioridade */}
+        {/* LINHA 1: TAG, Nome do Equipamento, Divisão de Atuação & Prioridade */}
         <div className="flex items-center justify-between gap-1.5">
           <div className="flex items-center space-x-1.5 truncate">
             <button
@@ -376,6 +378,28 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
             >
               <Tag className="w-3 h-3 text-slate-400" />
               {item.tag}
+            </button>
+
+            {/* BADGE DA DIVISÃO DE ATUAÇÃO (MONITORAMENTO VS CORRETIVA) - CLICÁVEL PARA ALTERNAR */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onDivisaoChange) {
+                  const nextDiv = item.divisaoAtuacao === 'CORRETIVA_CAMPO' ? 'MONITORAMENTO' : 'CORRETIVA_CAMPO';
+                  onDivisaoChange(item.id, nextDiv);
+                } else {
+                  onOpenTimeline(item);
+                }
+              }}
+              title="Clique para alternar entre Monitoramento (NOC) e Corretiva de Campo"
+              className={`text-[9px] font-bold px-1.5 py-0.5 rounded border flex items-center gap-0.5 transition-all cursor-pointer ${
+                item.divisaoAtuacao === 'CORRETIVA_CAMPO'
+                  ? 'bg-amber-50 hover:bg-amber-100 text-amber-900 border-amber-300'
+                  : 'bg-cyan-50 hover:bg-cyan-100 text-cyan-900 border-cyan-300'
+              }`}
+            >
+              {item.divisaoAtuacao === 'CORRETIVA_CAMPO' ? '🔧 Corretiva' : '📺 Monitoramento'}
             </button>
           </div>
 

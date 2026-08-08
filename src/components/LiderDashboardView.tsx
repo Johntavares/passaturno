@@ -57,6 +57,7 @@ interface LiderDashboardViewProps {
   onStatusChange?: (id: string, newStatus: IncidentStatusType) => void;
   onPriorityChange?: (id: string, newPriority: PriorityLevel) => void;
   onNoCodigoChange?: (id: string, noCodigo: boolean) => void;
+  onDivisaoChange?: (id: string, newDivisao: 'MONITORAMENTO' | 'CORRETIVA_CAMPO') => void;
   onOpenWhatsapp?: (incident: IncidentType) => void;
   onOpenEquipmentHistory?: (tag: string) => void;
   onOpenEditIncident?: (incident: IncidentType) => void;
@@ -73,6 +74,7 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
   onStatusChange,
   onPriorityChange,
   onNoCodigoChange,
+  onDivisaoChange,
   onOpenWhatsapp,
   onOpenEquipmentHistory,
   onOpenEditIncident,
@@ -917,6 +919,7 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
                   onStatusChange={onStatusChange || (() => {})}
                   onPriorityChange={onPriorityChange || (() => {})}
                   onNoCodigoChange={onNoCodigoChange || (() => {})}
+                  onDivisaoChange={onDivisaoChange}
                   onOpenWhatsapp={onOpenWhatsapp || (() => {})}
                   onOpenTimeline={onOpenTimeline}
                   onOpenEquipmentHistory={onOpenEquipmentHistory || (() => {})}
