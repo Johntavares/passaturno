@@ -670,6 +670,23 @@ export default function Home() {
           setIsCommentOpen(true);
         }}
         onDeleteIncident={handleDeleteIncident}
+        onStatusChange={handleStatusChange}
+        onPriorityChange={handlePriorityChange}
+        onNoCodigoChange={handleNoCodigoChange}
+        onOpenWhatsapp={(inc) => {
+          setSelectedWhatsappIncident(inc);
+          setIsWhatsappOpen(true);
+        }}
+        onOpenEquipmentHistory={(tag) => {
+          setSelectedEquipmentTag(tag);
+          setIsEquipmentHistoryOpen(true);
+        }}
+        onOpenEditIncident={(inc) => {
+          setSelectedEditIncident(inc);
+          setEditSolucao(inc.solucao || '');
+          setEditStatus(inc.status);
+          setIsEditIncidentOpen(true);
+        }}
       />
     );
   }

@@ -39,6 +39,8 @@ import { format } from 'date-fns';
 import { ChatMessage } from './LiderTurmaModal';
 import { OperatorReply } from './LeaderMessageNotification';
 import { normalizeTurma, isIncidentFromToday } from '@/lib/turma';
+import { KanbanBoard } from './KanbanBoard';
+import { IncidentStatusType, PriorityLevel } from '@/types';
 
 interface LiderDashboardViewProps {
   incidents: IncidentType[];
@@ -48,6 +50,12 @@ interface LiderDashboardViewProps {
   onOpenTimeline: (incident: IncidentType) => void;
   onOpenCommentModal: (incident: IncidentType) => void;
   onDeleteIncident: (id: string) => void;
+  onStatusChange?: (id: string, newStatus: IncidentStatusType) => void;
+  onPriorityChange?: (id: string, newPriority: PriorityLevel) => void;
+  onNoCodigoChange?: (id: string, noCodigo: boolean) => void;
+  onOpenWhatsapp?: (incident: IncidentType) => void;
+  onOpenEquipmentHistory?: (tag: string) => void;
+  onOpenEditIncident?: (incident: IncidentType) => void;
 }
 
 export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
@@ -58,6 +66,12 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
   onOpenTimeline,
   onOpenCommentModal,
   onDeleteIncident,
+  onStatusChange,
+  onPriorityChange,
+  onNoCodigoChange,
+  onOpenWhatsapp,
+  onOpenEquipmentHistory,
+  onOpenEditIncident,
 }) => {
   // Navegação Lateral do Menu
   const [activeSection, setActiveSection] = useState<'dashboard' | 'team' | 'history' | 'notifications' | 'alerts'>('dashboard');
@@ -254,12 +268,19 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
     setTimeout(() => setUserCreatedMsg(''), 4000);
   };
 
-  // Atendimentos pertencentes ao turno ativo (ou a hoje se sem turno ativo)
+  const currentActiveTurma = activeShift?.turma ? normalizeTurma(activeShift.turma) : normalizeTurma(currentUser?.turma) || 'A';
+
+  // Atendimentos pertencentes ao turno ativo da turma do dia (ou a hoje se sem turno ativo)
   const atendimentosDoDia = incidents.filter((i) => {
+    const iTurma = normalizeTurma(i.turma) || 'A';
+
     if (activeShift) {
-      return i.shiftId === activeShift.id || (i.isPendenciaHerdada && i.status === 'PENDENCIA_PROXIMO_TURNO');
+      const isShiftItem = i.shiftId === activeShift.id;
+      const isHerdado = i.isPendenciaHerdada && i.status === 'PENDENCIA_PROXIMO_TURNO' && iTurma === currentActiveTurma;
+      return isShiftItem || isHerdado;
     }
-    return isIncidentFromToday(i);
+
+    return isIncidentFromToday(i) && iTurma === currentActiveTurma;
   });
 
   // Estatísticas
@@ -277,8 +298,6 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
 
   const pendenciasCount = priorityAlerts.length;
   const urgentesCount = priorityAlerts.length;
-
-  const currentActiveTurma = activeShift?.turma ? normalizeTurma(activeShift.turma) : 'A';
   
   const delayedAssets = incidents.filter(i => {
     if (i.status !== 'EM_ANDAMENTO') return false;
@@ -631,61 +650,39 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
                     )}
                   </div>
 
-                  {/* CARD DE ATENDIMENTOS DO DIA COM BOTÕES DE DETALHE */}
+                  {/* QUADRO KANBAN DE ATENDIMENTOS DA TURMA ATIVA NO DIA */}
                   <div className="bg-white rounded-3xl border border-slate-200 p-5 shadow-xs space-y-4">
-                    <div className="flex items-center space-x-2 border-b border-slate-100 pb-3">
-                      <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl border border-indigo-200">
-                        <Layers className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-black text-slate-900">
-                          Atendimentos do Dia
-                        </h3>
-                        <p className="text-xs text-slate-500 font-medium">Resumo dos status e acompanhamento de ocorrências</p>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2.5 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                      {atendimentosDoDia.length === 0 ? (
-                        <div className="py-6 text-center text-xs font-bold text-slate-400">
-                          Nenhum atendimento registrado hoje neste turno.
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-slate-100 pb-3 gap-2">
+                      <div className="flex items-center space-x-3">
+                        <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-2xl border border-indigo-200">
+                          <Layers className="w-5 h-5" />
                         </div>
-                      ) : (
-                        atendimentosDoDia.slice(0, 15).map(item => (
-                          <div key={item.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3.5 bg-slate-50 rounded-2xl border border-slate-100 hover:border-slate-200 transition-colors gap-2">
-                            <div className="flex items-center gap-3">
-                              <span className="font-mono text-xs font-black bg-white text-slate-800 px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs">
-                                {item.tag}
-                              </span>
-                              <div>
-                                <p className="text-xs font-bold text-slate-800">{item.falha}</p>
-                                <p className="text-[10px] text-slate-500 font-medium mt-0.5">Resp: {item.responsavel} • Turma {item.turma || 'A'}</p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
-                              <span className={`text-[10px] font-bold px-2 py-1 rounded-lg uppercase tracking-wide border ${
-                                item.status === 'FINALIZADO' || item.status === 'RETROAGIDO'
-                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                  : item.status === 'EM_ANDAMENTO'
-                                  ? 'bg-blue-50 text-blue-700 border-blue-200'
-                                  : 'bg-amber-50 text-amber-700 border-amber-200'
-                              }`}>
-                                {item.status.replace(/_/g, ' ')}
-                              </span>
-
-                              <button
-                                onClick={() => onOpenTimeline(item)}
-                                className="px-2.5 py-1 bg-white hover:bg-sky-50 text-sky-700 border border-slate-200 hover:border-sky-300 font-bold text-[11px] rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
-                                title="Ver linha do tempo da atividade"
-                              >
-                                <History className="w-3 h-3 text-sky-600" />
-                                <span>Detalhes</span>
-                              </button>
-                            </div>
-                          </div>
-                        ))
-                      )}
+                        <div>
+                          <h3 className="text-base font-black text-slate-900 leading-tight">
+                            Quadro Kanban de Atendimentos — Turma {currentActiveTurma}
+                          </h3>
+                          <p className="text-xs text-slate-500 font-medium">
+                            Acompanhamento em colunas: No Código, Em Andamento, Concluídos e Herdados
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-xs font-bold bg-indigo-100 text-indigo-900 px-3 py-1 rounded-full border border-indigo-300">
+                        {atendimentosDoDia.length} {atendimentosDoDia.length === 1 ? 'atividade da turma' : 'atividades da turma'}
+                      </span>
                     </div>
+
+                    <KanbanBoard
+                      incidents={atendimentosDoDia}
+                      onStatusChange={onStatusChange || (() => {})}
+                      onPriorityChange={onPriorityChange || (() => {})}
+                      onNoCodigoChange={onNoCodigoChange || (() => {})}
+                      onOpenWhatsapp={onOpenWhatsapp || (() => {})}
+                      onOpenTimeline={onOpenTimeline}
+                      onOpenEquipmentHistory={onOpenEquipmentHistory || (() => {})}
+                      onOpenEditIncident={onOpenEditIncident || (() => {})}
+                      onOpenCommentModal={onOpenCommentModal}
+                      onDeleteIncident={onDeleteIncident}
+                    />
                   </div>
 
                 </div>
