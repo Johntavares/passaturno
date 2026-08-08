@@ -38,6 +38,7 @@ import {
 import { format } from 'date-fns';
 import { ChatMessage } from './LiderTurmaModal';
 import { OperatorReply } from './LeaderMessageNotification';
+import { normalizeTurma, isIncidentFromToday } from '@/lib/turma';
 
 interface LiderDashboardViewProps {
   incidents: IncidentType[];
@@ -253,29 +254,40 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
     setTimeout(() => setUserCreatedMsg(''), 4000);
   };
 
+  // Atendimentos pertencentes ao turno ativo (ou a hoje se sem turno ativo)
+  const atendimentosDoDia = incidents.filter((i) => {
+    if (activeShift) {
+      return i.shiftId === activeShift.id || (i.isPendenciaHerdada && i.status === 'PENDENCIA_PROXIMO_TURNO');
+    }
+    return isIncidentFromToday(i);
+  });
+
   // Estatísticas
-  const totalIncidents = incidents.length;
-  const concluidosCount = incidents.filter((i) => i.status === 'FINALIZADO' || i.status === 'RETROAGIDO').length;
-  const pendenciasCount = incidents.filter((i) => i.status === 'PENDENCIA_PROXIMO_TURNO' || i.isPendenciaHerdada).length;
-  const urgentesCount = incidents.filter(
-    (i) => i.prioridade === 'CRITICA' || i.status === 'PENDENCIA_PROXIMO_TURNO' || i.isPendenciaHerdada
-  ).length;
+  const totalIncidents = atendimentosDoDia.length;
+  const concluidosCount = atendimentosDoDia.filter((i) => i.status === 'FINALIZADO' || i.status === 'RETROAGIDO').length;
 
-  const priorityAlerts = incidents.filter(
-    (i) =>
-      i.status === 'PENDENCIA_PROXIMO_TURNO' ||
-      i.isPendenciaHerdada ||
-      i.prioridade === 'CRITICA' ||
-      i.prioridade === 'ALTA'
-  );
+  // Ativos em Alerta (Exclui concluídos e itens de turnos antigos)
+  const priorityAlerts = incidents.filter((i) => {
+    if (i.status === 'FINALIZADO' || i.status === 'RETROAGIDO') return false;
+    if (i.status === 'PENDENCIA_PROXIMO_TURNO' || i.isPendenciaHerdada) return true;
+    const isDoTurno = activeShift ? i.shiftId === activeShift.id : isIncidentFromToday(i);
+    if (isDoTurno && (i.prioridade === 'CRITICA' || i.prioridade === 'ALTA')) return true;
+    return false;
+  });
 
-  const currentActiveTurma = activeShift?.turma?.replace('Turma ', '')?.replace('TURMA ', '')?.trim() || 'A';
+  const pendenciasCount = priorityAlerts.length;
+  const urgentesCount = priorityAlerts.length;
+
+  const currentActiveTurma = activeShift?.turma ? normalizeTurma(activeShift.turma) : 'A';
   
   const delayedAssets = incidents.filter(i => {
-    const iTurma = (i.turma || '').toUpperCase().trim();
-    if (iTurma !== currentActiveTurma) return false;
     if (i.status !== 'EM_ANDAMENTO') return false;
+    const iTurma = normalizeTurma(i.turma) || 'A';
+    if (iTurma !== currentActiveTurma) return false;
     
+    const isDoTurno = activeShift ? i.shiftId === activeShift.id : isIncidentFromToday(i);
+    if (!isDoTurno) return false;
+
     const start = new Date(i.criadoEm);
     const now = new Date();
     const diffHours = (now.getTime() - start.getTime()) / (1000 * 60 * 60);
@@ -634,12 +646,12 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
                     </div>
 
                     <div className="space-y-2.5 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                      {incidents.length === 0 ? (
+                      {atendimentosDoDia.length === 0 ? (
                         <div className="py-6 text-center text-xs font-bold text-slate-400">
-                          Nenhum atendimento registrado hoje.
+                          Nenhum atendimento registrado hoje neste turno.
                         </div>
                       ) : (
-                        incidents.slice(0, 15).map(item => (
+                        atendimentosDoDia.slice(0, 15).map(item => (
                           <div key={item.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3.5 bg-slate-50 rounded-2xl border border-slate-100 hover:border-slate-200 transition-colors gap-2">
                             <div className="flex items-center gap-3">
                               <span className="font-mono text-xs font-black bg-white text-slate-800 px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs">
