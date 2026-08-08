@@ -811,7 +811,7 @@ export default function Home() {
             <DesktopAdBanner />
 
             {/* 4. Resumo dos Atendimentos Diários & Passagem de Turno (Posicionado na parte inferior) */}
-            <DailySummarySection incidents={incidents} activeShift={activeShift} currentUser={currentUser} />
+            <DailySummarySection incidents={displayedIncidents} activeShift={activeShift} currentUser={currentUser} />
           </>
           );
         })()}
