@@ -286,11 +286,80 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
     setTimeout(() => setUserCreatedMsg(''), 4000);
   };
 
-  // Seletor de Turma no Kanban do Dashboard do Líder
+  // Seletor de Turma e Mapeamento de Turnos Ativos de Todas as Turmas
   const [selectedKanbanTurma, setSelectedKanbanTurma] = useState<string>('AUTO');
+  const [allActiveShifts, setAllActiveShifts] = useState<Record<string, any>>({});
 
-  const currentActiveTurma = activeShift?.turma ? normalizeTurma(activeShift.turma) : normalizeTurma(currentUser?.turma) || 'A';
+  useEffect(() => {
+    const fetchAllShifts = async () => {
+      try {
+        const turmasList = ['A', 'B', 'C', 'D'];
+        const map: Record<string, any> = {};
+        await Promise.all(
+          turmasList.map(async (t) => {
+            const res = await fetch(`/api/turnos/ativo?turma=${t}`);
+            if (res.ok) {
+              const data = await res.json();
+              if (data.activeShift) {
+                map[t] = data.activeShift;
+              }
+            }
+          })
+        );
+        setAllActiveShifts(map);
+      } catch (e) {
+        console.error('Erro ao buscar turnos ativos das turmas:', e);
+      }
+    };
+    fetchAllShifts();
+  }, []);
+
+  // Identifica a turma que possui turno ATIVO rodando agora (ou usa a do usuario/activeShift prop)
+  const activeShiftFromApi = Object.values(allActiveShifts).find((s) => s?.status === 'ATIVO') || activeShift;
+  const firstActiveTurmaFound = activeShiftFromApi?.turma 
+    ? normalizeTurma(activeShiftFromApi.turma) 
+    : (activeShift?.turma ? normalizeTurma(activeShift.turma) : normalizeTurma(currentUser?.turma) || 'A');
+
+  const currentActiveTurma = firstActiveTurmaFound;
   const effectiveKanbanTurma = selectedKanbanTurma === 'AUTO' ? currentActiveTurma : selectedKanbanTurma;
+
+  // Helper para buscar o nome do técnico responsavel de cada turma
+  const getTechnicianForTurma = (turmaKey: string) => {
+    const cleanTurma = normalizeTurma(turmaKey);
+    if (!cleanTurma || cleanTurma === 'TODAS') return null;
+
+    if (allActiveShifts[cleanTurma]?.responsavelNome) {
+      return allActiveShifts[cleanTurma].responsavelNome;
+    }
+    if (activeShift && normalizeTurma(activeShift.turma) === cleanTurma && activeShift.responsavelNome) {
+      return activeShift.responsavelNome;
+    }
+    const userForTurma = userList.find((u) => normalizeTurma(u.turma) === cleanTurma);
+    if (userForTurma?.nome) return userForTurma.nome;
+
+    const lastTechIncident = incidents.find(
+      (i) => normalizeTurma(i.turma) === cleanTurma && i.responsavel && !i.responsavel.toLowerCase().startsWith('operador')
+    );
+    return lastTechIncident?.responsavel || null;
+  };
+
+  // Turno a ser exibido no Card de Topo (Card da Equipe do Dia)
+  const displayedShift = (effectiveKanbanTurma !== 'TODAS' && allActiveShifts[effectiveKanbanTurma])
+    || (effectiveKanbanTurma === normalizeTurma(activeShift?.turma) ? activeShift : null)
+    || activeShiftFromApi
+    || activeShift;
+
+  const displayedHoraInicioTxt = (() => {
+    if (displayedShift?.criadoEm || displayedShift?.horaInicio) {
+      try {
+        const d = new Date(displayedShift.criadoEm || displayedShift.horaInicio);
+        return isNaN(d.getTime()) ? null : format(d, 'HH:mm');
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  })();
 
   // Atendimentos pertencentes à turma ativa no dia/turno (ou turma selecionada)
   const atendimentosDoDia = incidents.filter((i) => {
@@ -298,7 +367,7 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
 
     // Filtra pela turma selecionada (ou AUTO da turma ativa do turno)
     if (effectiveKanbanTurma !== 'TODAS') {
-      const isDaTurma = iTurma === effectiveKanbanTurma || (activeShift && i.shiftId === activeShift.id && normalizeTurma(activeShift.turma) === effectiveKanbanTurma);
+      const isDaTurma = iTurma === effectiveKanbanTurma || (displayedShift && i.shiftId === displayedShift.id && normalizeTurma(displayedShift.turma) === effectiveKanbanTurma);
       if (!isDaTurma) return false;
     }
 
@@ -306,7 +375,7 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
     if (i.status !== 'FINALIZADO' && i.status !== 'RETROAGIDO') return true;
 
     // Se é um atendimento concluído, exibe se for do turno ativo ou se criado no dia de hoje
-    if (activeShift && i.shiftId === activeShift.id) return true;
+    if (displayedShift && i.shiftId === displayedShift.id) return true;
     return isIncidentFromToday(i);
   });
 
@@ -732,19 +801,27 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
               <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white rounded-3xl p-5 shadow-lg border border-slate-700 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="flex items-center space-x-4">
                   <div className="w-12 h-12 bg-emerald-500/20 text-emerald-400 rounded-2xl flex items-center justify-center font-black text-xl border border-emerald-500/40">
-                    {activeShift?.turma ? activeShift.turma.replace('Turma ', '').replace('TURMA ', '') : '-'}
+                    {effectiveKanbanTurma !== 'TODAS'
+                      ? effectiveKanbanTurma
+                      : (displayedShift?.turma ? displayedShift.turma.replace('Turma ', '').replace('TURMA ', '') : '-')}
                   </div>
                   <div>
                     <h2 className="text-xl font-black text-white flex items-center gap-3">
-                      {activeShift?.turma ? (activeShift.turma.toLowerCase().includes('turma') ? activeShift.turma : `Turma ${activeShift.turma}`) : 'Sem Turno Iniciado'}
-                      {activeShift && (
+                      {displayedShift?.turma
+                        ? (displayedShift.turma.toLowerCase().includes('turma') ? displayedShift.turma : `Turma ${displayedShift.turma}`)
+                        : (effectiveKanbanTurma !== 'TODAS' ? `Turma ${effectiveKanbanTurma}` : 'Sem Turno Iniciado')}
+                      {displayedShift?.status === 'ATIVO' ? (
                         <span className="text-[10px] font-black uppercase bg-emerald-500 text-slate-950 px-2 py-0.5 rounded font-mono">
                           TURNO ATIVO
                         </span>
-                      )}
+                      ) : displayedShift ? (
+                        <span className="text-[10px] font-black uppercase bg-slate-700 text-slate-300 px-2 py-0.5 rounded font-mono">
+                          TURNO ENCERRADO
+                        </span>
+                      ) : null}
                     </h2>
                     <p className="text-sm text-slate-300 mt-1">
-                      Responsável / Colaborador: <strong className="text-emerald-300">{activeShift?.responsavelNome || '-'}</strong>
+                      Responsável / Colaborador: <strong className="text-emerald-300">{displayedShift?.responsavelNome || (getTechnicianForTurma(effectiveKanbanTurma) || '-')}</strong>
                     </p>
                   </div>
                 </div>
@@ -752,9 +829,9 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
                 <div className="flex items-center space-x-3 text-xs bg-slate-800/80 px-4 py-2.5 rounded-2xl border border-slate-700 font-mono">
                   <Clock className="w-4 h-4 text-emerald-400 flex-shrink-0" />
                   <div className="flex flex-col sm:flex-row items-start sm:items-center gap-1 sm:gap-2">
-                    <span>Início do Turno: <strong className="text-emerald-300 font-bold">{horaInicioTxt ? `${horaInicioTxt}h` : '-'}</strong></span>
-                    {activeShift?.horarioTurno && (
-                      <span className="text-slate-400">({activeShift.horarioTurno})</span>
+                    <span>Início do Turno: <strong className="text-emerald-300 font-bold">{displayedHoraInicioTxt ? `${displayedHoraInicioTxt}h` : '-'}</strong></span>
+                    {displayedShift?.horarioTurno && (
+                      <span className="text-slate-400">({displayedShift.horarioTurno})</span>
                     )}
                   </div>
                 </div>
