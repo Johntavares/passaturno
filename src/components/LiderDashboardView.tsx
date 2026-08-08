@@ -523,48 +523,7 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
                 </div>
               </div>
 
-              {/* ATIVOS COM MAIS DE 2 HORAS EM ANDAMENTO */}
-              <div className="bg-white rounded-3xl border border-slate-200 p-5 shadow-xs space-y-4">
-                <div className="flex items-center space-x-2 border-b border-slate-100 pb-3">
-                  <div className="p-2 bg-rose-50 text-rose-600 rounded-xl border border-rose-200">
-                    <AlertTriangle className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-black text-slate-900">
-                      Ativos com mais de 2 horas em atendimento
-                    </h3>
-                    <p className="text-xs text-slate-500 font-medium">
-                      Ocorrências em andamento prolongado da Turma {currentActiveTurma}
-                    </p>
-                  </div>
-                </div>
 
-                {delayedAssets.length === 0 ? (
-                  <div className="py-6 text-center text-xs font-bold text-slate-400 border border-dashed border-slate-200 rounded-2xl bg-slate-50">
-                    🟢 Nenhum ativo da sua turma ultrapassou 2 horas em andamento.
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    {delayedAssets.map(item => {
-                      const start = new Date(item.criadoEm);
-                      const now = new Date();
-                      const diffHours = Math.floor((now.getTime() - start.getTime()) / (1000 * 60 * 60));
-                      const diffMinutes = Math.floor(((now.getTime() - start.getTime()) % (1000 * 60 * 60)) / (1000 * 60));
-                      
-                      return (
-                        <div key={item.id} className="bg-rose-50 border border-rose-200 rounded-2xl p-4 space-y-2 relative overflow-hidden">
-                          <div className="absolute top-0 right-0 bg-rose-600 text-white text-[10px] font-black px-2 py-1 rounded-bl-lg">
-                            {diffHours}h {diffMinutes}m
-                          </div>
-                          <div className="font-mono text-sm font-black text-rose-900">{item.tag}</div>
-                          <div className="text-xs font-bold text-slate-800 line-clamp-2">{item.falha}</div>
-                          <div className="text-[10px] font-medium text-slate-600">Resp: {item.responsavel}</div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
 
               {/* GRID: TABELA DE BASTÃO + RESUMO DAS TURMAS */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
