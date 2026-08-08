@@ -302,17 +302,6 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
           </div>
 
           <div className="flex items-center space-x-1">
-            <span className={`text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded border ${
-              item.divisaoAtuacao === 'CORRETIVA_CAMPO'
-                ? 'bg-amber-100 text-amber-800 border-amber-300'
-                : 'bg-cyan-100 text-cyan-800 border-cyan-300'
-            }`}>
-              {item.divisaoAtuacao === 'CORRETIVA_CAMPO' ? '🔧 Campo' : '📺 NOC'}
-            </span>
-
-            <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 font-mono">
-              Turma {normalizeTurma(item.turma) || item.turma || 'A'}
-            </span>
             {!isFinished && (
               <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${getPriorityBadge(item.prioridade)}`}>
                 {item.prioridade}
