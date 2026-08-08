@@ -286,19 +286,28 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
     setTimeout(() => setUserCreatedMsg(''), 4000);
   };
 
-  const currentActiveTurma = activeShift?.turma ? normalizeTurma(activeShift.turma) : normalizeTurma(currentUser?.turma) || 'A';
+  // Seletor de Turma no Kanban do Dashboard do Líder
+  const [selectedKanbanTurma, setSelectedKanbanTurma] = useState<string>('AUTO');
 
-  // Atendimentos pertencentes ao turno ativo da turma do dia (ou a hoje se sem turno ativo)
+  const currentActiveTurma = activeShift?.turma ? normalizeTurma(activeShift.turma) : normalizeTurma(currentUser?.turma) || 'A';
+  const effectiveKanbanTurma = selectedKanbanTurma === 'AUTO' ? currentActiveTurma : selectedKanbanTurma;
+
+  // Atendimentos pertencentes à turma ativa no dia/turno (ou turma selecionada)
   const atendimentosDoDia = incidents.filter((i) => {
     const iTurma = normalizeTurma(i.turma) || 'A';
 
-    if (activeShift) {
-      const isShiftItem = i.shiftId === activeShift.id;
-      const isHerdado = i.isPendenciaHerdada && i.status === 'PENDENCIA_PROXIMO_TURNO' && iTurma === currentActiveTurma;
-      return isShiftItem || isHerdado;
+    // Filtra pela turma selecionada (ou AUTO da turma ativa do turno)
+    if (effectiveKanbanTurma !== 'TODAS') {
+      const isDaTurma = iTurma === effectiveKanbanTurma || (activeShift && i.shiftId === activeShift.id && normalizeTurma(activeShift.turma) === effectiveKanbanTurma);
+      if (!isDaTurma) return false;
     }
 
-    return isIncidentFromToday(i) && iTurma === currentActiveTurma;
+    // Se o atendimento não está finalizado (No Código, Em Andamento, Aguardando, Pendência Herdada), exibe SEMPRE!
+    if (i.status !== 'FINALIZADO' && i.status !== 'RETROAGIDO') return true;
+
+    // Se é um atendimento concluído, exibe se for do turno ativo ou se criado no dia de hoje
+    if (activeShift && i.shiftId === activeShift.id) return true;
+    return isIncidentFromToday(i);
   });
 
   // Estatísticas
@@ -753,23 +762,47 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
 
               {/* QUADRO KANBAN DE ATENDIMENTOS DA TURMA ATIVA NO DIA */}
               <div className="bg-white rounded-3xl border border-slate-200 p-5 shadow-xs space-y-4">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-slate-100 pb-3 gap-2">
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-between border-b border-slate-100 pb-3 gap-3">
                   <div className="flex items-center space-x-3">
                     <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-2xl border border-indigo-200">
                       <Layers className="w-5 h-5" />
                     </div>
                     <div>
                       <h3 className="text-base font-black text-slate-900 leading-tight">
-                        Quadro Kanban de Atendimentos — Turma {currentActiveTurma}
+                        Quadro Kanban de Atendimentos — {effectiveKanbanTurma === 'TODAS' ? 'Todas as Turmas' : `Turma ${effectiveKanbanTurma}`}
                       </h3>
                       <p className="text-xs text-slate-500 font-medium">
                         Acompanhamento em colunas: No Código, Em Andamento, Concluídos e Herdados
                       </p>
                     </div>
                   </div>
-                  <span className="text-xs font-bold bg-indigo-100 text-indigo-900 px-3 py-1 rounded-full border border-indigo-300">
-                    {atendimentosDoDia.length} {atendimentosDoDia.length === 1 ? 'atividade da turma' : 'atividades da turma'}
-                  </span>
+
+                  {/* SELETOR RÁPIDO DE TURMAS */}
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {[
+                      { id: 'AUTO', label: `Turma Ativa (${currentActiveTurma})` },
+                      { id: 'TODAS', label: 'Todas' },
+                      { id: 'A', label: 'Turma A' },
+                      { id: 'B', label: 'Turma B' },
+                      { id: 'C', label: 'Turma C' },
+                      { id: 'D', label: 'Turma D' },
+                    ].map((t) => (
+                      <button
+                        key={t.id}
+                        onClick={() => setSelectedKanbanTurma(t.id)}
+                        className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                          selectedKanbanTurma === t.id
+                            ? 'bg-indigo-600 text-white shadow-xs'
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}
+                      >
+                        {t.label}
+                      </button>
+                    ))}
+                    <span className="text-xs font-bold bg-indigo-100 text-indigo-900 px-3 py-1 rounded-full border border-indigo-300 ml-1">
+                      {atendimentosDoDia.length} {atendimentosDoDia.length === 1 ? 'atividade' : 'atividades'}
+                    </span>
+                  </div>
                 </div>
 
                 <KanbanBoard
