@@ -140,7 +140,8 @@ export default function Home() {
     }
 
     const userTurmaClean = normalizeTurma(turmaOverride) || normalizeTurma(currentUserRef.current?.turma) || normalizeTurma(savedUserTurma) || normalizeTurma(selectedTurmaFilterRef.current);
-    const shiftApiUrl = userTurmaClean ? `/api/turnos/ativo?turma=${encodeURIComponent(userTurmaClean)}` : '/api/turnos/ativo';
+    const isLeaderUser = currentUserRef.current?.cargo === 'LÍDER DE TURMA';
+    const shiftApiUrl = (userTurmaClean && !isLeaderUser) ? `/api/turnos/ativo?turma=${encodeURIComponent(userTurmaClean)}` : '/api/turnos/ativo';
 
     try {
       const [incRes, eqRes, shiftRes] = await Promise.all([
@@ -173,9 +174,7 @@ export default function Home() {
       if (shiftRes.ok) {
         const shiftData = await shiftRes.json();
         const activeS = shiftData.activeShift || null;
-        // Isolamento de segurança: Se o usuário logado for da Turma C,
-        // só aceita o activeShift se ele for da própria Turma C!
-        if (userTurmaClean && userTurmaClean !== 'GERAL' && activeS) {
+        if (userTurmaClean && userTurmaClean !== 'GERAL' && activeS && !isLeaderUser) {
           const shiftTurmaClean = normalizeTurma(activeS.turma);
           if (shiftTurmaClean && shiftTurmaClean !== userTurmaClean) {
             setActiveShift(null);

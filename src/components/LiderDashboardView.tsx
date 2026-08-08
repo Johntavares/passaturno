@@ -314,13 +314,33 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
     fetchAllShifts();
   }, []);
 
-  // Identifica a turma que possui turno ATIVO rodando agora (ou usa a do usuario/activeShift prop)
-  const activeShiftFromApi = Object.values(allActiveShifts).find((s) => s?.status === 'ATIVO') || activeShift;
-  const firstActiveTurmaFound = activeShiftFromApi?.turma 
-    ? normalizeTurma(activeShiftFromApi.turma) 
-    : (activeShift?.turma ? normalizeTurma(activeShift.turma) : normalizeTurma(currentUser?.turma) || 'A');
+  // Identifica a turma que possui atendimentos abertos/em andamento hoje ou turno ATIVO rodando agora
+  const activeTurmaWithIncidents = (() => {
+    // 1. Conta atendimentos em andamento / abertos por turma
+    const counts: Record<string, number> = { A: 0, B: 0, C: 0, D: 0 };
+    incidents.forEach((i) => {
+      if (i.status !== 'FINALIZADO' && i.status !== 'RETROAGIDO') {
+        const t = normalizeTurma(i.turma) || 'A';
+        if (counts[t] !== undefined) counts[t] += 1;
+      }
+    });
 
-  const currentActiveTurma = firstActiveTurmaFound;
+    const turmasComAtendimentos = Object.keys(counts).filter((t) => counts[t] > 0);
+    if (turmasComAtendimentos.length > 0) {
+      turmasComAtendimentos.sort((a, b) => counts[b] - counts[a]);
+      return turmasComAtendimentos[0]; // ex: 'C' se a Turma C tiver mais itens
+    }
+
+    // 2. Se nenhuma turma tiver atendimentos abertos, verifica se algum turno está com status ATIVO
+    const activeShiftFromMap = Object.values(allActiveShifts).find((s) => s?.status === 'ATIVO') || activeShift;
+    if (activeShiftFromMap?.turma) {
+      return normalizeTurma(activeShiftFromMap.turma) || 'A';
+    }
+
+    return normalizeTurma(currentUser?.turma) || 'A';
+  })();
+
+  const currentActiveTurma = activeTurmaWithIncidents;
   const effectiveKanbanTurma = selectedKanbanTurma === 'AUTO' ? currentActiveTurma : selectedKanbanTurma;
 
   // Helper para buscar o nome do técnico responsavel de cada turma
@@ -342,6 +362,8 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
     );
     return lastTechIncident?.responsavel || null;
   };
+
+  const activeShiftFromApi = Object.values(allActiveShifts).find((s) => s?.status === 'ATIVO') || activeShift;
 
   // Turno a ser exibido no Card de Topo (Card da Equipe do Dia)
   const displayedShift = (effectiveKanbanTurma !== 'TODAS' && allActiveShifts[effectiveKanbanTurma])
