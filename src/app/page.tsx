@@ -470,12 +470,17 @@ export default function Home() {
     }
   };
 
-  // Alternar "No Código" / "Em Andamento" diretamente no Kanban (somente p/ status EM_ANDAMENTO)
+  // Alternar "No Código" / "Em Andamento" diretamente no Kanban
   const handleNoCodigoChange = async (id: string, noCodigo: boolean) => {
+    const patchData: any = {
+      noCodigo,
+      status: 'EM_ANDAMENTO',
+    };
+
     updateIncidentsState((prev) =>
       prev.map((item) =>
         item.id === id
-          ? { ...item, noCodigo, atualizadoEm: new Date().toISOString() }
+          ? { ...item, ...patchData, atualizadoEm: new Date().toISOString() }
           : item
       )
     );
@@ -484,7 +489,7 @@ export default function Home() {
       const res = await fetch(`/api/atendimentos/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ noCodigo }),
+        body: JSON.stringify(patchData),
       });
 
       if (res.ok) {

@@ -86,14 +86,21 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
   const areas = ['TODAS', ...Array.from(new Set(incidents.map((i) => i.area)))];
 
-  // Separar colunas
-  const colNoCodigo = filteredIncidents.filter((i) => i.status === 'EM_ANDAMENTO' && i.noCodigo);
-  const colEmAndamento = filteredIncidents.filter(
-    (i) => (i.status === 'EM_ANDAMENTO' && !i.noCodigo) || i.status === 'AGUARDANDO'
+  // Separar colunas Kanban com movimentação dinâmica de status
+  const colNoCodigo = filteredIncidents.filter(
+    (i) => i.noCodigo && i.status !== 'FINALIZADO' && i.status !== 'RETROAGIDO'
   );
-  const colFinalizados = filteredIncidents.filter((i) => i.status === 'FINALIZADO' || i.status === 'RETROAGIDO');
+
+  const colEmAndamento = filteredIncidents.filter(
+    (i) => !i.noCodigo && (i.status === 'EM_ANDAMENTO' || i.status === 'AGUARDANDO')
+  );
+
+  const colFinalizados = filteredIncidents.filter(
+    (i) => i.status === 'FINALIZADO' || i.status === 'RETROAGIDO'
+  );
+
   const colHerdados = filteredIncidents.filter(
-    (i) => i.status === 'PENDENCIA_PROXIMO_TURNO' || (i.isPendenciaHerdada && i.status !== 'EM_ANDAMENTO' && i.status !== 'FINALIZADO' && i.status !== 'RETROAGIDO')
+    (i) => !i.noCodigo && (i.status === 'PENDENCIA_PROXIMO_TURNO' || (i.isPendenciaHerdada && i.status !== 'EM_ANDAMENTO' && i.status !== 'FINALIZADO' && i.status !== 'RETROAGIDO'))
   );
 
   const calculateDowntime = (dataParada: string, dataLiberacao?: string | null) => {
