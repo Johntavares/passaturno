@@ -196,6 +196,15 @@ export default function Home() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Auto-polling em tempo real (4s) para manter os dados 100% atualizados entre Operador e Líder
+  useEffect(() => {
+    loadData();
+    const interval = setInterval(() => {
+      loadData();
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [loadData]);
+
   const handleIncidentCreated = (newInc?: IncidentType) => {
     if (newInc) {
       updateIncidentsState((prev) => {

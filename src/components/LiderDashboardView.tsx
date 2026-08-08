@@ -312,11 +312,24 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
       }
     };
     fetchAllShifts();
+    const interval = setInterval(fetchAllShifts, 4000);
+    return () => clearInterval(interval);
   }, []);
 
-  // Identifica a turma que possui atendimentos abertos/em andamento hoje ou turno ATIVO rodando agora
-  const activeTurmaWithIncidents = (() => {
-    // 1. Conta atendimentos em andamento / abertos por turma
+  // Resolução Estável e Prioritária da Turma Ativa Oficial do CCO
+  const officialActiveTurma = (() => {
+    // 1. Se o prop activeShift possuir um turno ATIVO, ele é a fonte da verdade oficial!
+    if (activeShift?.status === 'ATIVO' && activeShift.turma) {
+      return normalizeTurma(activeShift.turma) || 'A';
+    }
+
+    // 2. Procura nas apis se existe alguma outra turma com status ATIVO rodando no banco
+    const activeFromMap = Object.values(allActiveShifts).find((s) => s?.status === 'ATIVO');
+    if (activeFromMap?.turma) {
+      return normalizeTurma(activeFromMap.turma) || 'A';
+    }
+
+    // 3. Verifica se existe alguma turma com atendimentos em andamento no dia de hoje
     const counts: Record<string, number> = { A: 0, B: 0, C: 0, D: 0 };
     incidents.forEach((i) => {
       if (i.status !== 'FINALIZADO' && i.status !== 'RETROAGIDO') {
@@ -328,19 +341,14 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
     const turmasComAtendimentos = Object.keys(counts).filter((t) => counts[t] > 0);
     if (turmasComAtendimentos.length > 0) {
       turmasComAtendimentos.sort((a, b) => counts[b] - counts[a]);
-      return turmasComAtendimentos[0]; // ex: 'C' se a Turma C tiver mais itens
+      return turmasComAtendimentos[0];
     }
 
-    // 2. Se nenhuma turma tiver atendimentos abertos, verifica se algum turno está com status ATIVO
-    const activeShiftFromMap = Object.values(allActiveShifts).find((s) => s?.status === 'ATIVO') || activeShift;
-    if (activeShiftFromMap?.turma) {
-      return normalizeTurma(activeShiftFromMap.turma) || 'A';
-    }
-
+    // 4. Fallback final: Turma da conta do usuario ou 'A'
     return normalizeTurma(currentUser?.turma) || 'A';
   })();
 
-  const currentActiveTurma = activeTurmaWithIncidents;
+  const currentActiveTurma = officialActiveTurma;
   const effectiveKanbanTurma = selectedKanbanTurma === 'AUTO' ? currentActiveTurma : selectedKanbanTurma;
 
   // Helper para buscar o nome do técnico responsavel de cada turma
