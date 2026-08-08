@@ -77,12 +77,27 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
           {/* LADO ESQUERDO: Branding + Status do Turno Ativo */}
           <div className="flex flex-wrap items-center gap-3">
             {/* Logo PASSATURNO */}
-            <div className="flex items-center">
-              <img
-                src="/logo.png"
-                alt="PASSATURNO"
-                className="h-10 w-auto object-contain"
-              />
+            <div className="flex items-center space-x-2.5">
+              <div className="relative w-9 h-9 flex-shrink-0 bg-white rounded-xl shadow-xs border border-slate-200/80 p-1 flex items-center justify-center overflow-hidden">
+                <img 
+                  src="/icon.png" 
+                  alt="PASSATURNO" 
+                  className="w-full h-full object-contain"
+                />
+              </div>
+              <div>
+                <h1 className="text-base font-black tracking-tight leading-none">
+                  <span className={currentTheme === 'light' ? 'text-slate-900' : 'text-white'}>
+                    PASSA
+                  </span>
+                  <span className="text-emerald-500">
+                    TURNO
+                  </span>
+                </h1>
+                <p className="text-[10px] text-slate-400 font-semibold mt-0.5">
+                  Informação que continua o trabalho
+                </p>
+              </div>
             </div>
 
             {/* Separador Vertical */}
