@@ -656,38 +656,140 @@ export default function Home() {
 
   if (currentUser?.cargo === 'LÍDER DE TURMA') {
     return (
-      <LiderDashboardView
-        incidents={incidents}
-        activeShift={activeShift}
-        currentUser={currentUser}
-        onLogout={handleLogout}
-        onOpenTimeline={(inc) => {
-          setSelectedTimelineIncident(inc);
-          setIsTimelineOpen(true);
-        }}
-        onOpenCommentModal={(inc) => {
-          setSelectedCommentIncident(inc);
-          setIsCommentOpen(true);
-        }}
-        onDeleteIncident={handleDeleteIncident}
-        onStatusChange={handleStatusChange}
-        onPriorityChange={handlePriorityChange}
-        onNoCodigoChange={handleNoCodigoChange}
-        onOpenWhatsapp={(inc) => {
-          setSelectedWhatsappIncident(inc);
-          setIsWhatsappOpen(true);
-        }}
-        onOpenEquipmentHistory={(tag) => {
-          setSelectedEquipmentTag(tag);
-          setIsEquipmentHistoryOpen(true);
-        }}
-        onOpenEditIncident={(inc) => {
-          setSelectedEditIncident(inc);
-          setEditSolucao(inc.solucao || '');
-          setEditStatus(inc.status);
-          setIsEditIncidentOpen(true);
-        }}
-      />
+      <>
+        <LiderDashboardView
+          incidents={incidents}
+          activeShift={activeShift}
+          currentUser={currentUser}
+          onLogout={handleLogout}
+          onOpenTimeline={(inc) => {
+            setSelectedTimelineIncident(inc);
+            setIsTimelineOpen(true);
+          }}
+          onOpenCommentModal={(inc) => {
+            setSelectedCommentIncident(inc);
+            setIsCommentOpen(true);
+          }}
+          onDeleteIncident={handleDeleteIncident}
+          onStatusChange={handleStatusChange}
+          onPriorityChange={handlePriorityChange}
+          onNoCodigoChange={handleNoCodigoChange}
+          onOpenWhatsapp={(inc) => {
+            setSelectedWhatsappIncident(inc);
+            setIsWhatsappOpen(true);
+          }}
+          onOpenEquipmentHistory={(tag) => {
+            setSelectedEquipmentTag(tag);
+            setIsEquipmentHistoryOpen(true);
+          }}
+          onOpenEditIncident={(inc) => {
+            setSelectedEditIncident(inc);
+            setEditSolucao(inc.solucao || '');
+            setEditStatus(inc.status);
+            setIsEditIncidentOpen(true);
+          }}
+        />
+
+        {/* Modais de Linha do Tempo, Comentários, Histórico e Edição no Perfil do Líder */}
+        <IncidentTimelineModal
+          incident={selectedTimelineIncident}
+          isOpen={isTimelineOpen}
+          onClose={() => {
+            setIsTimelineOpen(false);
+            setSelectedTimelineIncident(null);
+          }}
+          onTimelineUpdated={loadData}
+        />
+
+        <CommentModal
+          incident={selectedCommentIncident}
+          isOpen={isCommentOpen}
+          onClose={() => {
+            setIsCommentOpen(false);
+            setSelectedCommentIncident(null);
+          }}
+          onSaveComment={handleSaveComment}
+          currentUserName={currentUser?.nome || activeShift?.responsavelNome || 'John Tavares'}
+        />
+
+        <EquipmentHistoryModal
+          initialTag={selectedEquipmentTag}
+          isOpen={isEquipmentHistoryOpen}
+          onClose={() => {
+            setIsEquipmentHistoryOpen(false);
+            setSelectedEquipmentTag('');
+          }}
+          equipments={equipments}
+        />
+
+        <WhatsappModal
+          incident={selectedWhatsappIncident}
+          isOpen={isWhatsappOpen}
+          onClose={() => {
+            setIsWhatsappOpen(false);
+            setSelectedWhatsappIncident(null);
+          }}
+        />
+
+        {/* Modal de Edição Rápida no Perfil do Líder */}
+        {isEditIncidentOpen && selectedEditIncident && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+            <div className="bg-white border border-slate-200 rounded-2xl max-w-md w-full p-6 shadow-2xl">
+              <h3 className="text-sm font-bold text-slate-800 mb-1">
+                Editar Atendimento [{selectedEditIncident.tag}]
+              </h3>
+              <p className="text-xs text-slate-500 mb-4">{selectedEditIncident.equipamentoNome}</p>
+
+              <form onSubmit={handleSaveEditIncident} className="space-y-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Status</label>
+                  <select
+                    value={editStatus}
+                    onChange={(e) => setEditStatus(e.target.value as IncidentStatusType)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-800"
+                  >
+                    <option value="EM_ANDAMENTO">Em Andamento</option>
+                    <option value="AGUARDANDO">Aguardando / Pausado</option>
+                    <option value="PENDENCIA_PROXIMO_TURNO">Pendência Próximo Turno</option>
+                    <option value="FINALIZADO">Finalizado / Concluído</option>
+                    <option value="RETROAGIDO">Retroagido</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Solução Aplicada / Observações</label>
+                  <textarea
+                    rows={3}
+                    placeholder="Descreva a solução..."
+                    value={editSolucao}
+                    onChange={(e) => setEditSolucao(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs font-medium text-slate-800"
+                  />
+                </div>
+
+                <div className="flex justify-end space-x-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsEditIncidentOpen(false);
+                      setSelectedEditIncident(null);
+                    }}
+                    className="px-4 py-2 bg-slate-100 text-slate-600 font-semibold text-xs rounded-xl"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-sky-600 text-white font-semibold text-xs rounded-xl shadow-xs"
+                  >
+                    Salvar Alterações
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+      </>
     );
   }
 

@@ -78,138 +78,164 @@ export const IncidentTimelineModal: React.FC<IncidentTimelineModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm overflow-y-auto">
-      <div className="bg-white border border-slate-200 rounded-2xl max-w-xl w-full p-6 shadow-2xl relative my-8 text-slate-800">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm overflow-y-auto">
+      <div className="bg-white border border-slate-200 rounded-3xl max-w-2xl w-full p-6 shadow-2xl relative my-6 text-slate-800 space-y-4">
         
-        {/* Header com Detalhes do Atendimento */}
-        <div className="flex items-start justify-between pb-3 border-b border-slate-100 mb-3">
-          <div>
+        {/* HEADER COM STATUS, TAG E EQUIPAMENTO */}
+        <div className="flex items-start justify-between pb-3.5 border-b border-slate-100">
+          <div className="space-y-1.5">
             <div className="flex items-center space-x-2 flex-wrap gap-y-1">
-              <span className="badge-tag text-xs px-2.5 py-0.5 rounded-md bg-slate-100 text-slate-800 border border-slate-200 font-mono font-bold">
+              <span className="font-mono font-extrabold text-xs px-2.5 py-1 rounded-lg bg-slate-100 text-slate-900 border border-slate-200 shadow-xs">
                 {incident.tag}
               </span>
-              <h3 className="text-sm font-black text-slate-800">{incident.equipamentoNome}</h3>
+              <h3 className="text-base font-black text-slate-900">{incident.equipamentoNome}</h3>
 
-              {/* Especificação da Divisão de Atuação nos Detalhes */}
               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border flex items-center gap-1 ${
                 incident.divisaoAtuacao === 'CORRETIVA_CAMPO'
                   ? 'bg-amber-50 text-amber-900 border-amber-300'
                   : 'bg-cyan-50 text-cyan-900 border-cyan-300'
               }`}>
-                {incident.divisaoAtuacao === 'CORRETIVA_CAMPO' ? '🔧 Corretiva de Campo' : '📺 Atuação Monitoramento (NOC)'}
+                {incident.divisaoAtuacao === 'CORRETIVA_CAMPO' ? '🔧 Corretiva de Campo' : '📺 Atuação NOC'}
+              </span>
+
+              <span className="text-[10px] font-bold bg-sky-50 text-sky-700 px-2 py-0.5 rounded-md border border-sky-200">
+                Turma {incident.turma || 'A'}
               </span>
             </div>
-            <p className="text-xs text-slate-600 font-medium mt-1">
-              <strong>Falha:</strong> {incident.falha}
-            </p>
+
+            <div className="flex items-center space-x-3 text-xs text-slate-600 font-medium">
+              <span><strong>Falha:</strong> {incident.falha}</span>
+              <span>•</span>
+              <span><strong>Responsável:</strong> {incident.responsavel}</span>
+            </div>
           </div>
 
           <button
             onClick={onClose}
-            className="p-1 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-lg transition-colors cursor-pointer"
+            className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-xl transition-colors cursor-pointer"
+            title="Fechar Modal"
           >
-            <X className="w-4 h-4" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Bloco de Destaque: Anotações do Turno & Solução Aplicada */}
-        <div className="bg-amber-50/80 border border-amber-200/80 rounded-xl p-3 mb-4 space-y-2 text-xs">
-          <div>
-            <span className="text-[10px] font-bold text-amber-900 uppercase tracking-wider block">
-              💬 Anotações / Observação do Turno:
+        {/* ANOTAÇÕES DO TURNO E SOLUÇÃO APLICADA */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {/* Card de Anotações/Observação */}
+          <div className="bg-amber-50/90 border border-amber-200 rounded-2xl p-3.5 space-y-1">
+            <span className="text-[10px] font-extrabold text-amber-900 uppercase tracking-wider flex items-center gap-1">
+              💬 Anotações / Observação do Turno
             </span>
             {incident.observacao ? (
-              <p className="text-slate-800 font-medium italic mt-0.5">"{incident.observacao}"</p>
+              <p className="text-xs text-amber-950 font-medium leading-relaxed italic">
+                "{incident.observacao}"
+              </p>
             ) : (
-              <p className="text-slate-400 italic mt-0.5">Nenhuma anotação gravada ainda neste atendimento.</p>
+              <p className="text-xs text-amber-700/70 italic">Nenhuma anotação gravada ainda.</p>
             )}
           </div>
 
-          {incident.solucao && (
-            <div className="pt-2 border-t border-amber-200/60">
-              <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider block">
-                ✅ Solução Aplicada:
-              </span>
-              <p className="text-emerald-950 font-bold mt-0.5">{incident.solucao}</p>
-            </div>
-          )}
-
-          {incident.sintoma && (
-            <div className="pt-1 text-[11px] text-slate-600">
-              <strong>Sintoma:</strong> {incident.sintoma}
-            </div>
-          )}
+          {/* Card de Solução Aplicada */}
+          <div className="bg-emerald-50/90 border border-emerald-200 rounded-2xl p-3.5 space-y-1">
+            <span className="text-[10px] font-extrabold text-emerald-900 uppercase tracking-wider flex items-center gap-1">
+              ✅ Solução / Ação Tomada
+            </span>
+            {incident.solucao ? (
+              <p className="text-xs text-emerald-950 font-bold leading-relaxed">
+                {incident.solucao}
+              </p>
+            ) : (
+              <p className="text-xs text-emerald-700/70 italic">Aguardando registro da solução.</p>
+            )}
+          </div>
         </div>
 
-        {/* Linha do Tempo Cronológica */}
-        <div className="mb-4 max-h-64 overflow-y-auto pr-1 space-y-3 custom-scrollbar">
-          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center">
-            <History className="w-3.5 h-3.5 mr-1.5 text-sky-600" />
-            Linha do Tempo & Histórico de Atualizações
-          </h4>
+        {/* LINHA DO TEMPO CRONOLÓGICA DE EVENTOS & COMENTÁRIOS */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+            <h4 className="text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+              <History className="w-4 h-4 text-sky-600" />
+              Linha do Tempo & Histórico de Comentários
+            </h4>
+            <span className="text-[11px] font-bold text-slate-400">
+              {incident.historico?.length || 0} evento(s)
+            </span>
+          </div>
 
+          <div className="max-h-56 overflow-y-auto pr-2 space-y-3 custom-scrollbar">
+            {incident.historico && incident.historico.length > 0 ? (
+              <div className="relative border-l-2 border-slate-200 ml-3 pl-4 space-y-3">
+                {incident.historico.map((h) => {
+                  let dateStr = h.dataHora;
+                  try {
+                    const dateObj = new Date(h.dataHora);
+                    dateStr = format(dateObj, 'HH:mm • dd/MM/yyyy');
+                  } catch (e) {
+                    dateStr = h.dataHora;
+                  }
 
-          {incident.historico && incident.historico.length > 0 ? (
-            <div className="relative border-l-2 border-slate-200 ml-3 pl-5 space-y-3.5">
-              {incident.historico.map((h) => {
-                const dateObj = new Date(h.dataHora);
-                return (
-                  <div key={h.id} className="relative group">
-                    <div className="absolute -left-[27px] top-0.5 p-1 rounded-full bg-white border border-slate-200 shadow-xs">
-                      {getEventIcon(h.tipoEvento)}
-                    </div>
-
-                    <div className="bg-slate-50/80 p-3 rounded-xl border border-slate-200/80">
-                      <div className="flex items-center justify-between text-[11px] text-slate-500 mb-1">
-                        <span className="font-semibold text-slate-700 flex items-center">
-                          <User className="w-3 h-3 mr-1 text-slate-400" />
-                          {h.usuario}
-                        </span>
-                        <span className="font-mono text-slate-500">
-                          {format(dateObj, 'HH:mm • dd/MM')}
-                        </span>
+                  return (
+                    <div key={h.id} className="relative group">
+                      <div className="absolute -left-[23px] top-0.5 p-1 rounded-full bg-white border border-slate-200 shadow-xs">
+                        {getEventIcon(h.tipoEvento)}
                       </div>
-                      <p className="text-xs text-slate-700 leading-snug">{h.descricao}</p>
+
+                      <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 space-y-1">
+                        <div className="flex items-center justify-between text-[11px]">
+                          <span className="font-bold text-slate-800 flex items-center gap-1">
+                            <User className="w-3 h-3 text-slate-400" />
+                            {h.usuario}
+                          </span>
+                          <span className="font-mono text-slate-500 font-medium text-[10px]">
+                            {dateStr}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-700 font-medium leading-relaxed">{h.descricao}</p>
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <p className="text-xs text-slate-400 italic">Nenhum evento registrado ainda.</p>
-          )}
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="py-6 text-center text-xs font-bold text-slate-400">
+                Nenhum evento gravado na linha do tempo ainda.
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Form para adicionar atualização */}
-        <form onSubmit={handleAddLog} className="bg-slate-50 p-3.5 rounded-xl border border-slate-200/80">
-          <label className="block text-xs font-semibold text-slate-700 mb-2">Nova Atualização de Campo</label>
+        {/* FORMULÁRIO DE NOVA ATUALIZAÇÃO / NOVO COMENTÁRIO */}
+        <form onSubmit={handleAddLog} className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2.5">
+          <label className="block text-xs font-extrabold text-slate-800">
+            Adicionar Novo Comentário / Atualização de Campo
+          </label>
           
-          <div className="flex gap-2 mb-2">
+          <div className="flex gap-2">
             <input
               type="text"
-              placeholder="Descreva a intervenção realizada..."
+              placeholder="Digite o comentário ou atualização do atendimento..."
               value={newLogText}
               onChange={(e) => setNewLogText(e.target.value)}
-              className="flex-1 bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-sky-500"
+              className="flex-1 bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:border-sky-500"
               required
             />
             <button
               type="submit"
               disabled={isSubmitting || !newLogText.trim()}
-              className="px-3.5 py-1.5 bg-sky-600 hover:bg-sky-700 text-white font-semibold text-xs rounded-xl shadow-xs transition-colors flex items-center disabled:opacity-50"
+              className="px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
             >
-              <Send className="w-3.5 h-3.5 mr-1" />
-              Enviar
+              <Send className="w-3.5 h-3.5" />
+              <span>Enviar</span>
             </button>
           </div>
 
-          <div className="flex items-center justify-between text-[10px] text-slate-500">
-            <span>Usuário:</span>
+          <div className="flex items-center justify-between text-[11px] text-slate-500 font-medium pt-1">
+            <span>Registrado por:</span>
             <input
               type="text"
               value={logUser}
               onChange={(e) => setLogUser(e.target.value)}
-              className="bg-transparent border-b border-slate-300 text-[11px] text-slate-700 text-right focus:outline-none focus:border-sky-500 px-1"
+              className="bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-800 text-right px-2 py-0.5 focus:outline-none focus:border-sky-500"
             />
           </div>
         </form>

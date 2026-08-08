@@ -33,7 +33,11 @@ import {
   Radio,
   SlidersHorizontal,
   FolderOpen,
-  X
+  X,
+  Calendar,
+  PieChart,
+  FileText,
+  RotateCcw
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ChatMessage } from './LiderTurmaModal';
@@ -74,7 +78,21 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
   onOpenEditIncident,
 }) => {
   // Navegação Lateral do Menu
-  const [activeSection, setActiveSection] = useState<'dashboard' | 'team' | 'history' | 'notifications' | 'alerts'>('dashboard');
+  const [activeSection, setActiveSection] = useState<'dashboard' | 'reports' | 'team' | 'history' | 'notifications' | 'alerts'>('dashboard');
+
+  // Filtros Avançados da Seção de Relatórios
+  const [reportStartDate, setReportStartDate] = useState<string>('');
+  const [reportEndDate, setReportEndDate] = useState<string>('');
+  const [reportTurmaFilter, setReportTurmaFilter] = useState<string>('TODAS');
+  const [reportPriorityFilter, setReportPriorityFilter] = useState<string>('TODAS');
+  const [reportStatusFilter, setReportStatusFilter] = useState<string>('TODOS');
+  const [reportFalhaFilter, setReportFalhaFilter] = useState<string>('TODAS');
+  const [reportSearchTerm, setReportSearchTerm] = useState<string>('');
+  const [reportChartView, setReportChartView] = useState<'totalHours' | 'avgTime' | 'topEquipments'>('totalHours');
+
+  // Paginação da Tabela de Relatórios
+  const [reportPage, setReportPage] = useState<number>(1);
+  const [reportItemsPerPage, setReportItemsPerPage] = useState<number>(10);
 
   // Filtros da Seção de Histórico
   const [historyTurmaTab, setHistoryTurmaTab] = useState<string>('TODAS');
@@ -333,7 +351,210 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
     };
   };
 
-  // Histórico Filtrado
+  const horaInicioTxt = (() => {
+    if (!activeShift?.horaInicio) return null;
+    try {
+      const d = new Date(activeShift.horaInicio);
+      return isNaN(d.getTime()) ? null : format(d, 'HH:mm');
+    } catch {
+      return null;
+    }
+  })();
+
+  // Funções de atalhos rápidos de período
+  const applyDatePreset = (preset: 'today' | '7days' | '30days' | 'thisMonth' | 'all') => {
+    setReportPage(1);
+    const now = new Date();
+    const todayStr = format(now, 'yyyy-MM-dd');
+
+    if (preset === 'today') {
+      setReportStartDate(todayStr);
+      setReportEndDate(todayStr);
+    } else if (preset === '7days') {
+      const d = new Date();
+      d.setDate(d.getDate() - 7);
+      setReportStartDate(format(d, 'yyyy-MM-dd'));
+      setReportEndDate(todayStr);
+    } else if (preset === '30days') {
+      const d = new Date();
+      d.setDate(d.getDate() - 30);
+      setReportStartDate(format(d, 'yyyy-MM-dd'));
+      setReportEndDate(todayStr);
+    } else if (preset === 'thisMonth') {
+      const d = new Date(now.getFullYear(), now.getMonth(), 1);
+      setReportStartDate(format(d, 'yyyy-MM-dd'));
+      setReportEndDate(todayStr);
+    } else {
+      setReportStartDate('');
+      setReportEndDate('');
+    }
+  };
+
+  const handleResetFilters = () => {
+    setReportPage(1);
+    setReportStartDate('');
+    setReportEndDate('');
+    setReportTurmaFilter('TODAS');
+    setReportPriorityFilter('TODAS');
+    setReportStatusFilter('TODOS');
+    setReportFalhaFilter('TODAS');
+    setReportSearchTerm('');
+  };
+
+  // Funçao de normalização de nomes de falhas (corrige erros como CAMONUICAÇÃO -> COMUNICAÇÃO)
+  const normalizeFailureName = (raw: string): string => {
+    if (!raw) return 'OUTROS';
+    const clean = raw.trim().toUpperCase();
+    if (clean.includes('CAMON') || clean.includes('COMUN')) {
+      return 'COMUNICAÇÃO';
+    }
+    if (clean.includes('CAS') && clean.includes('GPS')) {
+      return 'CAS/GPS';
+    }
+    return clean;
+  };
+
+  // Lista única de tipos de falhas normalizadas
+  const availableFailureTypes = Array.from(
+    new Set(incidents.map((i) => normalizeFailureName(i.tipoFalha || i.falha)))
+  ).sort();
+
+  // Histórico & Análise de Relatórios Filtrado
+  const reportFilteredIncidents = incidents.filter((i) => {
+    // Filtro de Turma
+    const itemTurma = (i.turma || 'A').toUpperCase().trim();
+    if (reportTurmaFilter !== 'TODAS' && itemTurma !== reportTurmaFilter) {
+      return false;
+    }
+
+    // Filtro por Prioridade
+    if (reportPriorityFilter !== 'TODAS' && i.prioridade !== reportPriorityFilter) {
+      return false;
+    }
+
+    // Filtro por Status
+    if (reportStatusFilter !== 'TODOS' && i.status !== reportStatusFilter) {
+      return false;
+    }
+
+    // Filtro por Tipo de Falha
+    const itemFalhaKey = normalizeFailureName(i.tipoFalha || i.falha);
+    if (reportFalhaFilter !== 'TODAS' && itemFalhaKey !== reportFalhaFilter) {
+      return false;
+    }
+
+    // Filtro por Data Inicial
+    if (reportStartDate) {
+      const itemDate = new Date(i.criadoEm || i.dataHoraParada);
+      const startDate = new Date(reportStartDate + 'T00:00:00');
+      if (itemDate < startDate) return false;
+    }
+
+    // Filtro por Data Final
+    if (reportEndDate) {
+      const itemDate = new Date(i.criadoEm || i.dataHoraParada);
+      const endDate = new Date(reportEndDate + 'T23:59:59');
+      if (itemDate > endDate) return false;
+    }
+
+    // Filtro de Busca por Texto
+    if (reportSearchTerm.trim()) {
+      const q = reportSearchTerm.toLowerCase().trim();
+      const matches =
+        i.tag.toLowerCase().includes(q) ||
+        i.equipamentoNome.toLowerCase().includes(q) ||
+        i.falha.toLowerCase().includes(q) ||
+        i.responsavel.toLowerCase().includes(q) ||
+        (i.tipoFalha && i.tipoFalha.toLowerCase().includes(q));
+      if (!matches) return false;
+    }
+
+    return true;
+  });
+
+  // Paginação dos dados do relatório
+  const totalReportPages = Math.max(1, Math.ceil(reportFilteredIncidents.length / reportItemsPerPage));
+  const currentReportPage = Math.min(reportPage, totalReportPages);
+  const reportStartIndex = (currentReportPage - 1) * reportItemsPerPage;
+  const reportEndIndex = Math.min(reportStartIndex + reportItemsPerPage, reportFilteredIncidents.length);
+  const paginatedReportIncidents = reportFilteredIncidents.slice(reportStartIndex, reportEndIndex);
+
+  // Estatísticas de Falhas Normalizadas & Duração em Horas
+  const failureAnalyticsMap = reportFilteredIncidents.reduce((acc, item) => {
+    const rawKey = normalizeFailureName(item.tipoFalha || item.falha);
+    if (!acc[rawKey]) {
+      acc[rawKey] = {
+        tipo: rawKey,
+        count: 0,
+        totalMins: 0,
+      };
+    }
+    acc[rawKey].count += 1;
+
+    const start = new Date(item.dataHoraParada || item.criadoEm);
+    const end = item.dataHoraLiberacao ? new Date(item.dataHoraLiberacao) : new Date();
+    const mins = Math.max(0, Math.floor((end.getTime() - start.getTime()) / (1000 * 60)));
+    acc[rawKey].totalMins += mins;
+
+    return acc;
+  }, {} as Record<string, { tipo: string; count: number; totalMins: number }>);
+
+  const grandTotalMins = Object.values(failureAnalyticsMap).reduce((sum, f) => sum + f.totalMins, 0);
+  const maxCategoryMins = Math.max(...Object.values(failureAnalyticsMap).map((f) => f.totalMins), 1);
+  const maxCategoryAvgMins = Math.max(
+    ...Object.values(failureAnalyticsMap).map((f) => Math.round(f.totalMins / f.count)),
+    1
+  );
+
+  const sortedFailureAnalytics = Object.values(failureAnalyticsMap)
+    .map((f) => {
+      const avgMins = Math.round(f.totalMins / f.count);
+      const totalHours = (f.totalMins / 60).toFixed(1);
+      const avgHours = (avgMins / 60).toFixed(1);
+      const pctTime = grandTotalMins > 0 ? Math.round((f.totalMins / grandTotalMins) * 100) : 0;
+      const pctCount = reportFilteredIncidents.length > 0 ? Math.round((f.count / reportFilteredIncidents.length) * 100) : 0;
+
+      return {
+        ...f,
+        avgMins,
+        totalHours,
+        avgHours,
+        pctTime,
+        pctCount,
+        totalFormatted: `${Math.floor(f.totalMins / 60)}h ${f.totalMins % 60}m`,
+        avgFormatted: `${Math.floor(avgMins / 60)}h ${avgMins % 60}m`,
+      };
+    })
+    .sort((a, b) => b.totalMins - a.totalMins);
+
+  // Top Equipamentos com Mais Horas de Parada
+  const equipmentAnalyticsMap = reportFilteredIncidents.reduce((acc, item) => {
+    const key = item.tag.trim().toUpperCase();
+    if (!acc[key]) {
+      acc[key] = { tag: key, nome: item.equipamentoNome, count: 0, totalMins: 0 };
+    }
+    acc[key].count += 1;
+    const start = new Date(item.dataHoraParada || item.criadoEm);
+    const end = item.dataHoraLiberacao ? new Date(item.dataHoraLiberacao) : new Date();
+    acc[key].totalMins += Math.max(0, Math.floor((end.getTime() - start.getTime()) / (1000 * 60)));
+    return acc;
+  }, {} as Record<string, { tag: string; nome: string; count: number; totalMins: number }>);
+
+  const maxEquipMins = Math.max(...Object.values(equipmentAnalyticsMap).map((e) => e.totalMins), 1);
+  const sortedEquipments = Object.values(equipmentAnalyticsMap)
+    .map((e) => ({
+      ...e,
+      totalHours: (e.totalMins / 60).toFixed(1),
+      totalFormatted: `${Math.floor(e.totalMins / 60)}h ${e.totalMins % 60}m`,
+      pctTime: grandTotalMins > 0 ? Math.round((e.totalMins / grandTotalMins) * 100) : 0,
+    }))
+    .sort((a, b) => b.totalMins - a.totalMins)
+    .slice(0, 8);
+
+  const totalReportMins = grandTotalMins;
+  const avgReportMins = reportFilteredIncidents.length > 0 ? Math.round(totalReportMins / reportFilteredIncidents.length) : 0;
+  const avgReportDurationFormatted = `${Math.floor(avgReportMins / 60)}h ${avgReportMins % 60}m`;
+  const grandTotalHoursFormatted = `${Math.floor(grandTotalMins / 60)}h ${grandTotalMins % 60}m`;
   const filteredHistory = incidents.filter((i) => {
     const q = historySearchTerm.toLowerCase().trim();
     const itemTurma = (i.turma || 'A').toUpperCase().trim();
@@ -387,8 +608,12 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
 
           {/* Logo & Brand */}
           <div className="flex items-center gap-2.5 pb-4 border-b border-slate-100">
-            <div className="w-8 h-8 bg-emerald-500 rounded-xl flex items-center justify-center flex-shrink-0">
-              <ShieldCheck className="w-4 h-4 text-white" />
+            <div className="w-9 h-9 bg-white rounded-xl shadow-xs border border-slate-200/80 p-1 flex items-center justify-center overflow-hidden flex-shrink-0">
+              <img
+                src="/icon.png"
+                alt="PASSATURNO"
+                className="w-full h-full object-contain"
+              />
             </div>
             <div>
               <p className="text-sm font-black text-slate-900 leading-none">
@@ -414,12 +639,11 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
             <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-widest px-2 pb-1">Menu</p>
 
             {[
-              { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-              { id: 'team',      label: 'Gestão de Turma', icon: Users },
-              { id: 'history',   label: 'Histórico', icon: History },
+              { id: 'dashboard',     label: 'Dashboard', icon: LayoutDashboard },
+              { id: 'reports',       label: 'Relatórios', icon: BarChart3 },
+              { id: 'team',          label: 'Gestão de Turma', icon: Users },
               { id: 'notifications', label: 'Notificações', icon: Megaphone },
-              { id: 'alerts',    label: 'Alertas Críticos', icon: AlertTriangle, badge: urgentesCount },
-            ].map(({ id, label, icon: Icon, badge }) => (
+            ].map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
                 onClick={() => setActiveSection(id as typeof activeSection)}
@@ -433,11 +657,6 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
                   <Icon className={`w-4 h-4 flex-shrink-0 ${activeSection === id ? 'text-emerald-600' : 'text-slate-400'}`} />
                   {label}
                 </span>
-                {badge != null && badge > 0 && (
-                  <span className="bg-rose-500 text-white text-[9px] px-1.5 py-0.5 rounded-full font-bold">
-                    {badge}
-                  </span>
-                )}
               </button>
             ))}
           </nav>
@@ -460,24 +679,28 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
         
         {/* Top Header Bar */}
         <header className="bg-white border-b border-slate-200 px-6 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
-          <div>
-            <h1 className="text-xl font-black text-slate-900 tracking-tight">
-              Painel da Liderança — <span className="text-emerald-600">{currentUser?.nome || 'Líder da Turma'}</span>
-            </h1>
-            <p className="text-xs text-slate-500 font-medium mt-0.5">
-              {activeSection === 'dashboard' && 'Visão geral da equipe do dia, estatísticas e passagem de bastão'}
-              {activeSection === 'team' && 'Gestão de Turma: Cadastro de contas e acessos para as turmas A, B, C, D'}
-              {activeSection === 'history' && 'Histórico completo de atendimentos separado por letra (Turma A, B, C, D)'}
-              {activeSection === 'notifications' && 'Página de transmissão de notificações e orientações gerais ou individuais'}
-              {activeSection === 'alerts' && 'Ativos críticos e ocorrências pendentes na troca de turno'}
-            </p>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-white rounded-2xl shadow-xs border border-slate-200 p-1.5 flex items-center justify-center overflow-hidden flex-shrink-0">
+              <img
+                src="/icon.png"
+                alt="PASSATURNO"
+                className="w-full h-full object-contain"
+              />
+            </div>
+            <div>
+              <h1 className="text-xl font-black text-slate-900 tracking-tight">
+                Painel da Liderança — <span className="text-emerald-600">{currentUser?.nome || 'Líder da Turma'}</span>
+              </h1>
+              <p className="text-xs text-slate-500 font-medium mt-0.5">
+                {activeSection === 'dashboard' && 'Visão geral da equipe do dia, estatísticas e acompanhamento em tempo real'}
+                {activeSection === 'reports' && 'Relatórios operacionais, indicador de falhas e histórico de atendimentos'}
+                {activeSection === 'team' && 'Gestão de Turma: Cadastro de contas e acessos para as turmas A, B, C, D'}
+                {activeSection === 'notifications' && 'Página de transmissão de notificações e orientações gerais ou individuais'}
+              </p>
+            </div>
           </div>
 
           <div className="flex items-center space-x-3">
-            <span className="text-xs font-mono font-bold text-slate-600 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200">
-              {currentTime}
-            </span>
-
             <button
               onClick={onLogout}
               className="lg:hidden p-2 text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"
@@ -507,109 +730,613 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
                       {activeShift?.turma ? (activeShift.turma.toLowerCase().includes('turma') ? activeShift.turma : `Turma ${activeShift.turma}`) : 'Sem Turno Iniciado'}
                       {activeShift && (
                         <span className="text-[10px] font-black uppercase bg-emerald-500 text-slate-950 px-2 py-0.5 rounded font-mono">
-                          ATIVO
+                          TURNO ATIVO
                         </span>
                       )}
                     </h2>
                     <p className="text-sm text-slate-300 mt-1">
-                      Colaborador: <strong className="text-emerald-300">{activeShift?.responsavelNome || '-'}</strong>
+                      Responsável / Colaborador: <strong className="text-emerald-300">{activeShift?.responsavelNome || '-'}</strong>
                     </p>
                   </div>
                 </div>
 
                 <div className="flex items-center space-x-3 text-xs bg-slate-800/80 px-4 py-2.5 rounded-2xl border border-slate-700 font-mono">
-                  <Clock className="w-4 h-4 text-emerald-400" />
-                  <span>Horário: {activeShift?.horarioTurno || '-'}</span>
+                  <Clock className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-1 sm:gap-2">
+                    <span>Início do Turno: <strong className="text-emerald-300 font-bold">{horaInicioTxt ? `${horaInicioTxt}h` : '-'}</strong></span>
+                    {activeShift?.horarioTurno && (
+                      <span className="text-slate-400">({activeShift.horarioTurno})</span>
+                    )}
+                  </div>
                 </div>
               </div>
 
-
-
-              {/* GRID: TABELA DE BASTÃO + RESUMO DAS TURMAS */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 space-y-6">
-
-
-                  {/* QUADRO KANBAN DE ATENDIMENTOS DA TURMA ATIVA NO DIA */}
-                  <div className="bg-white rounded-3xl border border-slate-200 p-5 shadow-xs space-y-4">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-slate-100 pb-3 gap-2">
-                      <div className="flex items-center space-x-3">
-                        <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-2xl border border-indigo-200">
-                          <Layers className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <h3 className="text-base font-black text-slate-900 leading-tight">
-                            Quadro Kanban de Atendimentos — Turma {currentActiveTurma}
-                          </h3>
-                          <p className="text-xs text-slate-500 font-medium">
-                            Acompanhamento em colunas: No Código, Em Andamento, Concluídos e Herdados
-                          </p>
-                        </div>
-                      </div>
-                      <span className="text-xs font-bold bg-indigo-100 text-indigo-900 px-3 py-1 rounded-full border border-indigo-300">
-                        {atendimentosDoDia.length} {atendimentosDoDia.length === 1 ? 'atividade da turma' : 'atividades da turma'}
-                      </span>
+              {/* QUADRO KANBAN DE ATENDIMENTOS DA TURMA ATIVA NO DIA */}
+              <div className="bg-white rounded-3xl border border-slate-200 p-5 shadow-xs space-y-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-slate-100 pb-3 gap-2">
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-2xl border border-indigo-200">
+                      <Layers className="w-5 h-5" />
                     </div>
+                    <div>
+                      <h3 className="text-base font-black text-slate-900 leading-tight">
+                        Quadro Kanban de Atendimentos — Turma {currentActiveTurma}
+                      </h3>
+                      <p className="text-xs text-slate-500 font-medium">
+                        Acompanhamento em colunas: No Código, Em Andamento, Concluídos e Herdados
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-bold bg-indigo-100 text-indigo-900 px-3 py-1 rounded-full border border-indigo-300">
+                    {atendimentosDoDia.length} {atendimentosDoDia.length === 1 ? 'atividade da turma' : 'atividades da turma'}
+                  </span>
+                </div>
 
-                    <KanbanBoard
-                      incidents={atendimentosDoDia}
-                      onStatusChange={onStatusChange || (() => {})}
-                      onPriorityChange={onPriorityChange || (() => {})}
-                      onNoCodigoChange={onNoCodigoChange || (() => {})}
-                      onOpenWhatsapp={onOpenWhatsapp || (() => {})}
-                      onOpenTimeline={onOpenTimeline}
-                      onOpenEquipmentHistory={onOpenEquipmentHistory || (() => {})}
-                      onOpenEditIncident={onOpenEditIncident || (() => {})}
-                      onOpenCommentModal={onOpenCommentModal}
-                      onDeleteIncident={onDeleteIncident}
+                <KanbanBoard
+                  incidents={atendimentosDoDia}
+                  onStatusChange={onStatusChange || (() => {})}
+                  onPriorityChange={onPriorityChange || (() => {})}
+                  onNoCodigoChange={onNoCodigoChange || (() => {})}
+                  onOpenWhatsapp={onOpenWhatsapp || (() => {})}
+                  onOpenTimeline={onOpenTimeline}
+                  onOpenEquipmentHistory={onOpenEquipmentHistory || (() => {})}
+                  onOpenEditIncident={onOpenEditIncident || (() => {})}
+                  onOpenCommentModal={onOpenCommentModal}
+                  onDeleteIncident={onDeleteIncident}
+                />
+              </div>
+
+            </div>
+          )}
+
+          {/* ========================================================================= */}
+          {/* TELA DA ABA RELATÓRIOS: 📊 RELATÓRIOS OPERACIONAIS & ESTATÍSTICAS */}
+          {/* ========================================================================= */}
+          {activeSection === 'reports' && (
+            <div className="space-y-4">
+              
+              {/* BARRA DE FILTROS COMPACTA DO RELATÓRIO */}
+              <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs space-y-3">
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-between border-b border-slate-100 pb-3 gap-2">
+                  <div className="flex items-center space-x-2.5">
+                    <div className="p-2 bg-sky-50 text-sky-600 rounded-xl border border-sky-200">
+                      <BarChart3 className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h2 className="text-sm font-black text-slate-900 leading-tight">
+                        Filtros de Relatório & Análise Operacional
+                      </h2>
+                      <p className="text-[11px] text-slate-500 font-medium">
+                        Selecione o período, turma e parâmetros para otimizar os dados
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 self-end md:self-auto">
+                    <button
+                      onClick={handleResetFilters}
+                      className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-lg transition-colors flex items-center gap-1 cursor-pointer border border-slate-200"
+                      title="Limpar todos os filtros"
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                      <span>Limpar</span>
+                    </button>
+
+                    <button
+                      onClick={handleExportCSV}
+                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-lg shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <FileSpreadsheet className="w-3.5 h-3.5" />
+                      <span>Exportar CSV</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* ATALHOS RÁPIDOS DE DATA INLINE */}
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-[11px] font-bold text-slate-500 mr-1 flex items-center gap-1">
+                    <Calendar className="w-3 h-3 text-slate-400" />
+                    Período:
+                  </span>
+                  {[
+                    { id: 'today', label: 'Hoje' },
+                    { id: '7days', label: '7 Dias' },
+                    { id: '30days', label: '30 Dias' },
+                    { id: 'thisMonth', label: 'Mês Atual' },
+                    { id: 'all', label: 'Tudo' },
+                  ].map((btn) => (
+                    <button
+                      key={btn.id}
+                      onClick={() => applyDatePreset(btn.id as any)}
+                      className="px-2.5 py-0.5 bg-slate-100 hover:bg-sky-50 text-slate-700 hover:text-sky-700 font-bold text-[11px] rounded-md transition-colors border border-slate-200 hover:border-sky-300 cursor-pointer"
+                    >
+                      {btn.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* GRID DE FILTROS DROPDOWN COMPACTOS */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 pt-1">
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-600 block mb-0.5">De</label>
+                    <input
+                      type="date"
+                      value={reportStartDate}
+                      onChange={(e) => setReportStartDate(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs font-medium text-slate-800 focus:outline-none focus:bg-white focus:border-sky-500"
                     />
                   </div>
 
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-600 block mb-0.5">Até</label>
+                    <input
+                      type="date"
+                      value={reportEndDate}
+                      onChange={(e) => setReportEndDate(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs font-medium text-slate-800 focus:outline-none focus:bg-white focus:border-sky-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-600 block mb-0.5">Turma</label>
+                    <select
+                      value={reportTurmaFilter}
+                      onChange={(e) => setReportTurmaFilter(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold text-slate-800 focus:outline-none focus:bg-white focus:border-sky-500 cursor-pointer"
+                    >
+                      <option value="TODAS">Todas (A,B,C,D)</option>
+                      <option value="A">Turma A</option>
+                      <option value="B">Turma B</option>
+                      <option value="C">Turma C</option>
+                      <option value="D">Turma D</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-600 block mb-0.5">Tipo de Falha</label>
+                    <select
+                      value={reportFalhaFilter}
+                      onChange={(e) => setReportFalhaFilter(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold text-slate-800 focus:outline-none focus:bg-white focus:border-sky-500 cursor-pointer"
+                    >
+                      <option value="TODAS">Todas as Falhas</option>
+                      {availableFailureTypes.map((typeKey) => (
+                        <option key={typeKey} value={typeKey}>
+                          {typeKey}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-600 block mb-0.5">Status</label>
+                    <select
+                      value={reportStatusFilter}
+                      onChange={(e) => setReportStatusFilter(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold text-slate-800 focus:outline-none focus:bg-white focus:border-sky-500 cursor-pointer"
+                    >
+                      <option value="TODOS">Todos Status</option>
+                      <option value="FINALIZADO">Concluídos</option>
+                      <option value="EM_ANDAMENTO">Em Andamento</option>
+                      <option value="PENDENCIA_PROXIMO_TURNO">Pendência</option>
+                      <option value="RETROAGIDO">Retroagido</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-600 block mb-0.5">Buscar</label>
+                    <div className="relative">
+                      <Search className="w-3 h-3 absolute left-2 top-2 text-slate-400" />
+                      <input
+                        type="text"
+                        placeholder="TAG, equipamento..."
+                        value={reportSearchTerm}
+                        onChange={(e) => setReportSearchTerm(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-6 pr-2 py-1 text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-sky-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* KPIS RESUMO COMPACTOS (LINHA ÚNICA SLIM) */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="bg-white p-3 rounded-2xl border border-slate-200 flex items-center justify-between shadow-xs">
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Ocorrências</span>
+                    <span className="text-xl font-black text-slate-900 leading-none">{reportFilteredIncidents.length}</span>
+                  </div>
+                  <span className="text-[10px] font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded">Filtradas</span>
                 </div>
 
-                <div className="space-y-6">
-                  <div className="bg-white rounded-3xl border border-slate-200 p-5 shadow-xs space-y-4">
-                    <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                      <div className="flex items-center space-x-2">
-                        <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl border border-indigo-200">
-                          <TrendingUp className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <h3 className="text-sm font-black text-slate-900">
-                            Desempenho das Turmas
-                          </h3>
-                          <p className="text-[11px] text-slate-500 font-medium">Resolução por letra (A, B, C, D)</p>
-                        </div>
+                <div className="bg-white p-3 rounded-2xl border border-slate-200 flex items-center justify-between shadow-xs">
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Horas Paradas</span>
+                    <span className="text-xl font-black text-amber-600 leading-none font-mono">⏱️ {grandTotalHoursFormatted}</span>
+                  </div>
+                  <span className="text-[10px] font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">Total</span>
+                </div>
+
+                <div className="bg-white p-3 rounded-2xl border border-slate-200 flex items-center justify-between shadow-xs">
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Tempo Médio (MTTR)</span>
+                    <span className="text-xl font-black text-sky-600 leading-none font-mono">{avgReportDurationFormatted}</span>
+                  </div>
+                  <span className="text-[10px] font-medium text-sky-700 bg-sky-50 px-2 py-0.5 rounded border border-sky-200">Média</span>
+                </div>
+
+                <div className="bg-white p-3 rounded-2xl border border-slate-200 flex items-center justify-between shadow-xs">
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Taxa de Resolução</span>
+                    <span className="text-xl font-black text-emerald-600 leading-none">
+                      {reportFilteredIncidents.length > 0
+                        ? Math.round((reportFilteredIncidents.filter((i) => i.status === 'FINALIZADO' || i.status === 'RETROAGIDO').length / reportFilteredIncidents.length) * 100)
+                        : 0}%
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">Concluídos</span>
+                </div>
+              </div>
+
+              {/* LAYOUT LADO A LADO: GRÁFICO (ESQUERDA) + DESEMPENHO TURMAS & TOP TAGS (DIREITA) */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                
+                {/* COLUNA ESQUERDA: GRÁFICO COMPACTO DE FALHAS E HORAS */}
+                <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200 p-4 shadow-xs space-y-3 flex flex-col justify-between">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                    <div className="flex items-center space-x-2">
+                      <div className="p-1.5 bg-indigo-50 text-indigo-600 rounded-lg border border-indigo-200">
+                        <PieChart className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h3 className="text-xs font-black text-slate-900 leading-tight">
+                          Distribuição de Horas & Tipos de Falhas
+                        </h3>
+                        <p className="text-[10px] text-slate-500 font-medium">Impacto em horas indisponíveis</p>
                       </div>
                     </div>
 
-                    <div className="space-y-3">
-                      {['A', 'B', 'C', 'D'].map((letra) => {
-                        const stats = getTurmaStats(letra);
-                        return (
-                          <div key={letra} className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-2">
-                            <div className="flex items-center justify-between text-xs font-bold">
-                              <span className="font-mono bg-white px-2.5 py-0.5 rounded border border-slate-200 text-slate-800">
-                                TURMA {letra}
-                              </span>
-                              <span className="text-sky-600 font-extrabold">{stats.taxa}% Resolução</span>
-                            </div>
+                    {/* Seletor de Modo de Gráfico */}
+                    <div className="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-[11px] font-bold">
+                      <button
+                        onClick={() => setReportChartView('totalHours')}
+                        className={`px-2 py-1 rounded-lg transition-all cursor-pointer ${
+                          reportChartView === 'totalHours' ? 'bg-white text-indigo-700 shadow-xs' : 'text-slate-600'
+                        }`}
+                      >
+                        🍩 Rosca
+                      </button>
+                      <button
+                        onClick={() => setReportChartView('avgTime')}
+                        className={`px-2 py-1 rounded-lg transition-all cursor-pointer ${
+                          reportChartView === 'avgTime' ? 'bg-white text-indigo-700 shadow-xs' : 'text-slate-600'
+                        }`}
+                      >
+                        ⏱️ Barras
+                      </button>
+                    </div>
+                  </div>
 
-                            <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
-                              <div
-                                className="bg-sky-500 h-full rounded-full transition-all duration-500"
-                                style={{ width: `${stats.taxa}%` }}
-                              />
-                            </div>
+                  {/* VISTA 1: GRÁFICO DE ROSCA SVG + LEGENDA COMPACTA */}
+                  {reportChartView === 'totalHours' && (
+                    <div className="py-1">
+                      {sortedFailureAnalytics.length === 0 ? (
+                        <div className="py-8 text-center text-xs font-bold text-slate-400">
+                          Nenhum dado para o período.
+                        </div>
+                      ) : (
+                        (() => {
+                          let cumulativeOffset = 0;
+                          const colors = ['#f59e0b', '#3b82f6', '#10b981', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#64748b'];
+                          const circumference = 251.327; // 2 * PI * 40
 
-                            <div className="flex justify-between text-[11px] text-slate-500 font-medium pt-1">
-                              <span>Total: <strong>{stats.total}</strong></span>
-                              <span>Concluídos: <strong className="text-emerald-600">{stats.concluidos}</strong></span>
+                          return (
+                            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                              {/* SVG Donut Chart */}
+                              <div className="relative w-36 h-36 flex-shrink-0 flex items-center justify-center">
+                                <svg viewBox="0 0 100 100" className="w-full h-full transform -rotate-90">
+                                  {sortedFailureAnalytics.map((item, idx) => {
+                                    const strokeDasharray = `${(item.pctTime / 100) * circumference} ${circumference}`;
+                                    const strokeDashoffset = -cumulativeOffset;
+                                    cumulativeOffset += (item.pctTime / 100) * circumference;
+                                    const color = colors[idx % colors.length];
+
+                                    return (
+                                      <circle
+                                        key={item.tipo}
+                                        cx="50"
+                                        cy="50"
+                                        r="40"
+                                        fill="transparent"
+                                        stroke={color}
+                                        strokeWidth="14"
+                                        strokeDasharray={strokeDasharray}
+                                        strokeDashoffset={strokeDashoffset}
+                                        className="transition-all duration-300 hover:opacity-80 cursor-pointer"
+                                      >
+                                        <title>{`${item.tipo}: ${item.totalFormatted} (${item.pctTime}%)`}</title>
+                                      </circle>
+                                    );
+                                  })}
+                                </svg>
+                                <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+                                  <span className="text-[9px] font-bold text-slate-400 uppercase">Horas</span>
+                                  <span className="text-xs font-black text-slate-900 font-mono">{grandTotalHoursFormatted}</span>
+                                </div>
+                              </div>
+
+                              {/* Legenda compacta sem rolagem */}
+                              <div className="flex-1 space-y-1 text-xs font-bold w-full">
+                                {sortedFailureAnalytics.map((item, idx) => {
+                                  const color = colors[idx % colors.length];
+                                  return (
+                                    <div key={item.tipo} className="flex items-center justify-between bg-slate-50 px-2 py-0.5 rounded border border-slate-200 text-[10.5px]">
+                                      <span className="flex items-center gap-1.5 truncate max-w-[150px]">
+                                        <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
+                                        <span className="truncate">{item.tipo}</span>
+                                      </span>
+                                      <span className="font-mono text-slate-700">
+                                        ⏱️ {item.totalFormatted} ({item.pctTime}%)
+                                      </span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
                             </div>
+                          );
+                        })()
+                      )}
+                    </div>
+                  )}
+
+                  {/* VISTA 2: BARRAS COMPACTAS (MTTR & TEMPO) */}
+                  {reportChartView === 'avgTime' && (
+                    <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1 custom-scrollbar">
+                      {sortedFailureAnalytics.length === 0 ? (
+                        <div className="py-8 text-center text-xs font-bold text-slate-400">
+                          Sem registros no período.
+                        </div>
+                      ) : (
+                        sortedFailureAnalytics.map((item, idx) => {
+                          const barWidth = Math.max(8, Math.round((item.avgMins / maxCategoryAvgMins) * 100));
+
+                          return (
+                            <div key={item.tipo} className="space-y-0.5">
+                              <div className="flex items-center justify-between text-[11px] font-bold">
+                                <span className="text-slate-800 truncate max-w-[150px]">{idx + 1}. {item.tipo}</span>
+                                <span className="font-mono text-sky-700">⏱️ {item.avgFormatted} avg</span>
+                              </div>
+                              <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden border border-slate-200">
+                                <div className="h-full bg-sky-500 rounded-full" style={{ width: `${barWidth}%` }} />
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* COLUNA DIREITA: DESEMPENHO TURMAS & TOP TAGS PARADAS */}
+                <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200 p-4 shadow-xs space-y-3">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                    <div className="flex items-center space-x-2">
+                      <div className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg border border-emerald-200">
+                        <TrendingUp className="w-4 h-4" />
+                      </div>
+                      <h3 className="text-xs font-black text-slate-900 leading-tight">
+                        Desempenho das Turmas & TAGs
+                      </h3>
+                    </div>
+                  </div>
+
+                  {/* Resumo por Turma Slim */}
+                  <div className="grid grid-cols-2 gap-2">
+                    {['A', 'B', 'C', 'D'].map((letra) => {
+                      const stats = getTurmaStats(letra);
+                      return (
+                        <div key={letra} className="bg-slate-50 p-2 rounded-xl border border-slate-200 space-y-1">
+                          <div className="flex items-center justify-between text-[11px] font-bold">
+                            <span className="font-mono bg-white px-1.5 py-0.5 rounded border border-slate-200 text-slate-800">
+                              Turma {letra}
+                            </span>
+                            <span className="text-sky-600 font-extrabold">{stats.taxa}%</span>
                           </div>
+                          <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                            <div className="bg-sky-500 h-full rounded-full" style={{ width: `${stats.taxa}%` }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Top TAGs paradas */}
+                  <div className="space-y-1 pt-1 border-t border-slate-100">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Maior Paralisação por TAG</span>
+                    {sortedEquipments.slice(0, 3).map((eq) => (
+                      <div key={eq.tag} className="flex items-center justify-between text-[11px] bg-slate-50 px-2 py-1 rounded border border-slate-200 font-bold">
+                        <span className="font-mono text-slate-900">{eq.tag}</span>
+                        <span className="font-mono text-rose-700">⏱️ {eq.totalFormatted}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+              </div>
+
+              {/* TABELA COMPLETA DE HISTÓRICO NO PERÍODO (ALTURA CONTROLADA COM SCROLL) */}
+              <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                  <div className="flex items-center space-x-2">
+                    <div className="p-1.5 bg-slate-100 text-slate-700 rounded-lg border border-slate-200">
+                      <FileText className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-black text-slate-900">
+                        Histórico de Atendimentos Detalhado
+                      </h3>
+                      <p className="text-[11px] text-slate-500 font-medium">
+                        {reportFilteredIncidents.length} registro(s) no relatório
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto rounded-xl border border-slate-200 min-h-[180px]">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead className="bg-slate-100 text-slate-600 font-bold border-b border-slate-200 uppercase tracking-wider">
+                      <tr>
+                        <th className="px-3 py-2.5">TAG / Equipamento</th>
+                        <th className="px-3 py-2.5">Falha</th>
+                        <th className="px-3 py-2.5">Turma</th>
+                        <th className="px-3 py-2.5">Responsável</th>
+                        <th className="px-3 py-2.5">Duração</th>
+                        <th className="px-3 py-2.5">Status</th>
+                        <th className="px-3 py-2.5 text-right">Ação</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {reportFilteredIncidents.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className="py-8 text-center text-xs font-bold text-slate-400">
+                            Nenhum atendimento encontrado para os filtros selecionados.
+                          </td>
+                        </tr>
+                      ) : (
+                        paginatedReportIncidents.map((item) => {
+                          const start = new Date(item.dataHoraParada || item.criadoEm);
+                          const end = item.dataHoraLiberacao ? new Date(item.dataHoraLiberacao) : new Date();
+                          const mins = Math.max(0, Math.floor((end.getTime() - start.getTime()) / (1000 * 60)));
+                          const durationFormatted = `${Math.floor(mins / 60)}h ${mins % 60}m`;
+
+                          return (
+                            <tr key={item.id} className="hover:bg-slate-50 transition-colors">
+                              <td className="px-3 py-2 align-top">
+                                <span className="font-mono font-bold bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 text-slate-900 block w-fit mb-0.5">
+                                  {item.tag}
+                                </span>
+                                <span className="text-[10px] text-slate-500 font-medium line-clamp-1">{item.equipamentoNome}</span>
+                              </td>
+                              <td className="px-3 py-2 align-top font-bold text-slate-900">{item.falha}</td>
+                              <td className="px-3 py-2 align-top font-bold">
+                                <span className="bg-sky-50 text-sky-700 px-1.5 py-0.5 rounded border border-sky-200 text-[11px]">
+                                  Turma {item.turma || 'A'}
+                                </span>
+                              </td>
+                              <td className="px-3 py-2 align-top text-slate-600 font-medium">{item.responsavel}</td>
+                              <td className="px-3 py-2 align-top font-mono font-bold text-slate-700">{durationFormatted}</td>
+                              <td className="px-3 py-2 align-top font-bold text-[11px]">
+                                {item.status === 'FINALIZADO' && <span className="text-emerald-600">🟢 Concluído</span>}
+                                {item.status === 'EM_ANDAMENTO' && <span className="text-sky-600">🔵 Em Andamento</span>}
+                                {item.status === 'PENDENCIA_PROXIMO_TURNO' && <span className="text-amber-600">🟠 Pendência</span>}
+                                {item.status === 'AGUARDANDO' && <span className="text-purple-600">🟣 Aguardando</span>}
+                                {item.status === 'RETROAGIDO' && <span className="text-slate-500">⚪ Retroagido</span>}
+                              </td>
+                              <td className="px-3 py-2 align-top text-right">
+                                <button
+                                  onClick={() => onOpenTimeline(item)}
+                                  className="px-2 py-0.5 bg-white hover:bg-sky-50 text-sky-700 border border-slate-200 hover:border-sky-300 font-bold text-[10px] rounded transition-colors inline-flex items-center gap-1 cursor-pointer"
+                                >
+                                  <History className="w-3 h-3 text-sky-600" />
+                                  <span>Detalhes</span>
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* CONTROLE DE PAGINAÇÃO DA TABELA */}
+                <div className="flex flex-col sm:flex-row items-center justify-between pt-2.5 border-t border-slate-100 gap-3 text-xs">
+                  <div className="flex items-center space-x-3 text-slate-500 font-medium">
+                    <div className="flex items-center space-x-1.5">
+                      <span className="text-[11px] font-bold text-slate-600">Exibir:</span>
+                      <select
+                        value={reportItemsPerPage}
+                        onChange={(e) => {
+                          setReportItemsPerPage(Number(e.target.value));
+                          setReportPage(1);
+                        }}
+                        className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold text-slate-800 focus:outline-none focus:bg-white cursor-pointer"
+                      >
+                        <option value={5}>5 por página</option>
+                        <option value={10}>10 por página</option>
+                        <option value={15}>15 por página</option>
+                        <option value={25}>25 por página</option>
+                        <option value={50}>50 por página</option>
+                      </select>
+                    </div>
+
+                    <span>
+                      Exibindo <strong className="text-slate-900 font-black">{reportFilteredIncidents.length > 0 ? reportStartIndex + 1 : 0}-{reportEndIndex}</strong> de <strong className="text-slate-900 font-black">{reportFilteredIncidents.length}</strong> registros
+                    </span>
+                  </div>
+
+                  <div className="flex items-center space-x-1">
+                    <button
+                      onClick={() => setReportPage(1)}
+                      disabled={currentReportPage === 1}
+                      className="px-2 py-1 bg-white hover:bg-slate-100 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed border border-slate-200 rounded-lg text-xs font-bold transition-colors cursor-pointer"
+                      title="Primeira Página"
+                    >
+                      «
+                    </button>
+                    <button
+                      onClick={() => setReportPage((prev) => Math.max(prev - 1, 1))}
+                      disabled={currentReportPage === 1}
+                      className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed border border-slate-200 rounded-lg text-xs font-bold transition-colors cursor-pointer"
+                    >
+                      ‹ Anterior
+                    </button>
+
+                    {Array.from({ length: totalReportPages }, (_, i) => i + 1)
+                      .filter((p) => p === 1 || p === totalReportPages || Math.abs(p - currentReportPage) <= 1)
+                      .reduce<(number | string)[]>((acc, page, idx, array) => {
+                        if (idx > 0 && page - (array[idx - 1] as number) > 1) {
+                          acc.push('...');
+                        }
+                        acc.push(page);
+                        return acc;
+                      }, [])
+                      .map((item, index) => {
+                        if (item === '...') {
+                          return <span key={`ellipsis-${index}`} className="px-1 text-slate-400 font-bold">...</span>;
+                        }
+
+                        const isCurrent = item === currentReportPage;
+                        return (
+                          <button
+                            key={item}
+                            onClick={() => setReportPage(Number(item))}
+                            className={`w-7 h-7 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                              isCurrent
+                                ? 'bg-sky-600 text-white shadow-xs'
+                                : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
+                            }`}
+                          >
+                            {item}
+                          </button>
                         );
                       })}
-                    </div>
+
+                    <button
+                      onClick={() => setReportPage((prev) => Math.min(prev + 1, totalReportPages))}
+                      disabled={currentReportPage === totalReportPages || totalReportPages === 0}
+                      className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed border border-slate-200 rounded-lg text-xs font-bold transition-colors cursor-pointer"
+                    >
+                      Próximo ›
+                    </button>
+                    <button
+                      onClick={() => setReportPage(totalReportPages)}
+                      disabled={currentReportPage === totalReportPages || totalReportPages === 0}
+                      className="px-2 py-1 bg-white hover:bg-slate-100 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed border border-slate-200 rounded-lg text-xs font-bold transition-colors cursor-pointer"
+                      title="Última Página"
+                    >
+                      »
+                    </button>
                   </div>
                 </div>
               </div>
@@ -727,36 +1454,61 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
                     <table className="w-full text-left text-xs">
                       <thead className="bg-slate-50 text-slate-500 font-bold uppercase text-[10px] tracking-wider border-b border-slate-200">
                         <tr>
-                          <th className="px-4 py-3">Nome / Operador</th>
-                          <th className="px-4 py-3">Matrícula</th>
-                          <th className="px-4 py-3">E-mail</th>
+                          <th className="px-4 py-3">Técnico / Responsável do Turno</th>
+                          <th className="px-4 py-3">E-mail de Login</th>
                           <th className="px-4 py-3">Turma</th>
                           <th className="px-4 py-3">Senha</th>
                           <th className="px-4 py-3 text-right">Gerenciamento</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 bg-white">
-                        {userList.map((u) => (
-                          <tr key={u.id} className="hover:bg-slate-50 transition-colors">
-                            <td className="px-4 py-3 font-bold text-slate-900">{u.nome}</td>
-                            <td className="px-4 py-3 font-mono text-slate-700 font-bold">{u.matricula}</td>
-                            <td className="px-4 py-3 text-slate-500 font-mono">{u.email}</td>
-                            <td className="px-4 py-3">
-                              <span className="font-mono bg-sky-100 text-sky-800 px-2.5 py-1 rounded font-black text-[11px]">
-                                Turma {u.turma}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 font-mono text-slate-500 font-bold">•••••• ({u.senha})</td>
-                            <td className="px-4 py-3 text-right">
-                              <button
-                                onClick={() => handleOpenEditUser(u)}
-                                className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold text-[11px] rounded-xl border border-amber-200 transition-colors cursor-pointer inline-flex items-center gap-1"
-                              >
-                                ✏️ Editar Login / Senha
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
+                        {userList.map((u) => {
+                          // Buscar o nome configurado pelo técnico no turno ativo ou nos atendimentos
+                          const turmaKey = (u.turma || '').toUpperCase().trim();
+                          let techName = u.nome;
+
+                          if (activeShift && (activeShift.turma || 'A').toUpperCase().trim() === turmaKey && activeShift.responsavelNome) {
+                            techName = activeShift.responsavelNome;
+                          } else {
+                            const lastTechIncident = incidents.find(
+                              (i) => (i.turma || 'A').toUpperCase().trim() === turmaKey && i.responsavel && !i.responsavel.toLowerCase().startsWith('operador')
+                            );
+                            if (lastTechIncident) {
+                              techName = lastTechIncident.responsavel;
+                            }
+                          }
+
+                          return (
+                            <tr key={u.id} className="hover:bg-slate-50 transition-colors">
+                              <td className="px-4 py-3">
+                                <div className="font-bold text-slate-900 flex items-center gap-1.5">
+                                  <User className="w-3.5 h-3.5 text-sky-600 flex-shrink-0" />
+                                  <span>{techName}</span>
+                                </div>
+                                {techName !== u.nome && (
+                                  <span className="text-[10px] text-slate-400 font-medium block ml-5">
+                                    Conta: {u.nome}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="px-4 py-3 text-slate-500 font-mono">{u.email}</td>
+                              <td className="px-4 py-3">
+                                <span className="font-mono bg-sky-100 text-sky-800 px-2.5 py-1 rounded font-black text-[11px]">
+                                  Turma {u.turma}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 font-mono text-slate-500 font-bold">•••••• ({u.senha})</td>
+                              <td className="px-4 py-3 text-right">
+                                <button
+                                  onClick={() => handleOpenEditUser(u)}
+                                  className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold text-[11px] rounded-xl border border-amber-200 transition-colors cursor-pointer inline-flex items-center gap-1"
+                                >
+                                  ✏️ Editar Login / Senha
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -889,198 +1641,7 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
           )}
 
           {/* ========================================================================= */}
-          {/* TELA 3: 📜 HISTÓRICO DE ATENDIMENTOS SEPARADO POR TURMA */}
-          {/* ========================================================================= */}
-          {activeSection === 'history' && (
-            <div className="space-y-6">
-              
-              <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs space-y-5">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-slate-100 pb-4 gap-3">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-sky-500/10 text-sky-600 rounded-2xl flex items-center justify-center border border-sky-200">
-                      <History className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <h2 className="text-lg font-black text-slate-900">
-                        Histórico de Atendimentos Separado por Turma
-                      </h2>
-                      <p className="text-xs text-slate-500 font-medium">
-                        Selecione a aba da letra para auditar as ocorrências e observações registradas.
-                      </p>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={handleExportCSV}
-                    className="inline-flex items-center px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl shadow-md transition-colors cursor-pointer"
-                  >
-                    <FileSpreadsheet className="w-4 h-4 mr-2" />
-                    <span>Exportar Relatório CSV</span>
-                  </button>
-                </div>
-
-                {/* NAVEGAÇÃO POR ABAS DAS TURMAS (A, B, C, D) */}
-                <div className="flex items-center gap-2 flex-wrap border-b border-slate-100 pb-3">
-                  <button
-                    onClick={() => setHistoryTurmaTab('TODAS')}
-                    className={`px-4 py-2 text-xs font-black rounded-xl transition-all cursor-pointer ${
-                      historyTurmaTab === 'TODAS'
-                        ? 'bg-amber-500 text-slate-950 shadow-xs'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                    }`}
-                  >
-                    🌐 TODAS AS TURMAS
-                  </button>
-
-                  {['A', 'B', 'C', 'D'].map((letra) => (
-                    <button
-                      key={letra}
-                      onClick={() => setHistoryTurmaTab(letra)}
-                      className={`px-4 py-2 text-xs font-black rounded-xl transition-all cursor-pointer ${
-                        historyTurmaTab === letra
-                          ? 'bg-sky-600 text-white shadow-xs'
-                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                      }`}
-                    >
-                      TURMA {letra}
-                    </button>
-                  ))}
-                </div>
-
-                {/* BARRA DE FILTROS DE PESQUISA E STATUS */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50 p-3 rounded-2xl border border-slate-200">
-                  <div className="relative">
-                    <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
-                    <input
-                      type="text"
-                      placeholder="Buscar por TAG, equipamento, falha ou responsável..."
-                      value={historySearchTerm}
-                      onChange={(e) => setHistorySearchTerm(e.target.value)}
-                      className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-sky-500 font-medium"
-                    />
-                  </div>
-
-                  <div>
-                    <select
-                      value={historyStatusFilter}
-                      onChange={(e) => setHistoryStatusFilter(e.target.value)}
-                      className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-bold text-slate-700 focus:outline-none focus:border-sky-500 cursor-pointer"
-                    >
-                      <option value="TODOS">Todos os Status</option>
-                      <option value="FINALIZADO">🟢 Concluídos</option>
-                      <option value="EM_ANDAMENTO">🔴 Em Andamento</option>
-                      <option value="AGUARDANDO">🟡 Aguardando</option>
-                      <option value="PENDENCIA_PROXIMO_TURNO">🔵 Pendências Herdadas</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* TABELA DE AUDITORIA DO HISTÓRICO */}
-                <div className="rounded-2xl border border-slate-200 overflow-hidden">
-                  <table className="w-full text-left text-xs">
-                    <thead className="bg-slate-50 text-slate-500 font-bold uppercase text-[10px] tracking-wider border-b border-slate-200">
-                      <tr>
-                        <th className="px-4 py-3">TAG / Equipamento</th>
-                        <th className="px-4 py-3">Turma Origem ➔ Assumir</th>
-                        <th className="px-4 py-3">Falha & Solução</th>
-                        <th className="px-4 py-3">Anotações do Turno</th>
-                        <th className="px-4 py-3">Status</th>
-                        <th className="px-4 py-3 text-right">Ações</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 bg-white">
-                      {filteredHistory.length === 0 ? (
-                        <tr>
-                          <td colSpan={6} className="text-center py-12 text-slate-400 italic">
-                            Nenhum atendimento registrado nesta turma com os filtros selecionados.
-                          </td>
-                        </tr>
-                      ) : (
-                        filteredHistory.map((item) => {
-                          const turmaOrigem = item.turma || 'A';
-                          const turmaDestino = getTurmaDestino(turmaOrigem);
-                          return (
-                            <tr key={item.id} className="hover:bg-slate-50 transition-colors">
-                              <td className="px-4 py-3 font-bold align-top">
-                                <div className="flex items-center space-x-2">
-                                  <span className="font-mono bg-sky-100 text-sky-800 px-2 py-0.5 rounded font-black text-[11px]">
-                                    {item.tag}
-                                  </span>
-                                  <span className="text-slate-900">{item.equipamentoNome}</span>
-                                </div>
-                              </td>
-
-                              <td className="px-4 py-3 font-bold align-top">
-                                <div className="text-xs text-amber-600 flex items-center gap-1">
-                                  <span>Turma {turmaOrigem}</span>
-                                  <ArrowRight className="w-3 h-3 text-slate-400" />
-                                  <span className="text-sky-600 font-extrabold">{turmaDestino}</span>
-                                </div>
-                              </td>
-
-                              <td className="px-4 py-3 align-top max-w-[260px]">
-                                <div className="font-bold text-slate-800">{item.falha}</div>
-                                {item.solucao && (
-                                  <div className="mt-1 bg-emerald-50 text-emerald-800 p-1.5 rounded-lg border border-emerald-200 text-[11px]">
-                                    <strong>Solução:</strong> {item.solucao}
-                                  </div>
-                                )}
-                              </td>
-
-                              <td className="px-4 py-3 align-top max-w-[220px]">
-                                {item.observacao ? (
-                                  <div className="bg-amber-50 text-amber-800 p-1.5 rounded-lg border border-amber-200 text-[11px] font-medium">
-                                    💬 {item.observacao}
-                                  </div>
-                                ) : (
-                                  <span className="text-slate-400 italic">Sem anotações</span>
-                                )}
-                              </td>
-
-                              <td className="px-4 py-3 font-bold align-top">
-                                {item.status === 'FINALIZADO' && <span className="text-emerald-600">🟢 Concluído</span>}
-                                {item.status === 'EM_ANDAMENTO' && <span className="text-rose-600">🔴 Em Andamento</span>}
-                                {item.status === 'AGUARDANDO' && <span className="text-amber-600">🟡 Aguardando</span>}
-                                {item.status === 'PENDENCIA_PROXIMO_TURNO' && <span className="text-sky-600">🔵 Pendência Herdada</span>}
-                              </td>
-
-                              <td className="px-4 py-3 align-top text-right">
-                                <div className="flex items-center justify-end gap-1.5">
-                                  <button
-                                    onClick={() => onOpenCommentModal(item)}
-                                    title="Adicionar anotação do líder"
-                                    className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 font-bold text-[11px] rounded-lg transition-colors flex items-center gap-1 cursor-pointer shadow-2xs"
-                                  >
-                                    <MessageSquare className="w-3 h-3 text-amber-700" />
-                                    <span>Anotar</span>
-                                  </button>
-
-                                  <button
-                                    onClick={() => onOpenTimeline(item)}
-                                    title="Linha do Tempo e Histórico do Atendimento"
-                                    className="px-2.5 py-1 bg-sky-600 hover:bg-sky-500 text-white font-bold text-[11px] rounded-lg transition-colors flex items-center gap-1 cursor-pointer shadow-xs"
-                                  >
-                                    <History className="w-3 h-3" />
-                                    <span>Linha do Tempo</span>
-                                  </button>
-                                </div>
-                              </td>
-
-                            </tr>
-                          );
-                        })
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-
-              </div>
-
-            </div>
-          )}
-
-          {/* ========================================================================= */}
-          {/* TELA 4: 📣 PÁGINA DE NOTIFICAÇÕES & COMUNICAÇÃO DIRETA COM AS TURMAS */}
+          {/* TELA 3: 📣 PÁGINA DE NOTIFICAÇÕES & COMUNICAÇÃO DIRETA COM AS TURMAS */}
           {/* ========================================================================= */}
           {activeSection === 'notifications' && (
             <div className="space-y-6">
@@ -1224,83 +1785,6 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
                     </div>
                   </div>
                 )}
-
-              </div>
-
-            </div>
-          )}
-
-          {/* ========================================================================= */}
-          {/* TELA 5: 🚨 ALERTAS CRÍTICOS & PASSAGEM DE BASTÃO */}
-          {/* ========================================================================= */}
-          {activeSection === 'alerts' && (
-            <div className="space-y-6">
-              
-              <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs space-y-5">
-                <div className="flex items-center space-x-3 border-b border-slate-100 pb-4">
-                  <div className="w-10 h-10 bg-rose-500/10 text-rose-600 rounded-2xl flex items-center justify-center border border-rose-200">
-                    <AlertTriangle className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-black text-slate-900">
-                      Alertas Críticos & Ativos em Atenção
-                    </h2>
-                    <p className="text-xs text-slate-500 font-medium">
-                      Ocorrências com prioridade crítica e trocas de turno pendentes.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {priorityAlerts.map((item) => {
-                    const turmaOrigem = item.turma || 'A';
-                    const turmaDestino = getTurmaDestino(turmaOrigem);
-                    return (
-                      <div
-                        key={item.id}
-                        className="bg-slate-50 border border-slate-200 hover:border-rose-300 rounded-2xl p-4 shadow-2xs space-y-3 transition-all"
-                      >
-                        <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-                          <span className="font-mono text-xs font-black bg-amber-100 text-amber-900 px-2 py-0.5 rounded border border-amber-300">
-                            {item.tag}
-                          </span>
-                          <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-rose-100 text-rose-800 border border-rose-300">
-                            {item.prioridade}
-                          </span>
-                        </div>
-
-                        <div>
-                          <h3 className="text-sm font-black text-slate-900">{item.equipamentoNome}</h3>
-                          <p className="text-xs text-slate-600 mt-1 font-medium">{item.falha}</p>
-                        </div>
-
-                        <div className="bg-white p-2.5 rounded-xl border border-slate-200 flex items-center justify-between text-xs font-bold">
-                          <div className="text-amber-600">Turma {turmaOrigem}</div>
-                          <ArrowRight className="w-4 h-4 text-slate-400" />
-                          <div className="text-sky-600">{turmaDestino}</div>
-                        </div>
-
-                        <div className="flex items-center justify-between pt-2 border-t border-slate-200 text-xs">
-                          <span className="text-slate-500 font-medium">{item.responsavel}</span>
-                          <div className="flex space-x-1">
-                            <button
-                              onClick={() => onOpenCommentModal(item)}
-                              className="p-1.5 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-lg cursor-pointer"
-                            >
-                              <MessageSquare className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={() => onOpenTimeline(item)}
-                              className="p-1.5 bg-sky-100 hover:bg-sky-200 text-sky-700 rounded-lg cursor-pointer"
-                            >
-                              <History className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
               </div>
 
             </div>

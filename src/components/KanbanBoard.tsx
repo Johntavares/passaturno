@@ -120,13 +120,77 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
     }
   };
 
+  // Equipamentos no código com mais de 2 horas (120 minutos) de parada
+  const itemsOver2HoursInCode = colNoCodigo.filter((i) => {
+    const start = new Date(i.dataHoraParada || i.criadoEm);
+    const mins = differenceInMinutes(new Date(), start);
+    return mins >= 120;
+  });
+
   return (
     <div className="space-y-4">
-      {/* Barra de Filtro e Controle de Exibição */}
+      {/* 🚨 ALARME DE 2 HORAS NO CÓDIGO (ESPELHADO DO PAINEL DO OPERADOR) */}
+      {itemsOver2HoursInCode.length > 0 && (
+        <div className="bg-gradient-to-r from-rose-950 via-rose-900 to-rose-950 text-white p-4 rounded-2xl border-2 border-rose-500/80 shadow-xl space-y-3 relative overflow-hidden animate-pulse">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-rose-800/80 pb-2.5">
+            <div className="flex items-center space-x-2.5">
+              <span className="bg-rose-600 text-white text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full font-mono animate-bounce border border-rose-400">
+                🚨 ALARME 2H ATIVO NO CÓDIGO
+              </span>
+              <h4 className="text-sm font-black text-white">
+                {itemsOver2HoursInCode.length} Equipamento(s) no Código há mais de 2 Horas!
+              </h4>
+            </div>
+            <span className="text-[11px] text-rose-200 font-bold bg-rose-900/60 px-2.5 py-1 rounded-lg border border-rose-700">
+              Espelhado do Painel do Operador • Atuação Urgente
+            </span>
+          </div>
 
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+            {itemsOver2HoursInCode.map((item) => {
+              const start = new Date(item.dataHoraParada || item.criadoEm);
+              const mins = differenceInMinutes(new Date(), start);
+              const h = Math.floor(mins / 60);
+              const m = mins % 60;
+              return (
+                <div key={item.id} className="bg-white text-slate-900 p-2.5 rounded-xl border border-rose-300 flex items-center justify-between text-xs shadow-md">
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-mono font-black bg-rose-100 text-rose-900 px-2 py-0.5 rounded text-[11px] border border-rose-200">
+                        {item.tag}
+                      </span>
+                      <span className="font-bold text-slate-900 line-clamp-1">{item.equipamentoNome}</span>
+                    </div>
+                    <p className="text-[11px] text-rose-700 font-extrabold mt-1">
+                      ⏱️ Parado no Código há {h}h {m}m
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => onOpenCommentModal(item)}
+                      className="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold text-[10px] rounded-lg border border-amber-200"
+                      title="Anotar"
+                    >
+                      Anotar
+                    </button>
+                    <button
+                      onClick={() => onOpenTimeline(item)}
+                      className="px-2.5 py-1 bg-sky-600 hover:bg-sky-500 text-white font-bold text-[10px] rounded-lg shadow-2xs"
+                      title="Detalhes"
+                    >
+                      Detalhes
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Barra de Filtro e Controle de Exibição */}
       <div className="flex flex-col md:flex-row items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-xs">
 
-        
         {/* Pesquisa */}
         <div className="relative w-full md:w-80">
           <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
@@ -183,9 +247,19 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
         
         {/* COLUNA 1: 🔴 No Código */}
         <div className="bg-slate-100/80 border border-slate-200/70 rounded-2xl p-3 flex flex-col min-h-[500px]">
-          <div className="bg-rose-500 text-white p-2.5 rounded-xl shadow-xs flex items-center justify-between mb-3">
-            <h3 className="text-xs font-bold uppercase tracking-wide flex items-center">
-              No Código
+          <div className={`p-2.5 rounded-xl shadow-xs flex items-center justify-between mb-3 transition-all ${
+            itemsOver2HoursInCode.length > 0
+              ? 'bg-gradient-to-r from-rose-600 to-rose-700 text-white animate-pulse shadow-[0_0_15px_rgba(225,29,72,0.4)]'
+              : 'bg-rose-500 text-white'
+          }`}>
+            <h3 className="text-xs font-bold uppercase tracking-wide flex items-center gap-1.5">
+              {itemsOver2HoursInCode.length > 0 && <AlertCircle className="w-4 h-4 text-white animate-bounce" />}
+              <span>No Código</span>
+              {itemsOver2HoursInCode.length > 0 && (
+                <span className="bg-white text-rose-900 text-[10px] font-black px-1.5 py-0.2 rounded font-mono">
+                  🚨 ALERTA 2H
+                </span>
+              )}
             </h3>
             <span className="bg-white/20 px-2 py-0.5 rounded-md text-[11px] font-bold">
               {colNoCodigo.length}
