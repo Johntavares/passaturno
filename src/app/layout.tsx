@@ -16,7 +16,11 @@ export const metadata: Metadata = {
   title: "PASSATURNO — Informação que continua o trabalho",
   description: "Plataforma de Passagem de Turno, Controle de Atendimentos e Gestão de Frota",
   icons: {
-    icon: '/icon.png',
+    icon: [
+      { url: '/icon.png', type: 'image/png' },
+    ],
+    shortcut: '/icon.png',
+    apple: '/icon.png',
   },
   other: {
     'google-adsense-account': 'ca-pub-5140224476422289',
