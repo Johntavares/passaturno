@@ -728,38 +728,30 @@ export default function Home() {
 
           const displayedIncidents = incidents.filter((item) => {
             const activeTurma = normalizeTurma(currentUser?.turma) || normalizeTurma(activeShift?.turma) || '';
-            const currentFilter = normalizeTurma(selectedTurmaFilter) || selectedTurmaFilter.toUpperCase().trim();
-
             const itemTurma = normalizeTurma(item.turma) || (item.turma || '').toUpperCase().trim();
-            const isUnacceptedInherited =
+
+            // --- Pendência Herdada: vem de outro turno mas foi direcionada para a turma atual ---
+            // Aparece mesmo sem turno ativo (é o saldo que a equipe precisa assumir)
+            const isHerdadaParaMinhaTurma =
               item.isPendenciaHerdada &&
               item.status === 'PENDENCIA_PROXIMO_TURNO' &&
-              (itemTurma === currentFilter || !currentFilter || currentFilter === 'TODAS');
+              activeTurma !== '' &&
+              itemTurma === activeTurma;
 
-            const isFin = item.status === 'FINALIZADO' || item.status === 'RETROAGIDO';
-            const isTodayIncident = isIncidentFromToday(item);
+            // --- Atendimento do turno ativo atual ---
+            // Só mostra se o shiftId do item bate com o turno aberto agora
+            const isDoTurnoAtivo =
+              activeShift !== null &&
+              item.shiftId === activeShift.id;
 
-            // 1. Descartar apenas o que for de dias anteriores (fica disponível apenas no Histórico)
-            if (!isTodayIncident && !isUnacceptedInherited) {
+            // Regra principal: mostra APENAS os do turno ativo OU herdadas para a turma
+            if (!isDoTurnoAtivo && !isHerdadaParaMinhaTurma) {
               return false;
-            }
-
-            // 2. Filtro por Turma
-            if (currentFilter !== 'TODAS' && currentFilter !== 'GERAL' && currentFilter !== '') {
-              const isUserIncident = currentUser?.nome && item.responsavel && item.responsavel.toLowerCase().includes(currentUser.nome.toLowerCase());
-              const hasNoTurma = !itemTurma;
-
-              // Atendimentos em andamento de outras turmas são filtrados,
-              // mas pendências herdadas, atendimentos do próprio usuário e finalizados permanecem acessíveis
-              if (itemTurma !== currentFilter && !hasNoTurma && !isUnacceptedInherited && !isUserIncident) {
-                if (!isFin) {
-                  return false;
-                }
-              }
             }
 
             return true;
           });
+
 
           return (
           <>
