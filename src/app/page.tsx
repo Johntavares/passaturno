@@ -730,21 +730,25 @@ export default function Home() {
             const activeTurma = normalizeTurma(currentUser?.turma) || normalizeTurma(activeShift?.turma) || '';
             const itemTurma = normalizeTurma(item.turma) || (item.turma || '').toUpperCase().trim();
 
-            // --- Pendência Herdada: vem de outro turno mas foi direcionada para a turma atual ---
-            // Aparece mesmo sem turno ativo (é o saldo que a equipe precisa assumir)
+            // --- Pendência Herdada explícita: marcada pelo operador ao fechar turno ---
+            // Regra rígida: precisa ter isPendenciaHerdada=true + status PENDENCIA_PROXIMO_TURNO
+            // + turma exatamente igual à turma ativa. Qualquer item sem shiftId correto
+            // que não atenda a TODOS esses critérios é bloqueado.
             const isHerdadaParaMinhaTurma =
-              item.isPendenciaHerdada &&
+              item.isPendenciaHerdada === true &&
               item.status === 'PENDENCIA_PROXIMO_TURNO' &&
               activeTurma !== '' &&
-              itemTurma === activeTurma;
+              itemTurma === activeTurma &&
+              !item.shiftId; // herdadas genuínas não pertencem ao turno atual
 
             // --- Atendimento do turno ativo atual ---
-            // Só mostra se o shiftId do item bate com o turno aberto agora
+            // Critério estrito: shiftId deve bater exatamente com o turno aberto agora
             const isDoTurnoAtivo =
               activeShift !== null &&
+              typeof item.shiftId === 'string' &&
               item.shiftId === activeShift.id;
 
-            // Regra principal: mostra APENAS os do turno ativo OU herdadas para a turma
+            // Regra principal: se não se encaixa em nenhuma categoria, bloqueia
             if (!isDoTurnoAtivo && !isHerdadaParaMinhaTurma) {
               return false;
             }

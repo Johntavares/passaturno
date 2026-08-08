@@ -296,9 +296,6 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
               <Tag className="w-3 h-3 text-slate-400" />
               {item.tag}
             </button>
-            <h4 className="text-xs font-bold text-slate-800 truncate max-w-[130px]" title={item.equipamentoNome}>
-              {item.equipamentoNome}
-            </h4>
           </div>
 
           <div className="flex items-center space-x-1">
