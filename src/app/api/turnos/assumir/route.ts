@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { inMemoryStore } from '@/lib/inMemoryStore';
-import { turmaInFilter } from '@/lib/turma';
+import { turmaInFilter, normalizeTurma } from '@/lib/turma';
 
 export async function POST(request: Request) {
   try {
@@ -32,7 +32,7 @@ export async function POST(request: Request) {
     });
 
     try {
-      // Encerrar apenas o turno ativo DA MESMA TURMA (outras turmas são independentes)
+      // Encerrar o turno ativo anterior DA MESMA TURMA
       const activeShift = await prisma.shift.findFirst({
         where: { status: 'ATIVO', turma: turmaInFilter(turmaFinal) },
       });
@@ -47,12 +47,12 @@ export async function POST(request: Request) {
         });
       }
 
-      // Criar o novo turno ativo no banco SQLite
+      // Criar o novo turno ativo no banco de dados
       const today = new Date().toISOString().split('T')[0];
       const newShift = await prisma.shift.create({
         data: {
-          equipe,
-          responsavelNome,
+          equipe: equipeFinal,
+          responsavelNome: respFinal,
           turma: turmaFinal,
           escala: escala || '3x3',
           data: today,
@@ -62,9 +62,36 @@ export async function POST(request: Request) {
         },
       });
 
+      // Vincula todas as pendências em aberto direcionadas a esta turma ao novo turno iniciado
+      const pendingIncidents = await prisma.incident.findMany({
+        where: {
+          turma: turmaInFilter(turmaFinal),
+          status: { in: ['EM_ANDAMENTO', 'AGUARDANDO', 'PENDENCIA_PROXIMO_TURNO'] },
+        },
+      });
+
+      for (const inc of pendingIncidents) {
+        await prisma.incident.update({
+          where: { id: inc.id },
+          data: {
+            shiftId: newShift.id,
+            turma: turmaFinal,
+            status: inc.status === 'PENDENCIA_PROXIMO_TURNO' ? 'EM_ANDAMENTO' : inc.status,
+            isPendenciaHerdada: true,
+            historico: {
+              create: {
+                tipoEvento: 'TRANSFERENCIA_TURNO',
+                descricao: `Ocorrência vinculada ao novo turno ativado pela Turma ${turmaFinal} (${respFinal}).`,
+                usuario: respFinal,
+              },
+            },
+          },
+        });
+      }
+
       return NextResponse.json(newShift, { status: 201 });
     } catch (dbErr) {
-      console.warn('Alerta banco SQLite assumir turno:', dbErr);
+      console.warn('Alerta banco assumir turno:', dbErr);
     }
 
     return NextResponse.json(inMemShift, { status: 200 });

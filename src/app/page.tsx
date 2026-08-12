@@ -897,25 +897,26 @@ export default function Home() {
             const activeTurma = normalizeTurma(currentUser?.turma) || normalizeTurma(activeShift?.turma) || '';
             const itemTurma = normalizeTurma(item.turma) || (item.turma || '').toUpperCase().trim();
 
-            // --- Pendência Herdada explícita: marcada pelo operador ao fechar turno ---
-            // Regra rígida: precisa ter isPendenciaHerdada=true + status PENDENCIA_PROXIMO_TURNO
-            // + turma exatamente igual à turma ativa. Qualquer item sem shiftId correto
-            // que não atenda a TODOS esses critérios é bloqueado.
+            // Bloquear atendimentos finalizados de turnos passados no painel do turno ativo
+            if (item.status === 'FINALIZADO' && activeShift && item.shiftId && item.shiftId !== activeShift.id) {
+              return false;
+            }
+
+            // --- Pendência Herdada / Transferida para a minha turma ---
             const isHerdadaParaMinhaTurma =
-              item.isPendenciaHerdada === true &&
-              item.status === 'PENDENCIA_PROXIMO_TURNO' &&
+              (item.isPendenciaHerdada === true || item.status === 'PENDENCIA_PROXIMO_TURNO') &&
               activeTurma !== '' &&
               itemTurma === activeTurma &&
-              !item.shiftId; // herdadas genuínas não pertencem ao turno atual
+              item.status !== 'FINALIZADO' &&
+              item.status !== 'RETROAGIDO';
 
             // --- Atendimento do turno ativo atual ---
-            // Critério estrito: shiftId deve bater exatamente com o turno aberto agora
             const isDoTurnoAtivo =
               activeShift !== null &&
               typeof item.shiftId === 'string' &&
               item.shiftId === activeShift.id;
 
-            // Regra principal: se não se encaixa em nenhuma categoria, bloqueia
+            // Regra principal: se não pertence ao turno ativo nem é pendência herdada para a turma, bloqueia
             if (!isDoTurnoAtivo && !isHerdadaParaMinhaTurma) {
               return false;
             }
