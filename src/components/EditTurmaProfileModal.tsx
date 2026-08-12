@@ -40,10 +40,10 @@ export const EditTurmaProfileModal: React.FC<EditTurmaProfileModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentUser?.id) return;
 
     const userSessionData = {
-      ...currentUser,
+      ...(currentUser || {}),
+      id: currentUser?.id || `usr-${Date.now()}`,
       nome: nome.trim(),
       horarioTurno: horarioTurno.trim(),
       periodoTurno,
@@ -52,21 +52,23 @@ export const EditTurmaProfileModal: React.FC<EditTurmaProfileModalProps> = ({
       diaEscala,
     };
 
-    try {
-      await fetch(`/api/usuarios/${currentUser.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          nome: nome.trim(),
-          horarioTurno: horarioTurno.trim(),
-          periodoTurno,
-          turma,
-          escala,
-          diaEscala,
-        }),
-      });
-    } catch (err) {
-      console.error('Erro ao atualizar perfil na API:', err);
+    if (currentUser?.id) {
+      try {
+        await fetch(`/api/usuarios/${currentUser.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            nome: nome.trim(),
+            horarioTurno: horarioTurno.trim(),
+            periodoTurno,
+            turma,
+            escala,
+            diaEscala,
+          }),
+        });
+      } catch (err) {
+        console.error('Erro ao atualizar perfil na API:', err);
+      }
     }
 
     onProfileUpdated(userSessionData);

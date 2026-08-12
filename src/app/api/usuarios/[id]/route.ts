@@ -41,10 +41,16 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       },
     });
 
-    // Sincronizar turno ativo se pertencer a este usuário
+    // Sincronizar turno ativo se pertencer a este usuário ou turma
     try {
       const activeShift = await prisma.shift.findFirst({
-        where: { status: 'ATIVO', responsavelId: id },
+        where: {
+          status: 'ATIVO',
+          OR: [
+            { responsavelId: id },
+            { turma: data.turma || user.turma },
+          ],
+        },
       });
 
       if (activeShift) {

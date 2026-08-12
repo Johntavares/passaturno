@@ -1160,8 +1160,21 @@ export default function Home() {
           setCurrentUser(updated);
           if (typeof window !== 'undefined') {
             localStorage.setItem('passaturno-user', JSON.stringify(updated));
+            try {
+              const savedListStr = localStorage.getItem('passaturno-users-list');
+              if (savedListStr) {
+                const savedList = JSON.parse(savedListStr) as any[];
+                const updatedList = savedList.map((u) => (u.id === updated.id || u.nome === updated.nome ? { ...u, ...updated } : u));
+                localStorage.setItem('passaturno-users-list', JSON.stringify(updatedList));
+                setLoggedInUsers(updatedList);
+              }
+            } catch (e) {
+              console.error('Erro ao atualizar passaturno-users-list:', e);
+            }
           }
-          loadData();
+          const updatedTurma = normalizeTurma(updated.turma) || updated.turma || 'A';
+          setSelectedTurmaFilter(updatedTurma);
+          loadData(updatedTurma);
         }}
       />
 
