@@ -992,7 +992,7 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="border-t border-slate-200 bg-white py-4 text-center text-xs text-slate-400 font-medium">
-        <p>Automation Control • Gestão de Ocorrências e Continuidade Operacional</p>
+        <p>Passaturno • Gestão de Ocorrências e Continuidade Operacional</p>
       </footer>
 
       {/* Modals */}
