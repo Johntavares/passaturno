@@ -13,6 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://jw.tec.br'),
   title: "PASSATURNO — Informação que continua o trabalho",
   description: "Plataforma de Passagem de Turno, Controle de Atendimentos e Gestão de Frota",
   icons: {
