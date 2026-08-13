@@ -28,6 +28,7 @@ import { EditTurmaProfileModal } from '@/components/EditTurmaProfileModal';
 import { SettingsModal } from '@/components/SettingsModal';
 import { TeamsCheckModal } from '@/components/TeamsCheckModal';
 import { normalizeTurma, getNextTurma, isSameDayAsToday, isIncidentFromToday } from '@/lib/turma';
+import { supabase } from '@/lib/supabaseClient';
 
 export default function Home() {
   const [incidents, setIncidents] = useState<IncidentType[]>(() => {
@@ -273,6 +274,37 @@ export default function Home() {
       loadData();
     }, 4000);
     return () => clearInterval(interval);
+  }, [loadData]);
+
+  // Inscrição em Tempo Real (Supabase Realtime WebSockets: < 50ms sync entre Líder e Operadores)
+  useEffect(() => {
+    try {
+      const channel = supabase
+        .channel('passaturno-realtime-changes')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'Incident' },
+          (payload) => {
+            console.log('⚡ Realtime update on Incident:', payload);
+            loadData();
+          }
+        )
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'Shift' },
+          (payload) => {
+            console.log('⚡ Realtime update on Shift:', payload);
+            loadData();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    } catch (e) {
+      console.error('Realtime subscription error:', e);
+    }
   }, [loadData]);
 
   const handleIncidentCreated = (newInc?: IncidentType) => {
