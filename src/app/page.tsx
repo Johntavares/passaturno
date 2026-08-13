@@ -409,13 +409,12 @@ export default function Home() {
           localStorage.setItem('passaturno-users-list', JSON.stringify(newList));
         }
 
-        const uTurma = normalizeTurma(u.turma) || u.turma?.toUpperCase().trim() || 'A';
-        setSelectedTurmaFilter(uTurma);
+        setSelectedTurmaFilter('TODAS');
         const userKey = `passaturno-theme-${u.id}`;
         const userTheme = (localStorage.getItem(userKey) as ThemeMode) || 'light';
         setTheme(userTheme);
         applyTheme(userTheme);
-        loadData(uTurma);
+        loadData();
         return;
       }
     } catch (e) {
@@ -425,6 +424,7 @@ export default function Home() {
     const guestTheme = (localStorage.getItem('passaturno-theme-guest') as ThemeMode) || 'light';
     setTheme(guestTheme);
     applyTheme(guestTheme);
+    setSelectedTurmaFilter('TODAS');
     loadData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -441,13 +441,12 @@ export default function Home() {
     localStorage.setItem('passaturno-user', JSON.stringify(user));
     setIsAddUserModalOpen(false);
 
-    const uTurma = normalizeTurma(user.turma) || user.turma?.toUpperCase().trim() || 'A';
-    setSelectedTurmaFilter(uTurma);
+    setSelectedTurmaFilter('TODAS');
     const userKey = `passaturno-theme-${user.id}`;
     const userSavedTheme = (localStorage.getItem(userKey) as ThemeMode) || 'light';
     setTheme(userSavedTheme);
     applyTheme(userSavedTheme);
-    loadData(uTurma);
+    loadData();
   };
 
   // Alternar para outro usuário que já está logado
@@ -1033,7 +1032,7 @@ export default function Home() {
             }
           };
 
-          const displayedIncidents = incidents.filter((item) => {
+                    const displayedIncidents = incidents.filter((item) => {
             // Se o filtro do topo estiver em 'TODAS' ou não definido, exibe todas as ocorrências em aberto sem bloquear por turma
             const isFilterTodas = selectedTurmaFilter === 'TODAS' || !selectedTurmaFilter;
             const filterTurma = isFilterTodas
@@ -1056,10 +1055,15 @@ export default function Home() {
               item.isPendenciaHerdada === true ||
               item.noCodigo === true;
 
+            const isDoResponsavelAtual =
+              Boolean(currentUser?.nome && item.responsavel &&
+              item.responsavel.toLowerCase().trim() === currentUser.nome.toLowerCase().trim());
+
             const matchesTurma =
               filterTurma === '' ||
               itemTurma === filterTurma ||
-              !itemTurma;
+              !itemTurma ||
+              isDoResponsavelAtual;
 
             // 3. Regra de finalizados/retroagidos: exibe se for do turno ativo ou se foi finalizado HOJE
             if (item.status === 'FINALIZADO' || item.status === 'RETROAGIDO') {
@@ -1068,7 +1072,7 @@ export default function Home() {
             }
 
             // Para qualquer ocorrência em aberto: NUNCA SUMIR OCORRÊNCIAS EM ABERTO!
-            return isDoTurnoAtivo || (isOcorrenciaEmAberto && matchesTurma);
+            return isDoTurnoAtivo || isDoResponsavelAtual || isOcorrenciaEmAberto;
           });
 
 
@@ -1148,7 +1152,7 @@ export default function Home() {
         isOpen={isNewIncidentOpen}
         onClose={() => setIsNewIncidentOpen(false)}
         equipments={equipments}
-        turma={normalizeTurma(activeShift?.turma) || normalizeTurma(currentUser?.turma) || (selectedTurmaFilter !== 'TODAS' ? normalizeTurma(selectedTurmaFilter) : null) || 'C'}
+        turma={normalizeTurma(activeShift?.turma) || normalizeTurma(currentUser?.turma) || (selectedTurmaFilter !== 'TODAS' ? normalizeTurma(selectedTurmaFilter) : null) || normalizeTurma(currentUser?.turma) || 'A'}
         currentUser={currentUser}
         onIncidentCreated={handleIncidentCreated}
       />

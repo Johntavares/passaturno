@@ -32,7 +32,7 @@ export const CloseShiftModal: React.FC<CloseShiftModalProps> = ({
     return 'B';
   };
 
-  const initialTurma = normalizeTurma(activeShift?.turma) || normalizeTurma(currentUser?.turma) || 'C';
+  const initialTurma = normalizeTurma(activeShift?.turma) || normalizeTurma(currentUser?.turma) || 'A';
   const initialResp = activeShift?.responsavelNome || currentUser?.nome || 'Operador';
 
   const [responsavelSaida, setResponsavelSaida] = useState(initialResp);
@@ -67,7 +67,7 @@ export const CloseShiftModal: React.FC<CloseShiftModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       setLocalIncidents(incidents);
-      const effTurma = normalizeTurma(activeShift?.turma) || normalizeTurma(currentUser?.turma) || 'C';
+      const effTurma = normalizeTurma(activeShift?.turma) || normalizeTurma(currentUser?.turma) || 'A';
       const effResp = activeShift?.responsavelNome || currentUser?.nome || 'Operador';
       setTurma(effTurma);
       setProximaTurma(getNextTurmaLetter(effTurma));
@@ -90,7 +90,7 @@ export const CloseShiftModal: React.FC<CloseShiftModalProps> = ({
     shiftStartMs = todayStart.getTime();
   }
 
-  const currentTurma = normalizeTurma(turma) || normalizeTurma(activeShift?.turma) || normalizeTurma(currentUser?.turma) || 'C';
+  const currentTurma = normalizeTurma(turma) || normalizeTurma(activeShift?.turma) || normalizeTurma(currentUser?.turma) || 'A';
 
   // Considerar estritamente apenas ocorrências do dia de HOJE
   const shiftIncidents = (localIncidents || []).filter(

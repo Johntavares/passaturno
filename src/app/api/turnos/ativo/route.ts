@@ -28,9 +28,7 @@ export async function GET(request: Request) {
         .in('status', ['EM_ANDAMENTO', 'AGUARDANDO', 'PENDENCIA_PROXIMO_TURNO'])
         .order('prioridade', { ascending: false });
 
-      const filteredInc = (openIncidents || []).filter(
-        (i) => !turma || normalizeTurma(i.turma) === turma
-      );
+      const filteredInc = openIncidents || [];
 
       return NextResponse.json({
         activeShift: active,
@@ -50,17 +48,22 @@ export async function GET(request: Request) {
       where: { status: 'ATIVO', ...(turma ? { turma: turmaInFilter(turma) } : {}) },
       orderBy: { criadoEm: 'desc' },
     });
+
+    const openIncidents = await prisma.incident.findMany({
+      where: { status: { in: ['EM_ANDAMENTO', 'AGUARDANDO', 'PENDENCIA_PROXIMO_TURNO'] } },
+      orderBy: { criadoEm: 'desc' },
+    });
+
     return NextResponse.json({
       activeShift,
       lastClosedShift: null,
-      openIncidentsCount: 0,
-      criticalCount: 0,
-      inheritedCount: 0,
-      openIncidents: [],
+      openIncidentsCount: openIncidents.length,
+      criticalCount: openIncidents.filter((i) => i.prioridade === 'CRITICA').length,
+      inheritedCount: openIncidents.filter((i) => i.isPendenciaHerdada).length,
+      openIncidents,
     });
   } catch (error) {
     console.error('Erro ao buscar turno ativo no Supabase:', error);
     return NextResponse.json({ error: 'Erro ao buscar turno ativo' }, { status: 500 });
   }
 }
-

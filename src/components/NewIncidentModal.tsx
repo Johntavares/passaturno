@@ -199,7 +199,7 @@ export const NewIncidentModal: React.FC<NewIncidentModalProps> = ({
             motivoEspera: motivoEspera || null,
             proximaAcao: proximaAcao || null,
             observacao: observacao || null,
-            turma: turma || 'C',
+            turma: turma || currentUser?.turma || 'A',
             divisaoAtuacao: divisaoAtuacao || 'MONITORAMENTO',
             isPendenciaHerdada: status === 'PENDENCIA_PROXIMO_TURNO',
             atualizadoEm: new Date().toISOString(),
@@ -254,7 +254,7 @@ export const NewIncidentModal: React.FC<NewIncidentModalProps> = ({
             motivoEspera,
             proximaAcao,
             observacao,
-            turma: turma || 'C',
+            turma: turma || currentUser?.turma || 'A',
             divisaoAtuacao,
           }),
         });
