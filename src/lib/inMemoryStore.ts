@@ -498,15 +498,17 @@ export const inMemoryStore = {
     globalStore.inMemoryShiftsByTurma[cleanTurma] = newShift;
     globalStore.inMemoryShift = newShift;
 
-    // Herdar pendências APENAS da turma que está iniciando turno
+    // Vincular e herdar pendências da turma que está iniciando turno (sem alterar status EM_ANDAMENTO)
     if (globalStore.inMemoryIncidents) {
       globalStore.inMemoryIncidents = globalStore.inMemoryIncidents.map((inc) => {
         const incTurma = (inc.turma || '').toUpperCase().trim();
-        if (incTurma === cleanTurma && inc.status !== 'FINALIZADO' && inc.status !== 'RETROAGIDO') {
+        if ((!incTurma || incTurma === cleanTurma) && inc.status !== 'FINALIZADO' && inc.status !== 'RETROAGIDO') {
           return {
             ...inc,
+            shiftId: newShift.id,
+            turma: cleanTurma,
             isPendenciaHerdada: true,
-            status: 'PENDENCIA_PROXIMO_TURNO',
+            status: inc.status === 'PENDENCIA_PROXIMO_TURNO' ? 'EM_ANDAMENTO' : inc.status,
           };
         }
         return inc;

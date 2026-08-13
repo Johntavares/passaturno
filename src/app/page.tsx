@@ -895,33 +895,35 @@ export default function Home() {
 
           const displayedIncidents = incidents.filter((item) => {
             const activeTurma = normalizeTurma(currentUser?.turma) || normalizeTurma(activeShift?.turma) || '';
-            const itemTurma = normalizeTurma(item.turma) || (item.turma || '').toUpperCase().trim();
+            const itemTurma = normalizeTurma(item.turma);
 
-            // Bloquear atendimentos finalizados de turnos passados no painel do turno ativo
-            if (item.status === 'FINALIZADO' && activeShift && item.shiftId && item.shiftId !== activeShift.id) {
-              return false;
-            }
-
-            // --- Pendência Herdada / Transferida para a minha turma ---
-            const isHerdadaParaMinhaTurma =
-              (item.isPendenciaHerdada === true || item.status === 'PENDENCIA_PROXIMO_TURNO') &&
-              activeTurma !== '' &&
-              itemTurma === activeTurma &&
-              item.status !== 'FINALIZADO' &&
-              item.status !== 'RETROAGIDO';
-
-            // --- Atendimento do turno ativo atual ---
+            // 1. Atendimento vinculado ao turno ativo atual
             const isDoTurnoAtivo =
               activeShift !== null &&
               typeof item.shiftId === 'string' &&
               item.shiftId === activeShift.id;
 
-            // Regra principal: se não pertence ao turno ativo nem é pendência herdada para a turma, bloqueia
-            if (!isDoTurnoAtivo && !isHerdadaParaMinhaTurma) {
-              return false;
+            // 2. Ocorrência em aberto direcionada para a turma atual (NUNCA SUMIR OCORRÊNCIAS EM ABERTO)
+            const isOcorrenciaEmAberto =
+              item.status === 'EM_ANDAMENTO' ||
+              item.status === 'AGUARDANDO' ||
+              item.status === 'PENDENCIA_PROXIMO_TURNO' ||
+              item.isPendenciaHerdada === true ||
+              item.noCodigo === true;
+
+            const matchesTurma =
+              activeTurma === '' ||
+              itemTurma === activeTurma ||
+              !itemTurma;
+
+            // 3. Regra de finalizados/retroagidos: exibe se for do turno ativo ou se foi finalizado HOJE para a mesma turma
+            if (item.status === 'FINALIZADO' || item.status === 'RETROAGIDO') {
+              if (isDoTurnoAtivo) return true;
+              return isIncidentFromToday(item) && matchesTurma;
             }
 
-            return true;
+            // Para qualquer ocorrência em aberto: exibe se for do turno ativo OU se pertencer à turma ativa
+            return isDoTurnoAtivo || (isOcorrenciaEmAberto && matchesTurma);
           });
 
 
