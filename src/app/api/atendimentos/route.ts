@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { supabase } from '@/lib/supabaseClient';
 import { inMemoryStore } from '@/lib/inMemoryStore';
 import { normalizeTurma, turmaInFilter, getNextTurma } from '@/lib/turma';
 
@@ -13,61 +14,47 @@ export async function GET(request: Request) {
   const turma = normalizeTurma(searchParams.get('turma'));
 
   try {
-    const where: any = {};
+    const { data: supaIncidents, error: supaErr } = await supabase
+      .from('Incident')
+      .select('*')
+      .order('criadoEm', { ascending: false });
 
-    if (turma) {
-      where.turma = turmaInFilter(turma);
+    if (supaIncidents && supaIncidents.length > 0) {
+      let filtered = supaIncidents;
+      if (turma) {
+        filtered = filtered.filter((i) => normalizeTurma(i.turma) === turma);
+      }
+      if (status) {
+        filtered = filtered.filter((i) => i.status === status);
+      }
+      if (prioridade) {
+        filtered = filtered.filter((i) => i.prioridade === prioridade);
+      }
+      if (tag) {
+        filtered = filtered.filter((i) => i.tag && i.tag.toUpperCase().includes(tag.toUpperCase()));
+      }
+      if (search) {
+        const s = search.toUpperCase();
+        filtered = filtered.filter(
+          (i) =>
+            (i.tag && i.tag.toUpperCase().includes(s)) ||
+            (i.equipamentoNome && i.equipamentoNome.toUpperCase().includes(s)) ||
+            (i.falha && i.falha.toUpperCase().includes(s)) ||
+            (i.responsavel && i.responsavel.toUpperCase().includes(s))
+        );
+      }
+      return NextResponse.json(filtered);
     }
+  } catch (e) {
+    console.warn('Supabase REST GET warning:', e);
+  }
 
-    if (tag) {
-      where.tag = { contains: tag };
-    }
-
-    if (status) {
-      where.status = status;
-    }
-
-    if (prioridade) {
-      where.prioridade = prioridade;
-    }
-
-    if (search) {
-      where.OR = [
-        { tag: { contains: search } },
-        { equipamentoNome: { contains: search } },
-        { falha: { contains: search } },
-        { responsavel: { contains: search } },
-        { area: { contains: search } },
-      ];
-    }
-
+  try {
     const incidents = await prisma.incident.findMany({
-      where,
-      include: {
-        equipment: true,
-        historico: {
-          orderBy: { dataHora: 'desc' },
-        },
-      },
+      where: turma ? { turma: turmaInFilter(turma) } : {},
       orderBy: { criadoEm: 'desc' },
     });
-
-    // Mescla atendimentos criados via fallback em memória (ex.: falha transitoria de conexao no POST),
-    // para que eles continuem visiveis no painel mesmo quando o GET le o banco com sucesso.
-    const memIncidents = inMemoryStore
-      .getIncidents({ tag, status, prioridade, search })
-      .filter(
-        (i) =>
-          i.isFallback &&
-          !incidents.some((db) => db.id === i.id) &&
-          (!turma || normalizeTurma(i.turma) === turma)
-      );
-
-    const merged = [...incidents, ...memIncidents].sort(
-      (a, b) => new Date(b.criadoEm).getTime() - new Date(a.criadoEm).getTime()
-    );
-
-    return NextResponse.json(merged);
+    return NextResponse.json(incidents);
   } catch (error) {
     console.warn('Fallback to inMemoryStore for GET /api/atendimentos:', error);
     const incidents = inMemoryStore.getIncidents({ tag, status, prioridade, search });
