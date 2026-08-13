@@ -358,19 +358,20 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
     const cleanTurma = normalizeTurma(turmaKey);
     if (!cleanTurma || cleanTurma === 'TODAS') return null;
 
-    if (allActiveShifts[cleanTurma]?.responsavelNome) {
-      return allActiveShifts[cleanTurma].responsavelNome;
+    const shiftResp = allActiveShifts[cleanTurma]?.responsavelNome || (activeShift && normalizeTurma(activeShift.turma) === cleanTurma ? activeShift.responsavelNome : null);
+    if (shiftResp && !shiftResp.toLowerCase().startsWith('operador turma') && shiftResp.toLowerCase() !== 'operador') {
+      return shiftResp;
     }
-    if (activeShift && normalizeTurma(activeShift.turma) === cleanTurma && activeShift.responsavelNome) {
-      return activeShift.responsavelNome;
-    }
-    const userForTurma = userList.find((u) => normalizeTurma(u.turma) === cleanTurma);
-    if (userForTurma?.nome) return userForTurma.nome;
 
     const lastTechIncident = incidents.find(
-      (i) => normalizeTurma(i.turma) === cleanTurma && i.responsavel && !i.responsavel.toLowerCase().startsWith('operador')
+      (i) => normalizeTurma(i.turma) === cleanTurma && i.responsavel && !i.responsavel.toLowerCase().startsWith('operador turma')
     );
-    return lastTechIncident?.responsavel || null;
+    if (lastTechIncident?.responsavel) return lastTechIncident.responsavel;
+
+    const userForTurma = userList.find((u) => normalizeTurma(u.turma) === cleanTurma && u.nome && !u.nome.toLowerCase().startsWith('operador turma'));
+    if (userForTurma?.nome) return userForTurma.nome;
+
+    return shiftResp || 'Técnico de Automação';
   };
 
   const activeShiftFromApi = Object.values(allActiveShifts).find((s) => s?.status === 'ATIVO') || activeShift;

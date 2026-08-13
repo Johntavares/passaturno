@@ -199,6 +199,36 @@ export default function Home() {
             (a, b) => new Date(b.criadoEm || 0).getTime() - new Date(a.criadoEm || 0).getTime()
           );
 
+          // Sincronização proativa: envia qualquer ocorrência criada localmente para o Supabase
+          if (localOnlyRecent.length > 0) {
+            (async () => {
+              for (const localItem of localOnlyRecent) {
+                try {
+                  await supabase
+                    .from('Incident')
+                    .insert([{
+                      tag: localItem.tag,
+                      equipamentoNome: localItem.equipamentoNome || `Equipamento ${localItem.tag}`,
+                      area: localItem.area || 'Frota Mina',
+                      tipoFalha: localItem.tipoFalha || 'Comunicação',
+                      falha: localItem.falha,
+                      sintoma: localItem.sintoma || null,
+                      dataHoraParada: localItem.dataHoraParada ? new Date(localItem.dataHoraParada).toISOString() : new Date().toISOString(),
+                      prioridade: localItem.prioridade || 'MEDIA',
+                      status: localItem.status || 'EM_ANDAMENTO',
+                      noCodigo: localItem.noCodigo === true,
+                      responsavel: localItem.responsavel || 'Operador',
+                      turma: localItem.turma || 'C',
+                      divisaoAtuacao: localItem.divisaoAtuacao || 'MONITORAMENTO',
+                      isPendenciaHerdada: localItem.isPendenciaHerdada === true,
+                    }]);
+                } catch (e) {
+                  console.warn('Auto-sync to Supabase warning:', e);
+                }
+              }
+            })();
+          }
+
           saveLocalCache(merged, 'GLOBAL');
           return merged;
         });
