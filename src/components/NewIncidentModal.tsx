@@ -171,9 +171,42 @@ export const NewIncidentModal: React.FC<NewIncidentModalProps> = ({
         ? new Date(dataHoraParada).toISOString()
         : new Date().toISOString();
 
-      // 3. Registrar o atendimento
       let createdIncident: any = null;
 
+      // 3. Registrar o atendimento diretamente no Supabase DB em tempo real (garante replicação instantânea)
+      try {
+        const { data: supaInc, error: supaErr } = await supabase
+          .from('Incident')
+          .insert([{
+            tag: formattedTag,
+            equipamentoNome: equipamentoNome.trim() || `Equipamento ${formattedTag}`,
+            area: area || 'Frota Mina',
+            tipoFalha: tipoFalha || 'Comunicação',
+            falha,
+            sintoma: sintoma || null,
+            dataHoraParada: safeDataHoraParada,
+            previsaoLiberacao: previsaoLiberacao.trim() || null,
+            prioridade: prioridade || 'MEDIA',
+            status: status || 'EM_ANDAMENTO',
+            noCodigo: status === 'EM_ANDAMENTO' && noCodigo,
+            responsavel: effectiveResponsavel,
+            motivoEspera: motivoEspera || null,
+            proximaAcao: proximaAcao || null,
+            observacao: observacao || null,
+            turma: turma || 'C',
+            divisaoAtuacao: divisaoAtuacao || 'MONITORAMENTO',
+            isPendenciaHerdada: status === 'PENDENCIA_PROXIMO_TURNO',
+          }])
+          .select('*')
+          .single();
+
+        if (supaInc) createdIncident = supaInc;
+        if (supaErr) console.warn('Supabase direct insert note:', supaErr);
+      } catch (e) {
+        console.warn('Supabase direct insert exception:', e);
+      }
+
+      // 4. Envia também via API em segundo plano
       try {
         const res = await fetch('/api/atendimentos', {
           method: 'POST',
@@ -194,51 +227,16 @@ export const NewIncidentModal: React.FC<NewIncidentModalProps> = ({
             motivoEspera,
             proximaAcao,
             observacao,
-            turma,
+            turma: turma || 'C',
             divisaoAtuacao,
           }),
         });
 
-        if (res.ok) {
+        if (res.ok && !createdIncident) {
           createdIncident = await res.json();
         }
       } catch (e) {
-        console.warn('API POST /api/atendimentos error, falling back to direct Supabase client write:', e);
-      }
-
-      // Se a API falhou ou atrasou, grava diretamente no Supabase via WebSockets/REST!
-      if (!createdIncident || !createdIncident.id) {
-        try {
-          const { data, error: supaErr } = await supabase
-            .from('Incident')
-            .insert([{
-              tag: formattedTag,
-              equipamentoNome: equipamentoNome.trim() || `Equipamento ${formattedTag}`,
-              area: area || 'Frota Mina',
-              tipoFalha: tipoFalha || 'Comunicação',
-              falha,
-              sintoma: sintoma || null,
-              dataHoraParada: safeDataHoraParada,
-              previsaoLiberacao: previsaoLiberacao.trim() || null,
-              prioridade: prioridade || 'MEDIA',
-              status: status || 'EM_ANDAMENTO',
-              noCodigo: status === 'EM_ANDAMENTO' && noCodigo,
-              responsavel: effectiveResponsavel,
-              motivoEspera: motivoEspera || null,
-              proximaAcao: proximaAcao || null,
-              observacao: observacao || null,
-              turma: turma || 'A',
-              divisaoAtuacao: divisaoAtuacao || 'MONITORAMENTO',
-              isPendenciaHerdada: status === 'PENDENCIA_PROXIMO_TURNO',
-            }])
-            .select('*')
-            .single();
-
-          if (data) createdIncident = data;
-          if (supaErr) console.error('Supabase direct insert error:', supaErr);
-        } catch (supaErr2) {
-          console.error('Supabase insert exception:', supaErr2);
-        }
+        console.warn('API POST /api/atendimentos note:', e);
       }
 
       if (!createdIncident) {
