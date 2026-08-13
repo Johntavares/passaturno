@@ -951,7 +951,12 @@ export default function Home() {
           };
 
           const displayedIncidents = incidents.filter((item) => {
-            const activeTurma = normalizeTurma(currentUser?.turma) || normalizeTurma(activeShift?.turma) || '';
+            // Se o filtro do topo estiver em 'TODAS' ou não definido, exibe todas as ocorrências em aberto sem bloquear por turma
+            const isFilterTodas = selectedTurmaFilter === 'TODAS' || !selectedTurmaFilter;
+            const filterTurma = isFilterTodas
+              ? ''
+              : (normalizeTurma(selectedTurmaFilter) || normalizeTurma(currentUser?.turma) || normalizeTurma(activeShift?.turma) || '');
+
             const itemTurma = normalizeTurma(item.turma);
 
             // 1. Atendimento vinculado ao turno ativo atual
@@ -960,7 +965,7 @@ export default function Home() {
               typeof item.shiftId === 'string' &&
               item.shiftId === activeShift.id;
 
-            // 2. Ocorrência em aberto direcionada para a turma atual (NUNCA SUMIR OCORRÊNCIAS EM ABERTO)
+            // 2. Ocorrência em aberto (EM_ANDAMENTO, AGUARDANDO, PENDENCIA_PROXIMO_TURNO, NO_CODIGO)
             const isOcorrenciaEmAberto =
               item.status === 'EM_ANDAMENTO' ||
               item.status === 'AGUARDANDO' ||
@@ -969,17 +974,17 @@ export default function Home() {
               item.noCodigo === true;
 
             const matchesTurma =
-              activeTurma === '' ||
-              itemTurma === activeTurma ||
+              filterTurma === '' ||
+              itemTurma === filterTurma ||
               !itemTurma;
 
-            // 3. Regra de finalizados/retroagidos: exibe se for do turno ativo ou se foi finalizado HOJE para a mesma turma
+            // 3. Regra de finalizados/retroagidos: exibe se for do turno ativo ou se foi finalizado HOJE
             if (item.status === 'FINALIZADO' || item.status === 'RETROAGIDO') {
               if (isDoTurnoAtivo) return true;
               return isIncidentFromToday(item) && matchesTurma;
             }
 
-            // Para qualquer ocorrência em aberto: exibe se for do turno ativo OU se pertencer à turma ativa
+            // Para qualquer ocorrência em aberto: NUNCA SUMIR OCORRÊNCIAS EM ABERTO!
             return isDoTurnoAtivo || (isOcorrenciaEmAberto && matchesTurma);
           });
 
