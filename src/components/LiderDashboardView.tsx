@@ -289,7 +289,7 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
   };
 
   // Seletor de Turma e Mapeamento de Turnos Ativos de Todas as Turmas
-  const [selectedKanbanTurma, setSelectedKanbanTurma] = useState<string>('AUTO');
+  const [selectedKanbanTurma, setSelectedKanbanTurma] = useState<string>('TODAS');
   const [allActiveShifts, setAllActiveShifts] = useState<Record<string, any>>({});
 
   useEffect(() => {
@@ -889,8 +889,8 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
                   {/* SELETOR RÁPIDO DE TURMAS */}
                   <div className="flex items-center gap-1.5 flex-wrap">
                     {[
+                      { id: 'TODAS', label: 'Todas as Turmas' },
                       { id: 'AUTO', label: `Turma Ativa (${currentActiveTurma})` },
-                      { id: 'TODAS', label: 'Todas' },
                       { id: 'A', label: 'Turma A' },
                       { id: 'B', label: 'Turma B' },
                       { id: 'C', label: 'Turma C' },
