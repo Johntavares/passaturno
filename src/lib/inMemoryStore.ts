@@ -236,12 +236,12 @@ if (!globalStore.inMemoryIncidents) {
 if (!globalStore.inMemoryShift) {
   globalStore.inMemoryShift = {
     id: 'shift-active-1',
-    equipe: 'Automação & CCO',
-    turma: 'A',
+    equipe: 'Automação C',
+    turma: 'C',
     tipoTurno: 'Diurno',
-    escala: '2x3',
+    escala: '3x3',
     horarioTurno: '07h às 19h',
-    responsavelNome: 'John Tavares',
+    responsavelNome: 'Operador Turma C',
     data: new Date().toISOString().split('T')[0],
     horaInicio: new Date().toISOString(),
     status: 'ATIVO',
