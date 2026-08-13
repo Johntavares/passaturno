@@ -41,16 +41,8 @@ export const CommentModal: React.FC<CommentModalProps> = ({
     onClose();
   };
 
-  // Filtrar histórico relevante de anotações e atualizações
-  const notesHistory = incident.historico
-    ? incident.historico.filter(
-        (h) =>
-          h.tipoEvento === 'ATUALIZACAO' ||
-          h.tipoEvento === 'TRANSFERENCIA_TURNO' ||
-          h.descricao.toLowerCase().includes('anotação') ||
-          h.descricao.toLowerCase().includes('observação')
-      )
-    : [];
+  // Histórico completo de anotações e atualizações do atendimento
+  const notesHistory = incident.historico ? incident.historico : [];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm overflow-y-auto">

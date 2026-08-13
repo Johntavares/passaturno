@@ -12,12 +12,16 @@ export async function GET(
   try {
     const { data: supaIncident } = await supabase
       .from('Incident')
-      .select('*')
+      .select('*, IncidentHistory(*), historico:IncidentHistory(*)')
       .eq('id', id)
       .single();
 
     if (supaIncident) {
-      return NextResponse.json(supaIncident);
+      const hist = (supaIncident.historico && supaIncident.historico.length > 0) ? supaIncident.historico : (supaIncident.IncidentHistory || []);
+      if (Array.isArray(hist)) {
+        hist.sort((a: any, b: any) => new Date(b.dataHora).getTime() - new Date(a.dataHora).getTime());
+      }
+      return NextResponse.json({ ...supaIncident, historico: hist });
     }
   } catch (e) {
     console.warn('Supabase REST GET id warning:', e);
@@ -58,7 +62,7 @@ export async function PATCH(
     try {
       const { data: supaInc } = await supabase
         .from('Incident')
-        .select('*')
+        .select('*, IncidentHistory(*), historico:IncidentHistory(*)')
         .eq('id', id)
         .single();
       if (supaInc) currentIncident = supaInc;
@@ -135,34 +139,39 @@ export async function PATCH(
       if (body.turma) updateData.turma = normalizeTurma(body.turma) || body.turma;
       if (body.divisaoAtuacao) updateData.divisaoAtuacao = body.divisaoAtuacao;
 
-      // 1. Atualizar Supabase REST imediatamente (fonte de verdade em tempo real)
+      // 1. Inserir histórico no Supabase REST primeiro
+      try {
+        await supabase
+          .from('IncidentHistory')
+          .insert([{
+            id: typeof crypto !== 'undefined' && crypto.randomUUID
+              ? crypto.randomUUID()
+              : `hist-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            incidentId: id,
+            tipoEvento: eventType,
+            descricao: logDescription || defaultLogDesc,
+            usuario: logUsuario || responsavel || currentIncident.responsavel,
+            dataHora: new Date().toISOString(),
+          }]);
+      } catch (eHist) {
+        console.warn('Supabase REST History insert warning:', eHist);
+      }
+
+      // 2. Atualizar Supabase REST imediatamente e retornar com historico completo
       let updatedIncident: any = null;
       try {
         const { data: supaUpdated, error: supaErr } = await supabase
           .from('Incident')
           .update(updateData)
           .eq('id', id)
-          .select('*')
+          .select('*, IncidentHistory(*), historico:IncidentHistory(*)')
           .single();
 
         if (supaUpdated) {
+          if (supaUpdated.historico && Array.isArray(supaUpdated.historico)) {
+            supaUpdated.historico.sort((a: any, b: any) => new Date(b.dataHora).getTime() - new Date(a.dataHora).getTime());
+          }
           updatedIncident = supaUpdated;
-
-          // Registrar histórico no Supabase REST
-          try {
-            await supabase
-              .from('IncidentHistory')
-              .insert([{
-                id: typeof crypto !== 'undefined' && crypto.randomUUID
-                  ? crypto.randomUUID()
-                  : `hist-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-                incidentId: id,
-                tipoEvento: eventType,
-                descricao: logDescription || defaultLogDesc,
-                usuario: logUsuario || responsavel || currentIncident.responsavel,
-                dataHora: new Date().toISOString(),
-              }]);
-          } catch (eHist) {}
         }
       } catch (eSupa) {
         console.warn('Supabase REST PATCH warning:', eSupa);

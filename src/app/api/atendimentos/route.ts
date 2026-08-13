@@ -15,7 +15,7 @@ export async function GET(request: Request) {
   try {
     const { data: supaIncidents, error: supaErr } = await supabase
       .from('Incident')
-      .select('*')
+      .select('*, historico:IncidentHistory(*)')
       .order('criadoEm', { ascending: false });
 
     if (supaIncidents && supaIncidents.length > 0) {
