@@ -205,15 +205,41 @@ export default function Home() {
       if (shiftRes.ok) {
         const shiftData = await shiftRes.json();
         const activeS = shiftData.activeShift || null;
-        if (userTurmaClean && userTurmaClean !== 'GERAL' && activeS && !isLeaderUser) {
-          const shiftTurmaClean = normalizeTurma(activeS.turma);
-          if (shiftTurmaClean && shiftTurmaClean !== userTurmaClean) {
-            setActiveShift(null);
-          } else {
-            setActiveShift(activeS);
+        if (activeS) {
+          setActiveShift(activeS);
+          if (typeof window !== 'undefined') {
+            try {
+              localStorage.setItem(`passaturno-active-shift-${normalizeTurma(activeS.turma) || 'A'}`, JSON.stringify(activeS));
+              localStorage.setItem('passaturno-active-shift-current', JSON.stringify(activeS));
+            } catch (e) {}
           }
         } else {
-          setActiveShift(activeS);
+          // Se a resposta do servidor for nula (ex.: falha de rede ou limite de cota do Neon DB excedido), preserva o turno ativo local
+          let cachedShift: ShiftType | null = null;
+          if (typeof window !== 'undefined') {
+            try {
+              const saved = localStorage.getItem(`passaturno-active-shift-${userTurmaClean || 'A'}`) || localStorage.getItem('passaturno-active-shift-current');
+              if (saved) cachedShift = JSON.parse(saved);
+            } catch (e) {}
+          }
+          if (cachedShift && cachedShift.status === 'ATIVO') {
+            setActiveShift(cachedShift);
+          } else {
+            setActiveShift(null);
+          }
+        }
+      } else {
+        let cachedShift: ShiftType | null = null;
+        if (typeof window !== 'undefined') {
+          try {
+            const saved = localStorage.getItem(`passaturno-active-shift-${userTurmaClean || 'A'}`) || localStorage.getItem('passaturno-active-shift-current');
+            if (saved) cachedShift = JSON.parse(saved);
+          } catch (e) {}
+        }
+        if (cachedShift && cachedShift.status === 'ATIVO') {
+          setActiveShift(cachedShift);
+        } else {
+          setActiveShift(null);
         }
       }
     } catch (err) {

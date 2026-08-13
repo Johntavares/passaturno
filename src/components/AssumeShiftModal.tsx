@@ -66,6 +66,27 @@ export const AssumeShiftModal: React.FC<AssumeShiftModalProps> = ({
       : currentUser?.turma || 'A';
 
     try {
+      const newShiftObj = {
+        id: `shift-${Date.now()}`,
+        equipe,
+        turma: turmaEnvio,
+        escala: escala || '3x3',
+        responsavelNome,
+        data: new Date().toISOString().split('T')[0],
+        horaInicio: new Date().toISOString(),
+        status: 'ATIVO',
+        observacoes,
+      };
+
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem(`passaturno-active-shift-${turmaEnvio}`, JSON.stringify(newShiftObj));
+          localStorage.setItem('passaturno-active-shift-current', JSON.stringify(newShiftObj));
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
       const res = await fetch('/api/turnos/assumir', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

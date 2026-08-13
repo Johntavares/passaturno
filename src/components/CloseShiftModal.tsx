@@ -265,6 +265,8 @@ export const CloseShiftModal: React.FC<CloseShiftModalProps> = ({
         try {
           localStorage.removeItem('passaturno-active-shift-v2');
           localStorage.removeItem('passaturno-active-shift');
+          localStorage.removeItem('passaturno-active-shift-current');
+          localStorage.removeItem(`passaturno-active-shift-${turma}`);
         } catch (e) {
           console.error(e);
         }
