@@ -444,7 +444,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                 <option value="PENDENCIA_PROXIMO_TURNO">🔵 Pendência Herdada</option>
               </select>
 
-              {item.status === 'EM_ANDAMENTO' && (
+              {!isFinished && (
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">
                     Fila:
@@ -625,7 +625,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                 </select>
               </div>
 
-              {item.status === 'EM_ANDAMENTO' && (
+              {!isFinished && (
                 <div className="w-full">
                   <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">
                     Fila de Atendimento

@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { supabase } from '@/lib/supabaseClient';
 import { normalizeTurma, getNextTurma } from '@/lib/turma';
 
 export async function GET(
@@ -8,6 +9,20 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+  try {
+    const { data: supaIncident } = await supabase
+      .from('Incident')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (supaIncident) {
+      return NextResponse.json(supaIncident);
+    }
+  } catch (e) {
+    console.warn('Supabase REST GET id warning:', e);
+  }
+
   try {
     const incident = await prisma.incident.findUnique({
       where: { id },
@@ -38,9 +53,20 @@ export async function PATCH(
   const body = await request.json();
 
   try {
-    const currentIncident = await prisma.incident.findUnique({
-      where: { id },
-    });
+    // Buscar atendimento atual
+    let currentIncident: any = null;
+    try {
+      const { data: supaInc } = await supabase
+        .from('Incident')
+        .select('*')
+        .eq('id', id)
+        .single();
+      if (supaInc) currentIncident = supaInc;
+    } catch (e) {}
+
+    if (!currentIncident) {
+      currentIncident = await prisma.incident.findUnique({ where: { id } });
+    }
 
     if (currentIncident) {
       const {
@@ -56,7 +82,10 @@ export async function PATCH(
         logUsuario,
       } = body;
 
-      const updateData: any = {};
+      const updateData: any = {
+        atualizadoEm: new Date().toISOString(),
+      };
+
       let eventType = 'ATUALIZACAO';
       let defaultLogDesc = 'Atendimento atualizado.';
 
@@ -71,12 +100,12 @@ export async function PATCH(
             updateData.turma = getNextTurma(currentIncident.turma);
           }
         } else if (status === 'FINALIZADO') {
-          updateData.dataHoraLiberacao = new Date();
+          updateData.dataHoraLiberacao = new Date().toISOString();
           eventType = 'LIBERACAO';
           defaultLogDesc = `Equipamento liberado por ${logUsuario || responsavel || currentIncident.responsavel}.`;
         } else if (status === 'RETROAGIDO') {
           if (!currentIncident.dataHoraLiberacao) {
-            updateData.dataHoraLiberacao = new Date();
+            updateData.dataHoraLiberacao = new Date().toISOString();
           }
           eventType = 'RETROACAO';
           defaultLogDesc = `Atendimento retroagido por ${logUsuario || responsavel || currentIncident.responsavel} (Constatado que não era falha de automação).`;
@@ -96,34 +125,81 @@ export async function PATCH(
       if (observacao !== undefined) updateData.observacao = observacao;
       if (previsaoLiberacao !== undefined) updateData.previsaoLiberacao = previsaoLiberacao;
       if (body.isPendenciaHerdada !== undefined) updateData.isPendenciaHerdada = body.isPendenciaHerdada;
-      if (body.noCodigo !== undefined) updateData.noCodigo = body.noCodigo === true;
+      if (body.noCodigo !== undefined) {
+        updateData.noCodigo = body.noCodigo === true;
+        if (body.noCodigo === true && (!status || status === 'EM_ANDAMENTO')) {
+          updateData.status = 'EM_ANDAMENTO';
+          defaultLogDesc = `Atendimento movido para a Fila de No Código por ${logUsuario || responsavel || currentIncident.responsavel}.`;
+        }
+      }
       if (body.turma) updateData.turma = normalizeTurma(body.turma) || body.turma;
       if (body.divisaoAtuacao) updateData.divisaoAtuacao = body.divisaoAtuacao;
 
+      // 1. Atualizar Supabase REST imediatamente (fonte de verdade em tempo real)
+      let updatedIncident: any = null;
+      try {
+        const { data: supaUpdated, error: supaErr } = await supabase
+          .from('Incident')
+          .update(updateData)
+          .eq('id', id)
+          .select('*')
+          .single();
 
-      const updatedIncident = await prisma.incident.update({
-        where: { id },
-        data: {
-          ...updateData,
-          historico: {
-            create: {
-              tipoEvento: eventType as any,
-              descricao: logDescription || defaultLogDesc,
-              usuario: logUsuario || responsavel || currentIncident.responsavel,
+        if (supaUpdated) {
+          updatedIncident = supaUpdated;
+
+          // Registrar histórico no Supabase REST
+          try {
+            await supabase
+              .from('IncidentHistory')
+              .insert([{
+                id: typeof crypto !== 'undefined' && crypto.randomUUID
+                  ? crypto.randomUUID()
+                  : `hist-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                incidentId: id,
+                tipoEvento: eventType,
+                descricao: logDescription || defaultLogDesc,
+                usuario: logUsuario || responsavel || currentIncident.responsavel,
+                dataHora: new Date().toISOString(),
+              }]);
+          } catch (eHist) {}
+        }
+      } catch (eSupa) {
+        console.warn('Supabase REST PATCH warning:', eSupa);
+      }
+
+      // 2. Atualizar Prisma PostgreSQL
+      try {
+        const prismaUpdated = await prisma.incident.update({
+          where: { id },
+          data: {
+            ...updateData,
+            dataHoraLiberacao: updateData.dataHoraLiberacao ? new Date(updateData.dataHoraLiberacao) : undefined,
+            historico: {
+              create: {
+                tipoEvento: eventType as any,
+                descricao: logDescription || defaultLogDesc,
+                usuario: logUsuario || responsavel || currentIncident.responsavel,
+              },
             },
           },
-        },
-        include: {
-          historico: {
-            orderBy: { dataHora: 'desc' },
+          include: {
+            historico: {
+              orderBy: { dataHora: 'desc' },
+            },
           },
-        },
-      });
+        });
+        if (!updatedIncident) updatedIncident = prismaUpdated;
+      } catch (ePrisma) {
+        console.warn('Prisma PATCH warning:', ePrisma);
+      }
 
-      return NextResponse.json(updatedIncident);
+      if (updatedIncident) {
+        return NextResponse.json(updatedIncident);
+      }
     }
   } catch (error) {
-    console.error('Erro ao atualizar atendimento no Supabase:', error);
+    console.error('Erro ao atualizar atendimento:', error);
   }
 
   return NextResponse.json({ error: 'Erro ao atualizar atendimento' }, { status: 500 });
@@ -135,13 +211,20 @@ export async function DELETE(
 ) {
   const { id } = await params;
   try {
-    await prisma.incident.delete({
-      where: { id },
-    });
+    // Deletar do Supabase REST
+    try {
+      await supabase.from('IncidentHistory').delete().eq('incidentId', id);
+      await supabase.from('Incident').delete().eq('id', id);
+    } catch (eSupa) {}
+
+    // Deletar do Prisma
+    try {
+      await prisma.incident.delete({ where: { id } });
+    } catch (ePrisma) {}
+
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Erro ao excluir atendimento no Supabase:', error);
+    console.error('Erro ao excluir atendimento:', error);
     return NextResponse.json({ error: 'Erro ao excluir atendimento' }, { status: 500 });
   }
 }
-
