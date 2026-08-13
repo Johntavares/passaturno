@@ -63,8 +63,6 @@ export async function POST(request: Request) {
 
     if (!isLeaderUser && userTurma) {
       try {
-        const { inMemoryStore } = await import('@/lib/inMemoryStore');
-
         const activeShiftTurma = await prisma.shift.findFirst({
           where: { status: 'ATIVO', turma: turmaInFilter(userTurma) },
           orderBy: { criadoEm: 'desc' },
@@ -77,14 +75,6 @@ export async function POST(request: Request) {
           const escala = user.escala || '3x3';
           const diaEscala = user.diaEscala || '1º Dia';
           const observacoes = `Turno assumido automaticamente no login. Escala: ${escala} (${diaEscala}).`;
-
-          inMemoryStore.startShift({
-            equipe,
-            responsavelNome,
-            observacoes,
-            turma: userTurma,
-            escala,
-          });
 
           await prisma.shift.create({
             data: {

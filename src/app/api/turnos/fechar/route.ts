@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { inMemoryStore } from '@/lib/inMemoryStore';
 import { normalizeTurma, turmaInFilter } from '@/lib/turma';
 
 export async function POST(request: Request) {
@@ -22,9 +21,7 @@ export async function POST(request: Request) {
       pendenciasAcoes,
     } = body;
 
-    // Encerra o turno na memória do servidor
-    inMemoryStore.closeShift();
-
+    // Encerra o turno no banco de dados (Supabase)
     try {
       const turmaTurno = normalizeTurma(turma);
       const turmaWhere = turmaTurno ? { turma: turmaInFilter(turmaTurno) } : {};

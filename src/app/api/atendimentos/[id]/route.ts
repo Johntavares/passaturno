@@ -1,7 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { inMemoryStore } from '@/lib/inMemoryStore';
 import { normalizeTurma, getNextTurma } from '@/lib/turma';
 
 export async function GET(
@@ -24,13 +23,10 @@ export async function GET(
       return NextResponse.json(incident);
     }
   } catch (error) {
-    console.warn('Fallback to inMemoryStore for GET /api/atendimentos/[id]:', error);
+    console.error('Erro ao buscar atendimento no Supabase:', error);
+    return NextResponse.json({ error: 'Erro ao buscar atendimento' }, { status: 500 });
   }
 
-  const memInc = inMemoryStore.findIncidentById(id);
-  if (memInc) {
-    return NextResponse.json(memInc);
-  }
   return NextResponse.json({ error: 'Atendimento não encontrado' }, { status: 404 });
 }
 
@@ -127,13 +123,9 @@ export async function PATCH(
       return NextResponse.json(updatedIncident);
     }
   } catch (error) {
-    console.warn('Fallback to inMemoryStore for PATCH /api/atendimentos/[id]:', error);
+    console.error('Erro ao atualizar atendimento no Supabase:', error);
   }
 
-  const updated = inMemoryStore.updateIncident(id, body);
-  if (updated) {
-    return NextResponse.json(updated);
-  }
   return NextResponse.json({ error: 'Erro ao atualizar atendimento' }, { status: 500 });
 }
 
@@ -146,11 +138,10 @@ export async function DELETE(
     await prisma.incident.delete({
       where: { id },
     });
+    return NextResponse.json({ success: true });
   } catch (error) {
-    console.warn('Fallback to inMemoryStore for DELETE /api/atendimentos/[id]:', error);
+    console.error('Erro ao excluir atendimento no Supabase:', error);
+    return NextResponse.json({ error: 'Erro ao excluir atendimento' }, { status: 500 });
   }
-
-  inMemoryStore.deleteIncident(id);
-  return NextResponse.json({ success: true });
 }
 

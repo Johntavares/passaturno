@@ -42,11 +42,12 @@ export async function GET() {
       });
       return NextResponse.json(seeded);
     } catch (e) {
-      return NextResponse.json(inMemoryStore.getEquipments());
+      console.error('Erro ao fazer auto-seed de equipamentos no Supabase:', e);
+      return NextResponse.json({ error: 'Erro ao buscar equipamentos' }, { status: 500 });
     }
   } catch (error) {
-    console.warn('Fallback to inMemoryStore for GET /api/equipamentos:', error);
-    return NextResponse.json(inMemoryStore.getEquipments());
+    console.error('Erro ao buscar equipamentos no Supabase:', error);
+    return NextResponse.json({ error: 'Erro ao buscar equipamentos' }, { status: 500 });
   }
 }
 
@@ -82,15 +83,8 @@ export async function POST(request: Request) {
 
       return NextResponse.json(equipment, { status: 201 });
     } catch (dbErr) {
-      console.warn('Fallback to inMemoryStore for POST /api/equipamentos:', dbErr);
-      const eq = inMemoryStore.addEquipment({
-        tag: formattedTag,
-        nome,
-        tipo,
-        area,
-        horimetroOpcional: horimetroOpcional ? parseFloat(horimetroOpcional) : null,
-      });
-      return NextResponse.json(eq, { status: 201 });
+      console.error('Erro ao cadastrar equipamento no Supabase:', dbErr);
+      return NextResponse.json({ error: 'Erro ao cadastrar equipamento' }, { status: 500 });
     }
   } catch (error) {
     console.error('Error creating equipment:', error);

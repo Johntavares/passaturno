@@ -89,40 +89,64 @@ export const AssumeShiftModal: React.FC<AssumeShiftModalProps> = ({
         }
       }
 
-      const res = await fetch('/api/turnos/assumir', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          equipe,
-          responsavelNome,
-          observacoes,
-          turma: turmaEnvio,
-          escala,
-        }),
-      });
-
-      // Grava diretamente no Supabase em paralelo para garantir ativação instantânea no banco remoto
+      let apiOk = false;
       try {
-        await supabase
-          .from('Shift')
-          .update({ status: 'ENCERRADO', horaFim: new Date().toISOString() })
-          .eq('status', 'ATIVO')
-          .eq('turma', turmaEnvio);
-
-        await supabase
-          .from('Shift')
-          .insert([{
+        const res = await fetch('/api/turnos/assumir', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
             equipe,
             responsavelNome,
-            turma: turmaEnvio,
-            escala: escala || '3x3',
-            data: new Date().toISOString().split('T')[0],
-            horaInicio: new Date().toISOString(),
-            status: 'ATIVO',
             observacoes,
-          }]);
-      } catch (supaShiftErr) {
-        console.error('Supabase direct shift insert error:', supaShiftErr);
+            turma: turmaEnvio,
+            escala,
+          }),
+        });
+        apiOk = res.ok;
+        if (apiOk) {
+          const apiShift = await res.json().catch(() => null);
+          if (apiShift?.id) {
+            newShiftObj.id = apiShift.id;
+            try {
+              localStorage.setItem(`passaturno-active-shift-${turmaEnvio}`, JSON.stringify(newShiftObj));
+              localStorage.setItem('passaturno-active-shift-current', JSON.stringify(newShiftObj));
+            } catch (e) {}
+          }
+        }
+      } catch (err) {
+        console.warn('API assumir turno falhou; tentando gravação direta no Supabase:', err);
+      }
+
+      // Fallback direto no Supabase apenas se a API (fonte principal) não gravou o turno,
+      // evitando criação duplicada de turnos ativos no banco.
+      if (!apiOk) {
+        try {
+          const insertId = typeof crypto !== 'undefined' && crypto.randomUUID
+            ? crypto.randomUUID()
+            : `shift-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+          await supabase
+            .from('Shift')
+            .update({ status: 'ENCERRADO', horaFim: new Date().toISOString() })
+            .eq('status', 'ATIVO')
+            .eq('turma', turmaEnvio);
+
+          await supabase
+            .from('Shift')
+            .insert([{
+              id: insertId,
+              equipe,
+              responsavelNome,
+              turma: turmaEnvio,
+              escala: escala || '3x3',
+              data: new Date().toISOString().split('T')[0],
+              horaInicio: new Date().toISOString(),
+              status: 'ATIVO',
+              observacoes,
+            }]);
+        } catch (supaShiftErr) {
+          console.error('Supabase direct shift insert error:', supaShiftErr);
+        }
       }
     } catch (err) {
       console.error('Erro ao assumir turno:', err);

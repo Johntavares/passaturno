@@ -162,76 +162,13 @@ export default function Home() {
 
       if (incRes.ok) {
         const rawInc = (await incRes.json()) as IncidentType[];
+        // O banco (Supabase) é a fonte de verdade: exibe exatamente o que ele retornou,
+        // removendo apenas IDs excluídos localmente. Nada é preservado/reinserido da cache local.
         const serverIncData = rawInc.filter(
           (item) => !deletedIds.has(item.id.toUpperCase().trim())
         );
-
-        setIncidents((prevLocal) => {
-          // Se o servidor retornou lista vazia mas o usuário tem itens locais em aberto, preserva os itens locais
-          if (serverIncData.length === 0 && prevLocal.length > 0) {
-            saveLocalCache(prevLocal, 'GLOBAL');
-            return prevLocal;
-          }
-
-          const nowTime = Date.now();
-
-          // Preserva ocorrências em aberto registradas localmente que ainda não foram retornadas pelo servidor
-          const localOnlyRecent = prevLocal.filter((localItem) => {
-            const isDeleted = deletedIds.has(localItem.id.toUpperCase().trim());
-            if (isDeleted) return false;
-
-            const existsInServer = serverIncData.some(
-              (srv) => srv.id === localItem.id || (srv.tag.toUpperCase().trim() === localItem.tag.toUpperCase().trim() && srv.falha === localItem.falha)
-            );
-
-            const isOpen = localItem.status === 'EM_ANDAMENTO' || localItem.status === 'AGUARDANDO' || localItem.status === 'PENDENCIA_PROXIMO_TURNO' || localItem.noCodigo;
-
-            return isOpen && !existsInServer;
-          });
-
-          const mergedMap = new Map<string, IncidentType>();
-          serverIncData.forEach((i) => mergedMap.set(i.id, i));
-          localOnlyRecent.forEach((i) => {
-            if (!mergedMap.has(i.id)) mergedMap.set(i.id, i);
-          });
-
-          const merged = Array.from(mergedMap.values()).sort(
-            (a, b) => new Date(b.criadoEm || 0).getTime() - new Date(a.criadoEm || 0).getTime()
-          );
-
-          // Sincronização proativa: envia qualquer ocorrência criada localmente para o Supabase
-          if (localOnlyRecent.length > 0) {
-            (async () => {
-              for (const localItem of localOnlyRecent) {
-                try {
-                  await supabase
-                    .from('Incident')
-                    .insert([{
-                      tag: localItem.tag,
-                      equipamentoNome: localItem.equipamentoNome || `Equipamento ${localItem.tag}`,
-                      area: localItem.area || 'Frota Mina',
-                      tipoFalha: localItem.tipoFalha || 'Comunicação',
-                      falha: localItem.falha,
-                      sintoma: localItem.sintoma || null,
-                      dataHoraParada: localItem.dataHoraParada ? new Date(localItem.dataHoraParada).toISOString() : new Date().toISOString(),
-                      prioridade: localItem.prioridade || 'MEDIA',
-                      status: localItem.status || 'EM_ANDAMENTO',
-                      noCodigo: localItem.noCodigo === true,
-                      responsavel: localItem.responsavel || 'Operador',
-                      turma: localItem.turma || 'C',
-                      divisaoAtuacao: localItem.divisaoAtuacao || 'MONITORAMENTO',
-                      isPendenciaHerdada: localItem.isPendenciaHerdada === true,
-                    }]);
-                } catch (e) {
-                  console.warn('Auto-sync to Supabase warning:', e);
-                }
-              }
-            })();
-          }
-
-          saveLocalCache(merged, 'GLOBAL');
-          return merged;
-        });
+        setIncidents(serverIncData);
+        saveLocalCache(serverIncData, 'GLOBAL');
       } else {
         const cached = loadLocalCache('GLOBAL');
         if (cached.length > 0) {

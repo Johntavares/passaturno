@@ -175,9 +175,14 @@ export const NewIncidentModal: React.FC<NewIncidentModalProps> = ({
 
       // 3. Registrar o atendimento diretamente no Supabase DB em tempo real (garante replicação instantânea)
       try {
+        const insertId = typeof crypto !== 'undefined' && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `inc-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
         const { data: supaInc, error: supaErr } = await supabase
           .from('Incident')
           .insert([{
+            id: insertId,
             tag: formattedTag,
             equipamentoNome: equipamentoNome.trim() || `Equipamento ${formattedTag}`,
             area: area || 'Frota Mina',
@@ -185,6 +190,7 @@ export const NewIncidentModal: React.FC<NewIncidentModalProps> = ({
             falha,
             sintoma: sintoma || null,
             dataHoraParada: safeDataHoraParada,
+            dataHoraAcionamento: new Date().toISOString(),
             previsaoLiberacao: previsaoLiberacao.trim() || null,
             prioridade: prioridade || 'MEDIA',
             status: status || 'EM_ANDAMENTO',
@@ -196,11 +202,32 @@ export const NewIncidentModal: React.FC<NewIncidentModalProps> = ({
             turma: turma || 'C',
             divisaoAtuacao: divisaoAtuacao || 'MONITORAMENTO',
             isPendenciaHerdada: status === 'PENDENCIA_PROXIMO_TURNO',
+            atualizadoEm: new Date().toISOString(),
           }])
           .select('*')
           .single();
 
-        if (supaInc) createdIncident = supaInc;
+        if (supaInc) {
+          createdIncident = supaInc;
+
+          // Registra o histórico de ABERTURA diretamente (a tabela não tem default de id)
+          try {
+            await supabase
+              .from('IncidentHistory')
+              .insert([{
+                id: typeof crypto !== 'undefined' && crypto.randomUUID
+                  ? crypto.randomUUID()
+                  : `hist-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                incidentId: supaInc.id,
+                tipoEvento: 'ABERTURA',
+                descricao: `Ocorrência iniciada por ${effectiveResponsavel}. Falha: ${falha}`,
+                usuario: effectiveResponsavel,
+                dataHora: new Date().toISOString(),
+              }]);
+          } catch (eHist) {
+            console.warn('Supabase history insert note:', eHist);
+          }
+        }
         if (supaErr) console.warn('Supabase direct insert note:', supaErr);
       } catch (e) {
         console.warn('Supabase direct insert exception:', e);

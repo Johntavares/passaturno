@@ -2,7 +2,6 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { supabase } from '@/lib/supabaseClient';
-import { inMemoryStore } from '@/lib/inMemoryStore';
 import { normalizeTurma, turmaInFilter, getNextTurma } from '@/lib/turma';
 
 export async function GET(request: Request) {
@@ -56,14 +55,8 @@ export async function GET(request: Request) {
     });
     return NextResponse.json(incidents);
   } catch (error) {
-    console.warn('Fallback to inMemoryStore for GET /api/atendimentos:', error);
-    const incidents = inMemoryStore.getIncidents({ tag, status, prioridade, search });
-    if (turma) {
-      return NextResponse.json(
-        incidents.filter((i) => normalizeTurma(i.turma) === turma)
-      );
-    }
-    return NextResponse.json(incidents);
+    console.error('Erro ao buscar atendimentos no Supabase:', error);
+    return NextResponse.json({ error: 'Erro ao buscar atendimentos' }, { status: 500 });
   }
 }
 
@@ -155,31 +148,6 @@ export async function POST(request: Request) {
       });
 
       // Sincroniza em memória para garantir consistência imediata no polling
-      try {
-        inMemoryStore.createIncident({
-          id: incident.id,
-          tag: incident.tag,
-          equipamentoNome: incident.equipamentoNome,
-          area: incident.area,
-          tipoFalha: incident.tipoFalha,
-          falha: incident.falha,
-          sintoma: incident.sintoma,
-          dataHoraParada: incident.dataHoraParada.toISOString(),
-          dataHoraAcionamento: incident.dataHoraAcionamento?.toISOString(),
-          previsaoLiberacao: incident.previsaoLiberacao,
-          prioridade: incident.prioridade,
-          status: incident.status,
-          responsavel: incident.responsavel,
-          motivoEspera: incident.motivoEspera,
-          proximaAcao: incident.proximaAcao,
-          localizacaoAtualOpcional: incident.localizacaoAtualOpcional,
-          observacao: incident.observacao,
-          turma: incident.turma,
-          noCodigo: incident.noCodigo,
-          divisaoAtuacao: incident.divisaoAtuacao,
-        } as any);
-      } catch (e) {}
-
       return NextResponse.json(incident, { status: 201 });
     } catch (dbErr) {
       // Retry unico: falhas transitórias de rede costumam ser resolvidas na segunda tentativa,
@@ -242,9 +210,8 @@ export async function POST(request: Request) {
 
         return NextResponse.json(incident, { status: 201 });
       } catch (dbErr2) {
-        console.warn('Fallback to inMemoryStore for POST /api/atendimentos (apos retry):', dbErr2);
-        const incident = inMemoryStore.createIncident(body);
-        return NextResponse.json(incident, { status: 201 });
+        console.error('Falha ao criar atendimento no Supabase após retry:', dbErr2);
+        return NextResponse.json({ error: 'Erro ao gravar atendimento no banco de dados' }, { status: 500 });
       }
     }
   } catch (error) {

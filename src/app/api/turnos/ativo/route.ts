@@ -2,7 +2,6 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { supabase } from '@/lib/supabaseClient';
-import { inMemoryStore } from '@/lib/inMemoryStore';
 import { normalizeTurma, turmaInFilter } from '@/lib/turma';
 
 export async function GET(request: Request) {
@@ -60,20 +59,8 @@ export async function GET(request: Request) {
       openIncidents: [],
     });
   } catch (error) {
-    console.warn('Fallback to inMemoryStore for GET /api/turnos/ativo:', error);
-    const fallback = inMemoryStore.getActiveShift();
-    if (turma) {
-      const shiftTurma = normalizeTurma(fallback?.activeShift?.turma);
-      return NextResponse.json({
-        ...fallback,
-        activeShift: shiftTurma === turma ? fallback.activeShift : null,
-        lastClosedShift: null,
-        openIncidents: (fallback?.openIncidents || []).filter(
-          (i) => normalizeTurma(i.turma) === turma
-        ),
-      });
-    }
-    return NextResponse.json(fallback);
+    console.error('Erro ao buscar turno ativo no Supabase:', error);
+    return NextResponse.json({ error: 'Erro ao buscar turno ativo' }, { status: 500 });
   }
 }
 

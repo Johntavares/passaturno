@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { inMemoryStore } from '@/lib/inMemoryStore';
-import { turmaInFilter, normalizeTurma } from '@/lib/turma';
+import { turmaInFilter } from '@/lib/turma';
 
 export async function POST(request: Request) {
   try {
@@ -21,15 +20,6 @@ export async function POST(request: Request) {
     const turmaFinal = ['A', 'B', 'C', 'D'].includes(turmaDaEquipe)
       ? turmaDaEquipe
       : (turma || 'A').toUpperCase().trim();
-
-    // 1. Atualizar a memória do servidor para resposta imediata
-    const inMemShift = inMemoryStore.startShift({
-      equipe: equipeFinal,
-      responsavelNome: respFinal,
-      observacoes: observacoes || '',
-      turma: turmaFinal,
-      escala: escala,
-    });
 
     try {
       // Encerrar o turno ativo anterior DA MESMA TURMA
@@ -91,22 +81,11 @@ export async function POST(request: Request) {
 
       return NextResponse.json(newShift, { status: 201 });
     } catch (dbErr) {
-      console.warn('Alerta banco assumir turno:', dbErr);
+      console.error('Erro ao assumir turno no Supabase:', dbErr);
+      return NextResponse.json({ error: 'Erro ao gravar turno no banco de dados' }, { status: 500 });
     }
-
-    return NextResponse.json(inMemShift, { status: 200 });
   } catch (error) {
     console.error('Error assuming shift:', error);
-    return NextResponse.json(
-      {
-        id: `shift-${Date.now()}`,
-        equipe: 'Automação B',
-        responsavelNome: 'Operador',
-        status: 'ATIVO',
-        data: new Date().toISOString().split('T')[0],
-        horaInicio: new Date().toISOString(),
-      },
-      { status: 200 }
-    );
+    return NextResponse.json({ error: 'Erro ao assumir turno' }, { status: 500 });
   }
 }
