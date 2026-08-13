@@ -30,7 +30,16 @@ import { TeamsCheckModal } from '@/components/TeamsCheckModal';
 import { normalizeTurma, getNextTurma, isSameDayAsToday, isIncidentFromToday } from '@/lib/turma';
 
 export default function Home() {
-  const [incidents, setIncidents] = useState<IncidentType[]>([]);
+  const [incidents, setIncidents] = useState<IncidentType[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cacheKey = 'passaturno-cache-incidents-GLOBAL';
+        const saved = localStorage.getItem(cacheKey);
+        if (saved) return JSON.parse(saved);
+      } catch (e) {}
+    }
+    return [];
+  });
   const [equipments, setEquipments] = useState<EquipmentType[]>([]);
   const [activeShift, setActiveShift] = useState<ShiftType | null>(null);
   const [currentUser, setCurrentUser] = useState<UserSession | null>(null);
@@ -157,25 +166,29 @@ export default function Home() {
         );
 
         setIncidents((prevLocal) => {
+          // Se o servidor retornou lista vazia mas o usuário tem itens locais em aberto, preserva os itens locais
+          if (serverIncData.length === 0 && prevLocal.length > 0) {
+            saveLocalCache(prevLocal, 'GLOBAL');
+            return prevLocal;
+          }
+
           const nowTime = Date.now();
 
-          // Preserva ocorrências registradas localmente nos últimos 3 minutos que ainda não retornaram do servidor
+          // Preserva ocorrências em aberto registradas localmente que ainda não foram retornadas pelo servidor
           const localOnlyRecent = prevLocal.filter((localItem) => {
             const isDeleted = deletedIds.has(localItem.id.toUpperCase().trim());
             if (isDeleted) return false;
-
-            const itemTime = new Date(localItem.criadoEm || localItem.atualizadoEm || nowTime).getTime();
-            const isRecent = (nowTime - itemTime) < 180000; // 3 minutos
 
             const existsInServer = serverIncData.some(
               (srv) => srv.id === localItem.id || (srv.tag.toUpperCase().trim() === localItem.tag.toUpperCase().trim() && srv.falha === localItem.falha)
             );
 
-            return isRecent && !existsInServer;
+            const isOpen = localItem.status === 'EM_ANDAMENTO' || localItem.status === 'AGUARDANDO' || localItem.status === 'PENDENCIA_PROXIMO_TURNO' || localItem.noCodigo;
+
+            return isOpen && !existsInServer;
           });
 
           const mergedMap = new Map<string, IncidentType>();
-          // Servidor em prioridade
           serverIncData.forEach((i) => mergedMap.set(i.id, i));
           localOnlyRecent.forEach((i) => {
             if (!mergedMap.has(i.id)) mergedMap.set(i.id, i);
