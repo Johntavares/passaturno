@@ -53,76 +53,57 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Senha incorreta.' }, { status: 401 });
     }
 
-    // --- AUTO-ASSUMIR TURNO LOGIC ---
+    // --- AUTO-ASSUMIR TURNO LOGIC (Apenas para Operadores/Técnicos de Turma) ---
+    const isLeaderUser =
+      (user.cargo || '').toUpperCase().includes('LÍDER') ||
+      (user.cargo || '').toUpperCase().includes('LIDER') ||
+      user.turma === 'GERAL';
+
     const userTurma = normalizeTurma(user.turma);
-    if (user.cargo !== 'LIDER' && userTurma) {
+
+    if (!isLeaderUser && userTurma) {
       try {
         const { inMemoryStore } = await import('@/lib/inMemoryStore');
-        
-        try {
-          const activeShiftTurma = await prisma.shift.findFirst({
-            where: { status: 'ATIVO', turma: turmaInFilter(userTurma) },
-            orderBy: { criadoEm: 'desc' },
+
+        const activeShiftTurma = await prisma.shift.findFirst({
+          where: { status: 'ATIVO', turma: turmaInFilter(userTurma) },
+          orderBy: { criadoEm: 'desc' },
+        }).catch(() => null);
+
+        if (!activeShiftTurma) {
+          const today = new Date().toISOString().split('T')[0];
+          const equipe = user.equipe || `Automação ${userTurma}`;
+          const responsavelNome = user.nome;
+          const escala = user.escala || '3x3';
+          const diaEscala = user.diaEscala || '1º Dia';
+          const observacoes = `Turno assumido automaticamente no login. Escala: ${escala} (${diaEscala}).`;
+
+          inMemoryStore.startShift({
+            equipe,
+            responsavelNome,
+            observacoes,
+            turma: userTurma,
+            escala,
           });
 
-          // Só assume se a própria turma ainda não tiver turno ativo —
-          // turnos de OUTRAS turmas são independentes e nunca são tocados.
-          if (!activeShiftTurma) {
-            console.log(`Auto-assumindo turno para Turma ${userTurma} via login...`);
-            const today = new Date().toISOString().split('T')[0];
-            const equipe = user.equipe;
-            const responsavelNome = user.nome;
-            const escala = user.escala || '3x3';
-            const diaEscala = user.diaEscala || '1º Dia';
-            const observacoes = `Turno assumido automaticamente no login. Escala: ${escala} (${diaEscala}).`;
-
-            inMemoryStore.startShift({
+          await prisma.shift.create({
+            data: {
               equipe,
               responsavelNome,
-              observacoes,
               turma: userTurma,
+              tipoTurno: user.periodoTurno === 'Noite' ? 'Noturno' : 'Diurno',
               escala,
-            });
-
-            // Herdar pendências APENAS da própria turma (operador anterior não encerrou formalmente).
-            const ownOpenIncidents = await prisma.incident.findMany({
-              where: {
-                turma: turmaInFilter(userTurma),
-                status: { in: ['EM_ANDAMENTO', 'AGUARDANDO'] },
-              },
-            });
-
-            for (const incident of ownOpenIncidents) {
-              await prisma.incident.update({
-                where: { id: incident.id },
-                data: {
-                  isPendenciaHerdada: true,
-                  status: 'PENDENCIA_PROXIMO_TURNO',
-                },
-              });
-            }
-
-            await prisma.shift.create({
-              data: {
-                equipe,
-                responsavelNome,
-                turma: userTurma,
-                tipoTurno: user.periodoTurno === 'Noite' ? 'Noturno' : 'Diurno',
-                escala,
-                horarioTurno: user.horarioTurno,
-                responsavelId: user.id,
-                data: today,
-                horaInicio: new Date(),
-                status: 'ATIVO',
-                observacoes,
-              },
-            });
-          }
-        } catch (e) {
-          console.warn('SQLite auto-assume failed, inMemoryStore updated.', e);
+              horarioTurno: user.horarioTurno,
+              responsavelId: user.id,
+              data: today,
+              horaInicio: new Date(),
+              status: 'ATIVO',
+              observacoes,
+            },
+          }).catch((err) => console.warn('Non-blocking shift create on login:', err));
         }
       } catch (autoShiftErr) {
-        console.error('Erro no auto-assumir turno durante o login:', autoShiftErr);
+        console.warn('Erro tolerado no auto-assumir turno durante o login:', autoShiftErr);
       }
     }
     // ---------------------------------
