@@ -1140,7 +1140,7 @@ export default function Home() {
         isOpen={isNewIncidentOpen}
         onClose={() => setIsNewIncidentOpen(false)}
         equipments={equipments}
-        turma={normalizeTurma(currentUser?.turma) || normalizeTurma(activeShift?.turma) || (selectedTurmaFilter !== 'TODAS' ? normalizeTurma(selectedTurmaFilter) : 'A')}
+        turma={normalizeTurma(activeShift?.turma) || normalizeTurma(currentUser?.turma) || (selectedTurmaFilter !== 'TODAS' ? normalizeTurma(selectedTurmaFilter) : null) || 'C'}
         currentUser={currentUser}
         onIncidentCreated={handleIncidentCreated}
       />
