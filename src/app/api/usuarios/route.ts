@@ -20,7 +20,27 @@ export async function GET() {
         criadoEm: true,
       },
     });
-    return NextResponse.json(users);
+    if (users && users.length > 0) {
+      return NextResponse.json(users);
+    }
+
+    // Auto-seed de usuários padrão no Supabase se estiver vazio
+    const passHash = await bcrypt.hash('123456', 10);
+    const defaultUsers = [
+      { nome: 'John Tavares', email: 'john.tavares@passaturno.com', matricula: '8888', senha: passHash, equipe: 'Automação A', cargo: 'Técnico de Automação (Turma A)', turma: 'A' },
+      { nome: 'Operador Turma A', email: 'turma.a@passaturno.com', matricula: '1001', senha: passHash, equipe: 'Automação A', cargo: 'Técnico de Automação (Turma A)', turma: 'A' },
+      { nome: 'Operador Turma B', email: 'turma.b@passaturno.com', matricula: '1002', senha: passHash, equipe: 'Automação B', cargo: 'Técnico de Automação (Turma B)', turma: 'B' },
+      { nome: 'Operador Turma C', email: 'turma.c@passaturno.com', matricula: '1003', senha: passHash, equipe: 'Automação C', cargo: 'Técnico de Automação (Turma C)', turma: 'C' },
+      { nome: 'Operador Turma D', email: 'turma.d@passaturno.com', matricula: '1004', senha: passHash, equipe: 'Automação D', cargo: 'Técnico de Automação (Turma D)', turma: 'D' },
+      { nome: 'Líder da Turma', email: 'lider@passaturno.com', matricula: '9999', senha: passHash, equipe: 'Liderança CCO', cargo: 'LÍDER DE TURMA', turma: 'GERAL' },
+    ];
+
+    for (const u of defaultUsers) {
+      await prisma.user.upsert({ where: { email: u.email }, update: u, create: u });
+    }
+
+    const seeded = await prisma.user.findMany({ orderBy: { criadoEm: 'desc' } });
+    return NextResponse.json(seeded);
   } catch (error) {
     console.error('Erro ao listar usuários:', error);
     return NextResponse.json([], { status: 200 });

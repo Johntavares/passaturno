@@ -14,7 +14,7 @@ export async function POST(request: Request) {
 
     const cleanLogin = login.trim().toLowerCase();
 
-    const user = await prisma.user.findFirst({
+    let user = await prisma.user.findFirst({
       where: {
         OR: [
           { email: { equals: cleanLogin } },
@@ -23,6 +23,23 @@ export async function POST(request: Request) {
         ],
       },
     });
+
+    if (!user) {
+      const passHash = await bcrypt.hash('123456', 10);
+      const defaultDataMap: Record<string, any> = {
+        '1001': { nome: 'Operador Turma A', email: 'turma.a@passaturno.com', matricula: '1001', senha: passHash, equipe: 'Automação A', cargo: 'Técnico de Automação (Turma A)', turma: 'A' },
+        '1002': { nome: 'Operador Turma B', email: 'turma.b@passaturno.com', matricula: '1002', senha: passHash, equipe: 'Automação B', cargo: 'Técnico de Automação (Turma B)', turma: 'B' },
+        '1003': { nome: 'Operador Turma C', email: 'turma.c@passaturno.com', matricula: '1003', senha: passHash, equipe: 'Automação C', cargo: 'Técnico de Automação (Turma C)', turma: 'C' },
+        '1004': { nome: 'Operador Turma D', email: 'turma.d@passaturno.com', matricula: '1004', senha: passHash, equipe: 'Automação D', cargo: 'Técnico de Automação (Turma D)', turma: 'D' },
+        '8888': { nome: 'John Tavares', email: 'john.tavares@passaturno.com', matricula: '8888', senha: passHash, equipe: 'Automação A', cargo: 'Técnico de Automação (Turma A)', turma: 'A' },
+        '9999': { nome: 'Líder da Turma', email: 'lider@passaturno.com', matricula: '9999', senha: passHash, equipe: 'Liderança CCO', cargo: 'LÍDER DE TURMA', turma: 'GERAL' },
+      };
+
+      const matchedDefault = defaultDataMap[cleanLogin];
+      if (matchedDefault) {
+        user = await prisma.user.create({ data: matchedDefault });
+      }
+    }
 
     if (!user) {
       return NextResponse.json(
