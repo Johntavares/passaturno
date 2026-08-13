@@ -71,6 +71,18 @@ export default function Home() {
   const selectedTurmaFilterRef = useRef(selectedTurmaFilter);
   selectedTurmaFilterRef.current = selectedTurmaFilter;
 
+  // Guarda atualizações otimistas em voo para o polling NÃO sobrescrevê-las
+  // com dados antigos do servidor enquanto o PATCH ainda não confirmou.
+  const pendingOverridesRef = useRef<Map<string, { patch: Record<string, unknown>; ts: number }>>(new Map());
+
+  const markPending = useCallback((id: string, patch: Record<string, unknown>) => {
+    pendingOverridesRef.current.set(id, { patch, ts: Date.now() });
+  }, []);
+
+  const confirmPending = useCallback((id: string) => {
+    pendingOverridesRef.current.delete(id);
+  }, []);
+
   const [selectedTimelineIncident, setSelectedTimelineIncident] = useState<IncidentType | null>(null);
   const [isTimelineOpen, setIsTimelineOpen] = useState(false);
 
@@ -164,9 +176,24 @@ export default function Home() {
         const rawInc = (await incRes.json()) as IncidentType[];
         // O banco (Supabase) é a fonte de verdade: exibe exatamente o que ele retornou,
         // removendo apenas IDs excluídos localmente. Nada é preservado/reinserido da cache local.
-        const serverIncData = rawInc.filter(
+        let serverIncData = rawInc.filter(
           (item) => !deletedIds.has(item.id.toUpperCase().trim())
         );
+
+        // Reaplica mudanças otimistas ainda pendentes (PATCH em voo) por cima dos dados do servidor,
+        // evitando que uma resposta de polling defasada "desfaça" um clique recente (ex.: No Código).
+        const pending = pendingOverridesRef.current;
+        if (pending.size > 0) {
+          const nowTs = Date.now();
+          serverIncData = serverIncData.map((item) => {
+            const p = pending.get(item.id);
+            if (p && nowTs - p.ts < 8000) {
+              return { ...item, ...p.patch, atualizadoEm: item.atualizadoEm };
+            }
+            return item;
+          });
+        }
+
         setIncidents(serverIncData);
         saveLocalCache(serverIncData, 'GLOBAL');
       } else {
@@ -497,12 +524,14 @@ export default function Home() {
       };
       if (targetTurma) patchData.turma = targetTurma;
       if (activeResp && (newStatus === 'EM_ANDAMENTO' || isFin)) patchData.responsavel = activeResp;
+      markPending(id, patchData);
 
       const res = await fetch(`/api/atendimentos/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(patchData),
       });
+      confirmPending(id);
 
       if (res.ok) {
         const updated = await res.json();
@@ -511,6 +540,7 @@ export default function Home() {
         );
       }
     } catch (err) {
+      confirmPending(id);
       console.error(err);
     }
   };
@@ -522,11 +552,15 @@ export default function Home() {
     );
 
     try {
+      const patchData = { prioridade: newPriority };
+      markPending(id, patchData);
+
       const res = await fetch(`/api/atendimentos/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prioridade: newPriority }),
+        body: JSON.stringify(patchData),
       });
+      confirmPending(id);
 
       if (res.ok) {
         const updated = await res.json();
@@ -535,6 +569,7 @@ export default function Home() {
         );
       }
     } catch (err) {
+      confirmPending(id);
       console.error(err);
     }
   };
@@ -555,11 +590,14 @@ export default function Home() {
     );
 
     try {
+      markPending(id, patchData);
+
       const res = await fetch(`/api/atendimentos/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(patchData),
       });
+      confirmPending(id);
 
       if (res.ok) {
         const updated = await res.json();
@@ -568,6 +606,7 @@ export default function Home() {
         );
       }
     } catch (err) {
+      confirmPending(id);
       console.error(err);
     }
   };
@@ -585,15 +624,19 @@ export default function Home() {
     try {
       const activeResp = currentUser?.nome || 'Técnico';
       const labelDiv = newDivisao === 'CORRETIVA_CAMPO' ? 'Corretiva de Campo' : 'Monitoramento (NOC)';
+      const patchData = {
+        divisaoAtuacao: newDivisao,
+        logDescription: `Divisão de atuação alterada para ${labelDiv}.`,
+        logUsuario: activeResp,
+      };
+      markPending(id, { divisaoAtuacao: newDivisao });
+
       const res = await fetch(`/api/atendimentos/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          divisaoAtuacao: newDivisao,
-          logDescription: `Divisão de atuação alterada para ${labelDiv}.`,
-          logUsuario: activeResp,
-        }),
+        body: JSON.stringify(patchData),
       });
+      confirmPending(id);
 
       if (res.ok) {
         const updated = await res.json();
@@ -602,6 +645,7 @@ export default function Home() {
         );
       }
     } catch (err) {
+      confirmPending(id);
       console.error('Erro ao alterar divisão de atuação:', err);
     }
   };
@@ -630,19 +674,23 @@ export default function Home() {
     );
 
     try {
+      const patchData = {
+        status: 'EM_ANDAMENTO',
+        prioridade: targetPriority,
+        isPendenciaHerdada: false,
+        turma: activeTurma,
+        responsavel: activeResp,
+        logDescription: `Pendência da passagem de turno aceita pela Turma ${activeTurma} (${activeResp}). Movido para a fila Em Andamento.`,
+        logUsuario: activeResp,
+      };
+      markPending(incident.id, patchData);
+
       const res = await fetch(`/api/atendimentos/${incident.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          status: 'EM_ANDAMENTO',
-          prioridade: targetPriority,
-          isPendenciaHerdada: false,
-          turma: activeTurma,
-          responsavel: activeResp,
-          logDescription: `Pendência da passagem de turno aceita pela Turma ${activeTurma} (${activeResp}). Movido para a fila Em Andamento.`,
-          logUsuario: activeResp,
-        }),
+        body: JSON.stringify(patchData),
       });
+      confirmPending(incident.id);
 
       if (res.ok) {
         const updated = await res.json();
@@ -651,6 +699,7 @@ export default function Home() {
         );
       }
     } catch (err) {
+      confirmPending(incident.id);
       console.error('Erro ao aceitar atendimento:', err);
     }
   };
@@ -701,13 +750,22 @@ export default function Home() {
         isPendenciaHerdada: isInherited,
       };
       if (targetTurma) patchBody.turma = targetTurma;
+      markPending(incidentId, patchBody);
 
-      await fetch(`/api/atendimentos/${incidentId}`, {
+      const res = await fetch(`/api/atendimentos/${incidentId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(patchBody),
       });
+      confirmPending(incidentId);
+      if (res.ok) {
+        const updated = await res.json();
+        updateIncidentsState((prev) =>
+          prev.map((item) => (item.id === incidentId ? updated : item))
+        );
+      }
     } catch (err) {
+      confirmPending(incidentId);
       console.error('Erro ao salvar alteração de atendimento:', err);
     }
   };
@@ -729,15 +787,17 @@ export default function Home() {
     setSelectedCommentIncident(null);
 
     // 2. Atualizar estado local + localStorage (garante atualização imediata do card)
+    let optimisticHistory: IncidentHistoryType[] = [newLogItem];
     updateIncidentsState((prev) =>
       prev.map((item) => {
         if (item.id === incidentId) {
           const currentHist = item.historico || [];
+          optimisticHistory = [newLogItem, ...currentHist];
           return {
             ...item,
             observacao: commentText,
             atualizadoEm: nowIso,
-            historico: [newLogItem, ...currentHist],
+            historico: optimisticHistory,
           };
         }
         return item;
@@ -746,16 +806,27 @@ export default function Home() {
 
     // 3. Persistir na API em segundo plano
     try {
-      await fetch(`/api/atendimentos/${incidentId}`, {
+      const patchData = {
+        observacao: commentText,
+        logDescription: `Anotação do Turno: ${commentText}`,
+        logUsuario: authorName || 'John Tavares',
+      };
+      markPending(incidentId, { observacao: commentText, historico: optimisticHistory });
+
+      const res = await fetch(`/api/atendimentos/${incidentId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          observacao: commentText,
-          logDescription: `Anotação do Turno: ${commentText}`,
-          logUsuario: authorName || 'John Tavares',
-        }),
+        body: JSON.stringify(patchData),
       });
+      confirmPending(incidentId);
+      if (res.ok) {
+        const updated = await res.json();
+        updateIncidentsState((prev) =>
+          prev.map((item) => (item.id === incidentId ? updated : item))
+        );
+      }
     } catch (err) {
+      confirmPending(incidentId);
       console.error('Erro ao salvar anotação:', err);
     }
   };
