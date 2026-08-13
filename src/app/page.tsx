@@ -152,11 +152,42 @@ export default function Home() {
 
       if (incRes.ok) {
         const rawInc = (await incRes.json()) as IncidentType[];
-        const incData = rawInc.filter(
+        const serverIncData = rawInc.filter(
           (item) => !deletedIds.has(item.id.toUpperCase().trim())
         );
-        setIncidents(incData);
-        saveLocalCache(incData, 'GLOBAL');
+
+        setIncidents((prevLocal) => {
+          const nowTime = Date.now();
+
+          // Preserva ocorrências registradas localmente nos últimos 3 minutos que ainda não retornaram do servidor
+          const localOnlyRecent = prevLocal.filter((localItem) => {
+            const isDeleted = deletedIds.has(localItem.id.toUpperCase().trim());
+            if (isDeleted) return false;
+
+            const itemTime = new Date(localItem.criadoEm || localItem.atualizadoEm || nowTime).getTime();
+            const isRecent = (nowTime - itemTime) < 180000; // 3 minutos
+
+            const existsInServer = serverIncData.some(
+              (srv) => srv.id === localItem.id || (srv.tag.toUpperCase().trim() === localItem.tag.toUpperCase().trim() && srv.falha === localItem.falha)
+            );
+
+            return isRecent && !existsInServer;
+          });
+
+          const mergedMap = new Map<string, IncidentType>();
+          // Servidor em prioridade
+          serverIncData.forEach((i) => mergedMap.set(i.id, i));
+          localOnlyRecent.forEach((i) => {
+            if (!mergedMap.has(i.id)) mergedMap.set(i.id, i);
+          });
+
+          const merged = Array.from(mergedMap.values()).sort(
+            (a, b) => new Date(b.criadoEm || 0).getTime() - new Date(a.criadoEm || 0).getTime()
+          );
+
+          saveLocalCache(merged, 'GLOBAL');
+          return merged;
+        });
       } else {
         const cached = loadLocalCache('GLOBAL');
         if (cached.length > 0) {

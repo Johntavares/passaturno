@@ -166,6 +166,32 @@ export async function POST(request: Request) {
         },
       });
 
+      // Sincroniza em memória para garantir consistência imediata no polling
+      try {
+        inMemoryStore.createIncident({
+          id: incident.id,
+          tag: incident.tag,
+          equipamentoNome: incident.equipamentoNome,
+          area: incident.area,
+          tipoFalha: incident.tipoFalha,
+          falha: incident.falha,
+          sintoma: incident.sintoma,
+          dataHoraParada: incident.dataHoraParada.toISOString(),
+          dataHoraAcionamento: incident.dataHoraAcionamento?.toISOString(),
+          previsaoLiberacao: incident.previsaoLiberacao,
+          prioridade: incident.prioridade,
+          status: incident.status,
+          responsavel: incident.responsavel,
+          motivoEspera: incident.motivoEspera,
+          proximaAcao: incident.proximaAcao,
+          localizacaoAtualOpcional: incident.localizacaoAtualOpcional,
+          observacao: incident.observacao,
+          turma: incident.turma,
+          noCodigo: incident.noCodigo,
+          divisaoAtuacao: incident.divisaoAtuacao,
+        } as any);
+      } catch (e) {}
+
       return NextResponse.json(incident, { status: 201 });
     } catch (dbErr) {
       // Retry unico: falhas transitórias de rede costumam ser resolvidas na segunda tentativa,
