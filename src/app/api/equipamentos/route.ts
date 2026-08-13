@@ -15,7 +15,34 @@ export async function GET() {
     if (equipments && equipments.length > 0) {
       return NextResponse.json(equipments);
     }
-    return NextResponse.json(inMemoryStore.getEquipments());
+
+    // Auto-seed de equipamentos no banco de dados Supabase se estiver vazio
+    try {
+      const defaultFleet = inMemoryStore.getEquipments();
+      for (const eq of defaultFleet) {
+        await prisma.equipment.upsert({
+          where: { tag: eq.tag },
+          update: {},
+          create: {
+            tag: eq.tag,
+            nome: eq.nome,
+            tipo: eq.tipo,
+            area: eq.area,
+          },
+        });
+      }
+      const seeded = await prisma.equipment.findMany({
+        orderBy: { tag: 'asc' },
+        include: {
+          _count: {
+            select: { incidents: true },
+          },
+        },
+      });
+      return NextResponse.json(seeded);
+    } catch (e) {
+      return NextResponse.json(inMemoryStore.getEquipments());
+    }
   } catch (error) {
     console.warn('Fallback to inMemoryStore for GET /api/equipamentos:', error);
     return NextResponse.json(inMemoryStore.getEquipments());
