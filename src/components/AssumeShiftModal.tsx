@@ -10,6 +10,8 @@ interface AssumeShiftModalProps {
   currentUser?: any;
 }
 
+import { supabase } from '@/lib/supabaseClient';
+
 export const AssumeShiftModal: React.FC<AssumeShiftModalProps> = ({
   isOpen,
   onClose,
@@ -99,8 +101,28 @@ export const AssumeShiftModal: React.FC<AssumeShiftModalProps> = ({
         }),
       });
 
-      if (!res.ok) {
-        console.warn('API /api/turnos/assumir retornou status não-200, assumindo turno localmente');
+      // Grava diretamente no Supabase em paralelo para garantir ativação instantânea no banco remoto
+      try {
+        await supabase
+          .from('Shift')
+          .update({ status: 'ENCERRADO', horaFim: new Date().toISOString() })
+          .eq('status', 'ATIVO')
+          .eq('turma', turmaEnvio);
+
+        await supabase
+          .from('Shift')
+          .insert([{
+            equipe,
+            responsavelNome,
+            turma: turmaEnvio,
+            escala: escala || '3x3',
+            data: new Date().toISOString().split('T')[0],
+            horaInicio: new Date().toISOString(),
+            status: 'ATIVO',
+            observacoes,
+          }]);
+      } catch (supaShiftErr) {
+        console.error('Supabase direct shift insert error:', supaShiftErr);
       }
     } catch (err) {
       console.error('Erro ao assumir turno:', err);

@@ -320,22 +320,22 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
 
   // Resolução Estável e Prioritária da Turma Ativa Oficial do CCO
   const officialActiveTurma = (() => {
-    // 1. Se o prop activeShift possuir um turno ATIVO, ele é a fonte da verdade oficial!
-    if (activeShift?.status === 'ATIVO' && activeShift.turma) {
-      return normalizeTurma(activeShift.turma) || 'A';
-    }
-
-    // 2. Procura nas apis se existe alguma outra turma com status ATIVO rodando no banco
+    // 1. Procura nas apis se existe alguma turma com status ATIVO rodando no banco (prioriza o turno mais recente)
     const activeFromMap = Object.values(allActiveShifts).find((s) => s?.status === 'ATIVO');
     if (activeFromMap?.turma) {
-      return normalizeTurma(activeFromMap.turma) || 'A';
+      return normalizeTurma(activeFromMap.turma) || 'C';
+    }
+
+    // 2. Se o prop activeShift possuir um turno ATIVO, ele é a fonte da verdade!
+    if (activeShift?.status === 'ATIVO' && activeShift.turma) {
+      return normalizeTurma(activeShift.turma) || 'C';
     }
 
     // 3. Verifica se existe alguma turma com atendimentos em andamento no dia de hoje
     const counts: Record<string, number> = { A: 0, B: 0, C: 0, D: 0 };
     incidents.forEach((i) => {
       if (i.status !== 'FINALIZADO' && i.status !== 'RETROAGIDO') {
-        const t = normalizeTurma(i.turma) || 'A';
+        const t = normalizeTurma(i.turma) || 'C';
         if (counts[t] !== undefined) counts[t] += 1;
       }
     });
@@ -346,8 +346,8 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
       return turmasComAtendimentos[0];
     }
 
-    // 4. Fallback final: Turma da conta do usuario ou 'A'
-    return normalizeTurma(currentUser?.turma) || 'A';
+    // 4. Fallback final: 'C'
+    return 'C';
   })();
 
   const currentActiveTurma = officialActiveTurma;
