@@ -1030,31 +1030,35 @@ export default function Home() {
             }
           };
 
-                    const displayedIncidents = incidents.filter((item) => {
+                    const displayedIncidents = (() => {
+            // Ao encerrar o turno (quando não há turno ativo), o painel fica 100% LIMPO!
+            if (!activeShift) return [];
+
             const isFilterTodas = selectedTurmaFilter === 'TODAS';
             const currentTurmaClean = normalizeTurma(currentUser?.turma) || normalizeTurma(activeShift?.turma) || 'A';
             const filterTurma = isFilterTodas
               ? ''
               : (normalizeTurma(selectedTurmaFilter) || currentTurmaClean);
 
-            const itemTurma = normalizeTurma(item.turma);
+            return incidents.filter((item) => {
+              const itemTurma = normalizeTurma(item.turma);
 
-            // 1. Atendimento vinculado ao turno ativo atual
-            const isDoTurnoAtivo =
-              activeShift !== null &&
-              typeof item.shiftId === 'string' &&
-              item.shiftId === activeShift.id;
+              // 1. Atendimento vinculado ao turno ativo atual
+              const isDoTurnoAtivo =
+                typeof item.shiftId === 'string' &&
+                item.shiftId === activeShift.id;
 
-            // 2. Se a ocorrência foi finalizada ou retroagida: exibe APENAS se foi finalizada no turno ativo atual
-            if (item.status === 'FINALIZADO' || item.status === 'RETROAGIDO') {
-              return isDoTurnoAtivo;
-            }
+              // 2. Ocorrências finalizadas ou retroagidas: exibe APENAS se tiverem sido concluídas DURANTE o turno ativo atual
+              if (item.status === 'FINALIZADO' || item.status === 'RETROAGIDO') {
+                return isDoTurnoAtivo;
+              }
 
-            // 3. Ocorrências em aberto (EM_ANDAMENTO, AGUARDANDO, PENDENCIA_PROXIMO_TURNO):
-            // Exibe se pertencer ao turno ativo atual OU se estiver endereçada à turma atual exibida no filtro/painel.
-            const matchesTurma = filterTurma === '' || itemTurma === filterTurma;
-            return isDoTurnoAtivo || matchesTurma;
-          });
+              // 3. Ocorrências em aberto (EM_ANDAMENTO, AGUARDANDO, PENDENCIA_PROXIMO_TURNO):
+              // Exibe se pertencer ao turno ativo atual OU se estiver endereçada à turma atual exibida no painel
+              const matchesTurma = filterTurma === '' || itemTurma === filterTurma;
+              return isDoTurnoAtivo || matchesTurma;
+            });
+          })();
 
 
           return (
