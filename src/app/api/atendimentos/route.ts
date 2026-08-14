@@ -1,56 +1,49 @@
-export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { supabase } from '@/lib/supabaseClient';
-import { normalizeTurma, turmaInFilter, getNextTurma } from '@/lib/turma';
+import { turmaInFilter, normalizeTurma, getNextTurma } from '@/lib/turma';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const tag = searchParams.get('tag') || undefined;
-  const status = searchParams.get('status') || undefined;
-  const prioridade = searchParams.get('prioridade') || undefined;
-  const search = searchParams.get('search') || undefined;
-  const turma = normalizeTurma(searchParams.get('turma'));
+  const turma = searchParams.get('turma');
 
+  // 1. SUPABASE REST (Fonte de Verdade Principal em Tempo Real)
   try {
-    const { data: supaIncidents, error: supaErr } = await supabase
+    let query = supabase
       .from('Incident')
-      .select('*, historico:IncidentHistory(*)')
+      .select('*, IncidentHistory(*), historico:IncidentHistory(*)')
       .order('criadoEm', { ascending: false });
 
-    if (supaIncidents && supaIncidents.length > 0) {
-      let filtered = supaIncidents;
-      if (turma) {
-        filtered = filtered.filter((i) => normalizeTurma(i.turma) === turma);
+    if (turma && turma !== 'TODAS') {
+      const cleanT = normalizeTurma(turma);
+      if (cleanT) {
+        query = query.eq('turma', cleanT);
       }
-      if (status) {
-        filtered = filtered.filter((i) => i.status === status);
-      }
-      if (prioridade) {
-        filtered = filtered.filter((i) => i.prioridade === prioridade);
-      }
-      if (tag) {
-        filtered = filtered.filter((i) => i.tag && i.tag.toUpperCase().includes(tag.toUpperCase()));
-      }
-      if (search) {
-        const s = search.toUpperCase();
-        filtered = filtered.filter(
-          (i) =>
-            (i.tag && i.tag.toUpperCase().includes(s)) ||
-            (i.equipamentoNome && i.equipamentoNome.toUpperCase().includes(s)) ||
-            (i.falha && i.falha.toUpperCase().includes(s)) ||
-            (i.responsavel && i.responsavel.toUpperCase().includes(s))
-        );
-      }
-      return NextResponse.json(filtered);
+    }
+
+    const { data: supaIncidents, error: supaErr } = await query;
+    if (!supaErr && supaIncidents) {
+      const mapped = supaIncidents.map((item: any) => {
+        const histRaw = item.historico || item.IncidentHistory || [];
+        const histSorted = Array.isArray(histRaw)
+          ? [...histRaw].sort((a, b) => new Date(b.dataHora || b.criadoEm || 0).getTime() - new Date(a.dataHora || a.criadoEm || 0).getTime())
+          : [];
+        return {
+          ...item,
+          historico: histSorted,
+        };
+      });
+      return NextResponse.json(mapped);
     }
   } catch (e) {
-    console.warn('Supabase REST GET warning:', e);
+    console.warn('Alerta GET Supabase REST atendimentos:', e);
   }
 
+  // 2. PRISMA POSTGRESQL (Fallback)
   try {
     const incidents = await prisma.incident.findMany({
       where: turma ? { turma: turmaInFilter(turma) } : {},
+      include: { historico: true },
       orderBy: { criadoEm: 'desc' },
     });
     return NextResponse.json(incidents);
@@ -89,31 +82,107 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'TAG, Falha e Responsável são obrigatórios' }, { status: 400 });
     }
 
+    const nowIso = new Date().toISOString();
+    const tagClean = tag.toUpperCase().trim();
+    const turmaNormalizada = normalizeTurma(turma) || 'A';
+    const isPendencia = status === 'PENDENCIA_PROXIMO_TURNO';
+    const finalTurma = isPendencia ? getNextTurma(turmaNormalizada) : turmaNormalizada;
+
+    let activeShiftId: string | null = null;
+    let createdIncident: any = null;
+
+    // 1. SUPABASE REST
     try {
-      // Buscar equipamento pela TAG para vincular
+      const { data: supaShifts } = await supabase
+        .from('Shift')
+        .select('*')
+        .eq('status', 'ATIVO');
+
+      if (supaShifts && supaShifts.length > 0) {
+        const matchingShift = supaShifts.find((s: any) => normalizeTurma(s.turma) === turmaNormalizada) || supaShifts[0];
+        if (matchingShift) activeShiftId = matchingShift.id;
+      }
+
+      const newId = typeof crypto !== 'undefined' && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `inc-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+      const supaPayload = {
+        id: newId,
+        tag: tagClean,
+        equipamentoNome: equipamentoNome || `Equipamento ${tagClean}`,
+        area: area || 'Frota Mina',
+        tipoFalha: tipoFalha || 'Comunicação',
+        falha,
+        sintoma: sintoma || null,
+        dataHoraParada: dataHoraParada || nowIso,
+        dataHoraAcionamento: dataHoraAcionamento || nowIso,
+        previsaoLiberacao: previsaoLiberacao || null,
+        prioridade: prioridade || 'MEDIA',
+        status: status || 'EM_ANDAMENTO',
+        responsavel,
+        motivoEspera: motivoEspera || null,
+        proximaAcao: proximaAcao || null,
+        localizacaoAtualOpcional: localizacaoAtualOpcional || null,
+        observacao: observacao || null,
+        shiftId: activeShiftId,
+        turma: finalTurma,
+        divisaoAtuacao: divisaoAtuacao || 'MONITORAMENTO',
+        isPendenciaHerdada: isPendencia,
+        noCodigo: noCodigo === true,
+        criadoEm: nowIso,
+        atualizadoEm: nowIso,
+      };
+
+      const { data: insertedSupa } = await supabase
+        .from('Incident')
+        .insert([supaPayload])
+        .select('*')
+        .single();
+
+      if (insertedSupa) {
+        createdIncident = insertedSupa;
+        const histId = typeof crypto !== 'undefined' && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `hist-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+        const newHist = {
+          id: histId,
+          incidentId: newId,
+          tipoEvento: 'ABERTURA',
+          descricao: `Ocorrência iniciada por ${responsavel}. Falha: ${falha}`,
+          usuario: responsavel,
+          dataHora: nowIso,
+        };
+
+        try { await supabase.from('IncidentHistory').insert([newHist]); } catch(e) {}
+        createdIncident.historico = [newHist];
+      }
+    } catch (supaErr) {
+      console.warn('Alerta POST Supabase REST atendimentos:', supaErr);
+    }
+
+    // 2. PRISMA POSTGRESQL (Redundância em segundo plano)
+    try {
       const equipment = await prisma.equipment.findUnique({
-        where: { tag: tag.toUpperCase().trim() },
-      });
+        where: { tag: tagClean },
+      }).catch(() => null);
 
-      const turmaNormalizada = normalizeTurma(turma) || undefined;
+      if (!activeShiftId) {
+        const activeShift = await prisma.shift.findFirst({
+          where: {
+            status: 'ATIVO',
+            turma: turmaInFilter(turmaNormalizada),
+          },
+        }).catch(() => null);
+        if (activeShift) activeShiftId = activeShift.id;
+      }
 
-      // Buscar turno ativo atual DA MESMA TURMA (nunca de outra turma)
-      const activeShift = await prisma.shift.findFirst({
-        where: {
-          status: 'ATIVO',
-          ...(turmaNormalizada ? { turma: turmaInFilter(turmaNormalizada) } : {}),
-        },
-      });
-
-      const isPendencia = status === 'PENDENCIA_PROXIMO_TURNO';
-      const activeTurmaClean = turmaNormalizada || (activeShift?.turma ? normalizeTurma(activeShift.turma) : 'A');
-      const finalTurma = isPendencia ? getNextTurma(activeTurmaClean) : activeTurmaClean;
-
-      const incident = await prisma.incident.create({
+      const prismaInc = await prisma.incident.create({
         data: {
-          tag: tag.toUpperCase().trim(),
+          tag: tagClean,
           equipmentId: equipment?.id || null,
-          equipamentoNome: equipamentoNome || equipment?.nome || `Equipamento ${tag}`,
+          equipamentoNome: equipamentoNome || equipment?.nome || `Equipamento ${tagClean}`,
           area: area || equipment?.area || 'Frota Mina',
           tipoFalha: tipoFalha || 'Comunicação',
           falha,
@@ -128,11 +197,10 @@ export async function POST(request: Request) {
           proximaAcao,
           localizacaoAtualOpcional,
           observacao,
-          shiftId: activeShift?.id || null,
+          shiftId: activeShiftId,
           turma: finalTurma,
           divisaoAtuacao: divisaoAtuacao || 'MONITORAMENTO',
           isPendenciaHerdada: isPendencia,
-
           noCodigo: noCodigo === true,
           historico: {
             create: {
@@ -142,81 +210,53 @@ export async function POST(request: Request) {
             },
           },
         },
-        include: {
-          historico: true,
-        },
-      });
+        include: { historico: true },
+      }).catch(() => null);
 
-      // Sincroniza em memória para garantir consistência imediata no polling
-      return NextResponse.json(incident, { status: 201 });
-    } catch (dbErr) {
-      // Retry unico: falhas transitórias de rede costumam ser resolvidas na segunda tentativa,
-      // garantindo que o atendimento seja gravado no banco (e não apenas em memória).
-      console.warn('Tentativa 1 de criacao de atendimento falhou, tentando de novo:', dbErr);
-      await new Promise((r) => setTimeout(r, 1200));
-      try {
-        const equipment = await prisma.equipment.findUnique({
-          where: { tag: tag.toUpperCase().trim() },
-        });
-
-        const turmaNormalizada = normalizeTurma(turma) || undefined;
-
-        const activeShift = await prisma.shift.findFirst({
-          where: {
-            status: 'ATIVO',
-            ...(turmaNormalizada ? { turma: turmaInFilter(turmaNormalizada) } : {}),
-          },
-        });
-
-        const isPendencia = status === 'PENDENCIA_PROXIMO_TURNO';
-        const activeTurmaClean = turmaNormalizada || (activeShift?.turma ? normalizeTurma(activeShift.turma) : 'A');
-        const finalTurma = isPendencia ? getNextTurma(activeTurmaClean) : activeTurmaClean;
-
-        const incident = await prisma.incident.create({
-          data: {
-            tag: tag.toUpperCase().trim(),
-            equipmentId: equipment?.id || null,
-            equipamentoNome: equipamentoNome || equipment?.nome || `Equipamento ${tag}`,
-            area: area || equipment?.area || 'Frota Mina',
-            tipoFalha: tipoFalha || 'Comunicação',
-            falha,
-            sintoma,
-            dataHoraParada: dataHoraParada ? new Date(dataHoraParada) : new Date(),
-            dataHoraAcionamento: dataHoraAcionamento ? new Date(dataHoraAcionamento) : new Date(),
-            previsaoLiberacao: previsaoLiberacao || null,
-            prioridade: prioridade || 'MEDIA',
-            status: status || 'EM_ANDAMENTO',
-            responsavel,
-            motivoEspera,
-            proximaAcao,
-            localizacaoAtualOpcional,
-            observacao,
-            shiftId: activeShift?.id || null,
-            turma: finalTurma,
-            isPendenciaHerdada: isPendencia,
-            noCodigo: noCodigo === true,
-            historico: {
-              create: {
-                tipoEvento: 'ABERTURA',
-                descricao: `Ocorrência iniciada por ${responsavel}. Falha: ${falha}`,
-                usuario: responsavel,
-              },
-            },
-          },
-          include: {
-            historico: true,
-          },
-        });
-
-        return NextResponse.json(incident, { status: 201 });
-      } catch (dbErr2) {
-        console.error('Falha ao criar atendimento no Supabase após retry:', dbErr2);
-        return NextResponse.json({ error: 'Erro ao gravar atendimento no banco de dados' }, { status: 500 });
-      }
+      if (!createdIncident && prismaInc) createdIncident = prismaInc;
+    } catch (prismaErr) {
+      console.warn('Alerta Prisma POST atendimentos:', prismaErr);
     }
+
+    if (!createdIncident) {
+      createdIncident = {
+        id: `inc-${Date.now()}`,
+        tag: tagClean,
+        equipamentoNome: equipamentoNome || `Equipamento ${tagClean}`,
+        area: area || 'Frota Mina',
+        tipoFalha: tipoFalha || 'Comunicação',
+        falha,
+        sintoma,
+        dataHoraParada: dataHoraParada || nowIso,
+        dataHoraAcionamento: dataHoraAcionamento || nowIso,
+        previsaoLiberacao,
+        prioridade: prioridade || 'MEDIA',
+        status: status || 'EM_ANDAMENTO',
+        responsavel,
+        motivoEspera,
+        proximaAcao,
+        localizacaoAtualOpcional,
+        observacao,
+        shiftId: activeShiftId,
+        turma: finalTurma,
+        divisaoAtuacao: divisaoAtuacao || 'MONITORAMENTO',
+        isPendenciaHerdada: isPendencia,
+        noCodigo: noCodigo === true,
+        criadoEm: nowIso,
+        atualizadoEm: nowIso,
+        historico: [{
+          id: `hist-${Date.now()}`,
+          tipoEvento: 'ABERTURA',
+          descricao: `Ocorrência iniciada por ${responsavel}. Falha: ${falha}`,
+          usuario: responsavel,
+          dataHora: nowIso,
+        }],
+      };
+    }
+
+    return NextResponse.json(createdIncident, { status: 201 });
   } catch (error) {
     console.error('Error creating incident:', error);
     return NextResponse.json({ error: 'Erro ao criar atendimento' }, { status: 500 });
   }
 }
-

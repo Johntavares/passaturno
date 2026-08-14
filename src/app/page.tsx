@@ -1042,7 +1042,7 @@ export default function Home() {
             return incidents.filter((item) => {
               const itemTurma = normalizeTurma(item.turma);
 
-              // 1. Atendimento criado ou aceito no turno ativo atual
+              // 1. Atendimento criado ou vinculado ao turno ativo atual
               const isDoTurnoAtivo =
                 typeof item.shiftId === 'string' &&
                 item.shiftId === activeShift.id;
@@ -1052,12 +1052,8 @@ export default function Home() {
                 return isDoTurnoAtivo;
               }
 
-              // 3. Ocorrências em andamento: exibe APENAS se iniciadas no turno ativo atual
-              if (item.status === 'EM_ANDAMENTO' && !item.isPendenciaHerdada) {
-                return isDoTurnoAtivo;
-              }
-
-              // 4. Pendências repassadas: exibe apenas se pertencerem à turma ativa do turno atual (ou turma filtrada)
+              // 3. Ocorrências em aberto (EM_ANDAMENTO, AGUARDANDO, PENDENCIA_PROXIMO_TURNO, NO_CODIGO):
+              // Exibe se pertencer ao turno ativo atual OU se for pertencente à mesma turma ativa do operador (ex: Turma C)
               const matchesTurma = itemTurma === filterTurma;
               return isDoTurnoAtivo || matchesTurma;
             });
