@@ -91,7 +91,7 @@ export async function POST(request: Request) {
     let activeShiftId: string | null = null;
     let createdIncident: any = null;
 
-    // 1. SUPABASE REST
+    // 1. SUPABASE REST (Fonte de Verdade Única Principal)
     try {
       const { data: supaShifts } = await supabase
         .from('Shift')
@@ -134,13 +134,13 @@ export async function POST(request: Request) {
         atualizadoEm: nowIso,
       };
 
-      const { data: insertedSupa } = await supabase
+      const { data: insertedSupa, error: supaErr } = await supabase
         .from('Incident')
         .insert([supaPayload])
         .select('*')
         .single();
 
-      if (insertedSupa) {
+      if (!supaErr && insertedSupa) {
         createdIncident = insertedSupa;
         const histId = typeof crypto !== 'undefined' && crypto.randomUUID
           ? crypto.randomUUID()
@@ -162,60 +162,62 @@ export async function POST(request: Request) {
       console.warn('Alerta POST Supabase REST atendimentos:', supaErr);
     }
 
-    // 2. PRISMA POSTGRESQL (Redundância em segundo plano)
-    try {
-      const equipment = await prisma.equipment.findUnique({
-        where: { tag: tagClean },
-      }).catch(() => null);
-
-      if (!activeShiftId) {
-        const activeShift = await prisma.shift.findFirst({
-          where: {
-            status: 'ATIVO',
-            turma: turmaInFilter(turmaNormalizada),
-          },
+    // 2. PRISMA POSTGRESQL (Apenas fallback se Supabase REST falhar, evitando inserção dupla no mesmo banco)
+    if (!createdIncident) {
+      try {
+        const equipment = await prisma.equipment.findUnique({
+          where: { tag: tagClean },
         }).catch(() => null);
-        if (activeShift) activeShiftId = activeShift.id;
-      }
 
-      const prismaInc = await prisma.incident.create({
-        data: {
-          tag: tagClean,
-          equipmentId: equipment?.id || null,
-          equipamentoNome: equipamentoNome || equipment?.nome || `Equipamento ${tagClean}`,
-          area: area || equipment?.area || 'Frota Mina',
-          tipoFalha: tipoFalha || 'Comunicação',
-          falha,
-          sintoma,
-          dataHoraParada: dataHoraParada ? new Date(dataHoraParada) : new Date(),
-          dataHoraAcionamento: dataHoraAcionamento ? new Date(dataHoraAcionamento) : new Date(),
-          previsaoLiberacao: previsaoLiberacao || null,
-          prioridade: prioridade || 'MEDIA',
-          status: status || 'EM_ANDAMENTO',
-          responsavel,
-          motivoEspera,
-          proximaAcao,
-          localizacaoAtualOpcional,
-          observacao,
-          shiftId: activeShiftId,
-          turma: finalTurma,
-          divisaoAtuacao: divisaoAtuacao || 'MONITORAMENTO',
-          isPendenciaHerdada: isPendencia,
-          noCodigo: noCodigo === true,
-          historico: {
-            create: {
-              tipoEvento: 'ABERTURA',
-              descricao: `Ocorrência iniciada por ${responsavel}. Falha: ${falha}`,
-              usuario: responsavel,
+        if (!activeShiftId) {
+          const activeShift = await prisma.shift.findFirst({
+            where: {
+              status: 'ATIVO',
+              turma: turmaInFilter(turmaNormalizada),
+            },
+          }).catch(() => null);
+          if (activeShift) activeShiftId = activeShift.id;
+        }
+
+        const prismaInc = await prisma.incident.create({
+          data: {
+            tag: tagClean,
+            equipmentId: equipment?.id || null,
+            equipamentoNome: equipamentoNome || equipment?.nome || `Equipamento ${tagClean}`,
+            area: area || equipment?.area || 'Frota Mina',
+            tipoFalha: tipoFalha || 'Comunicação',
+            falha,
+            sintoma,
+            dataHoraParada: dataHoraParada ? new Date(dataHoraParada) : new Date(),
+            dataHoraAcionamento: dataHoraAcionamento ? new Date(dataHoraAcionamento) : new Date(),
+            previsaoLiberacao: previsaoLiberacao || null,
+            prioridade: prioridade || 'MEDIA',
+            status: status || 'EM_ANDAMENTO',
+            responsavel,
+            motivoEspera,
+            proximaAcao,
+            localizacaoAtualOpcional,
+            observacao,
+            shiftId: activeShiftId,
+            turma: finalTurma,
+            divisaoAtuacao: divisaoAtuacao || 'MONITORAMENTO',
+            isPendenciaHerdada: isPendencia,
+            noCodigo: noCodigo === true,
+            historico: {
+              create: {
+                tipoEvento: 'ABERTURA',
+                descricao: `Ocorrência iniciada por ${responsavel}. Falha: ${falha}`,
+                usuario: responsavel,
+              },
             },
           },
-        },
-        include: { historico: true },
-      }).catch(() => null);
+          include: { historico: true },
+        }).catch(() => null);
 
-      if (!createdIncident && prismaInc) createdIncident = prismaInc;
-    } catch (prismaErr) {
-      console.warn('Alerta Prisma POST atendimentos:', prismaErr);
+        if (prismaInc) createdIncident = prismaInc;
+      } catch (prismaErr) {
+        console.warn('Alerta Prisma POST atendimentos:', prismaErr);
+      }
     }
 
     if (!createdIncident) {
