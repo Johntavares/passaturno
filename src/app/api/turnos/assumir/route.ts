@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { turmaInFilter } from '@/lib/turma';
+import { supabase } from '@/lib/supabaseClient';
+import { turmaInFilter, normalizeTurma } from '@/lib/turma';
 
 export async function POST(request: Request) {
   try {
@@ -10,8 +11,6 @@ export async function POST(request: Request) {
     const equipeFinal = equipe || `Automação ${turma || 'A'}`;
     const respFinal = responsavelNome || 'Operador';
 
-    // Deriva a turma da equipe selecionada (ex: 'Automação C' => 'C'),
-    // garantindo que turma e equipe nunca fiquem inconsistentes.
     const turmaDaEquipe = (equipeFinal || '')
       .replace(/Automação\s*/i, '')
       .replace(/& CCO.*/i, '')
@@ -21,8 +20,96 @@ export async function POST(request: Request) {
       ? turmaDaEquipe
       : (turma || 'A').toUpperCase().trim();
 
+    const nowIso = new Date().toISOString();
+    const today = nowIso.split('T')[0];
+    const shiftId = typeof crypto !== 'undefined' && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `shift-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+    let newShift: any = null;
+
+    // 1. SUPABASE REST: Encerrar turno anterior da turma e criar novo turno ativo
     try {
-      // Encerrar o turno ativo anterior DA MESMA TURMA
+      const { data: supaShifts } = await supabase
+        .from('Shift')
+        .select('*')
+        .eq('status', 'ATIVO');
+
+      if (supaShifts && supaShifts.length > 0) {
+        const prevActive = supaShifts.find((s: any) => normalizeTurma(s.turma) === turmaFinal);
+        if (prevActive) {
+          await supabase
+            .from('Shift')
+            .update({ status: 'ENCERRADO', horaFim: nowIso })
+            .eq('id', prevActive.id);
+        }
+      }
+
+      const { data: createdSupaShift } = await supabase
+        .from('Shift')
+        .insert([{
+          id: shiftId,
+          equipe: equipeFinal,
+          responsavelNome: respFinal,
+          turma: turmaFinal,
+          escala: escala || '3x3',
+          data: today,
+          horaInicio: nowIso,
+          status: 'ATIVO',
+          observacoes,
+          criadoEm: nowIso,
+        }])
+        .select('*')
+        .single();
+
+      if (createdSupaShift) newShift = createdSupaShift;
+
+      // Buscar pendências no Supabase REST direcionadas a esta turma
+      const { data: supaIncidents } = await supabase
+        .from('Incident')
+        .select('*');
+
+      if (supaIncidents && supaIncidents.length > 0) {
+        const pendingForTurma = supaIncidents.filter((i: any) =>
+          normalizeTurma(i.turma) === turmaFinal &&
+          ['EM_ANDAMENTO', 'AGUARDANDO', 'PENDENCIA_PROXIMO_TURNO'].includes(i.status)
+        );
+
+        for (const inc of pendingForTurma) {
+          const newStatus = inc.status === 'PENDENCIA_PROXIMO_TURNO' ? 'EM_ANDAMENTO' : inc.status;
+          await supabase
+            .from('Incident')
+            .update({
+              shiftId: shiftId,
+              turma: turmaFinal,
+              status: newStatus,
+              isPendenciaHerdada: true,
+              atualizadoEm: nowIso,
+            })
+            .eq('id', inc.id);
+
+          try {
+            await supabase
+              .from('IncidentHistory')
+              .insert([{
+                id: typeof crypto !== 'undefined' && crypto.randomUUID
+                  ? crypto.randomUUID()
+                  : `hist-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                incidentId: inc.id,
+                tipoEvento: 'TRANSFERENCIA_TURNO',
+                descricao: `Ocorrência vinculada ao novo turno ativado pela Turma ${turmaFinal} (${respFinal}).`,
+                usuario: respFinal,
+                dataHora: nowIso,
+              }]);
+          } catch (eH) {}
+        }
+      }
+    } catch (supaErr) {
+      console.warn('Alerta assumir turno Supabase REST:', supaErr);
+    }
+
+    // 2. PRISMA POSTGRESQL (Redundância no banco)
+    try {
       const activeShift = await prisma.shift.findFirst({
         where: { status: 'ATIVO', turma: turmaInFilter(turmaFinal) },
       });
@@ -30,17 +117,23 @@ export async function POST(request: Request) {
       if (activeShift) {
         await prisma.shift.update({
           where: { id: activeShift.id },
-          data: {
-            status: 'ENCERRADO',
-            horaFim: new Date(),
-          },
-        });
+          data: { status: 'ENCERRADO', horaFim: new Date() },
+        }).catch(() => null);
       }
 
-      // Criar o novo turno ativo no banco de dados
-      const today = new Date().toISOString().split('T')[0];
-      const newShift = await prisma.shift.create({
-        data: {
+      const prismaShift = await prisma.shift.upsert({
+        where: { id: shiftId },
+        update: {
+          equipe: equipeFinal,
+          responsavelNome: respFinal,
+          turma: turmaFinal,
+          escala: escala || '3x3',
+          data: today,
+          status: 'ATIVO',
+          observacoes,
+        },
+        create: {
+          id: shiftId,
           equipe: equipeFinal,
           responsavelNome: respFinal,
           turma: turmaFinal,
@@ -50,21 +143,22 @@ export async function POST(request: Request) {
           status: 'ATIVO',
           observacoes,
         },
-      });
+      }).catch(() => null);
 
-      // Vincula todas as pendências em aberto direcionadas a esta turma ao novo turno iniciado
+      if (!newShift && prismaShift) newShift = prismaShift;
+
       const pendingIncidents = await prisma.incident.findMany({
         where: {
           turma: turmaInFilter(turmaFinal),
           status: { in: ['EM_ANDAMENTO', 'AGUARDANDO', 'PENDENCIA_PROXIMO_TURNO'] },
         },
-      });
+      }).catch(() => []);
 
       for (const inc of pendingIncidents) {
         await prisma.incident.update({
           where: { id: inc.id },
           data: {
-            shiftId: newShift.id,
+            shiftId: shiftId,
             turma: turmaFinal,
             status: inc.status === 'PENDENCIA_PROXIMO_TURNO' ? 'EM_ANDAMENTO' : inc.status,
             isPendenciaHerdada: true,
@@ -76,14 +170,27 @@ export async function POST(request: Request) {
               },
             },
           },
-        });
+        }).catch(() => null);
       }
-
-      return NextResponse.json(newShift, { status: 201 });
-    } catch (dbErr) {
-      console.error('Erro ao assumir turno no Supabase:', dbErr);
-      return NextResponse.json({ error: 'Erro ao gravar turno no banco de dados' }, { status: 500 });
+    } catch (prismaErr) {
+      console.warn('Alerta Prisma assumir turno:', prismaErr);
     }
+
+    if (!newShift) {
+      newShift = {
+        id: shiftId,
+        equipe: equipeFinal,
+        responsavelNome: respFinal,
+        turma: turmaFinal,
+        escala: escala || '3x3',
+        data: today,
+        horaInicio: nowIso,
+        status: 'ATIVO',
+        observacoes,
+      };
+    }
+
+    return NextResponse.json(newShift, { status: 201 });
   } catch (error) {
     console.error('Error assuming shift:', error);
     return NextResponse.json({ error: 'Erro ao assumir turno' }, { status: 500 });

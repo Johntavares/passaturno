@@ -16,11 +16,14 @@ export async function GET(request: Request) {
       .order('criadoEm', { ascending: false });
 
     if (shifts && shifts.length > 0) {
-      let active = shifts[0];
+      let active: any = null;
       if (turma) {
-        const found = shifts.find((s) => normalizeTurma(s.turma) === turma);
-        if (found) active = found;
+        active = shifts.find((s) => normalizeTurma(s.turma) === turma) || null;
+      } else {
+        active = shifts[0];
       }
+
+      const activeTurma = active ? normalizeTurma(active.turma) : turma;
 
       const { data: openIncidents } = await supabase
         .from('Incident')
@@ -37,6 +40,15 @@ export async function GET(request: Request) {
         criticalCount: filteredInc.filter((i) => i.prioridade === 'CRITICA').length,
         inheritedCount: filteredInc.filter((i) => i.isPendenciaHerdada).length,
         openIncidents: filteredInc,
+      });
+    } else {
+      return NextResponse.json({
+        activeShift: null,
+        lastClosedShift: null,
+        openIncidentsCount: 0,
+        criticalCount: 0,
+        inheritedCount: 0,
+        openIncidents: [],
       });
     }
   } catch (e) {

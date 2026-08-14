@@ -1065,10 +1065,9 @@ export default function Home() {
               !itemTurma ||
               isDoResponsavelAtual;
 
-            // 3. Regra de finalizados/retroagidos: exibe se for do turno ativo ou se foi finalizado HOJE
+            // 3. Regra de finalizados/retroagidos: exibe APENAS se tiver sido finalizado durante o turno ativo atual
             if (item.status === 'FINALIZADO' || item.status === 'RETROAGIDO') {
-              if (isDoTurnoAtivo) return true;
-              return isIncidentFromToday(item) && matchesTurma;
+              return isDoTurnoAtivo;
             }
 
             // Para qualquer ocorrência em aberto: NUNCA SUMIR OCORRÊNCIAS EM ABERTO!
