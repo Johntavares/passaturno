@@ -1031,11 +1031,11 @@ export default function Home() {
           };
 
                     const displayedIncidents = incidents.filter((item) => {
-            // Se o filtro do topo estiver em 'TODAS' ou não definido, exibe todas as ocorrências em aberto sem bloquear por turma
-            const isFilterTodas = selectedTurmaFilter === 'TODAS' || !selectedTurmaFilter;
+            const isFilterTodas = selectedTurmaFilter === 'TODAS';
+            const currentTurmaClean = normalizeTurma(currentUser?.turma) || normalizeTurma(activeShift?.turma) || 'A';
             const filterTurma = isFilterTodas
               ? ''
-              : (normalizeTurma(selectedTurmaFilter) || normalizeTurma(currentUser?.turma) || normalizeTurma(activeShift?.turma) || '');
+              : (normalizeTurma(selectedTurmaFilter) || currentTurmaClean);
 
             const itemTurma = normalizeTurma(item.turma);
 
@@ -1045,31 +1045,15 @@ export default function Home() {
               typeof item.shiftId === 'string' &&
               item.shiftId === activeShift.id;
 
-            // 2. Ocorrência em aberto (EM_ANDAMENTO, AGUARDANDO, PENDENCIA_PROXIMO_TURNO, NO_CODIGO)
-            const isOcorrenciaEmAberto =
-              item.status === 'EM_ANDAMENTO' ||
-              item.status === 'AGUARDANDO' ||
-              item.status === 'PENDENCIA_PROXIMO_TURNO' ||
-              item.isPendenciaHerdada === true ||
-              item.noCodigo === true;
-
-            const isDoResponsavelAtual =
-              Boolean(currentUser?.nome && item.responsavel &&
-              item.responsavel.toLowerCase().trim() === currentUser.nome.toLowerCase().trim());
-
-            const matchesTurma =
-              filterTurma === '' ||
-              itemTurma === filterTurma ||
-              !itemTurma ||
-              isDoResponsavelAtual;
-
-            // 3. Regra de finalizados/retroagidos: exibe APENAS se tiver sido finalizado durante o turno ativo atual
+            // 2. Se a ocorrência foi finalizada ou retroagida: exibe APENAS se foi finalizada no turno ativo atual
             if (item.status === 'FINALIZADO' || item.status === 'RETROAGIDO') {
               return isDoTurnoAtivo;
             }
 
-            // Para qualquer ocorrência em aberto: NUNCA SUMIR OCORRÊNCIAS EM ABERTO!
-            return isDoTurnoAtivo || isDoResponsavelAtual || isOcorrenciaEmAberto;
+            // 3. Ocorrências em aberto (EM_ANDAMENTO, AGUARDANDO, PENDENCIA_PROXIMO_TURNO):
+            // Exibe se pertencer ao turno ativo atual OU se estiver endereçada à turma atual exibida no filtro/painel.
+            const matchesTurma = filterTurma === '' || itemTurma === filterTurma;
+            return isDoTurnoAtivo || matchesTurma;
           });
 
 
