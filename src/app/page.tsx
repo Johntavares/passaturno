@@ -222,18 +222,16 @@ export default function Home() {
             } catch (e) {}
           }
         } else {
-          // Se a resposta do servidor for nula (ex.: falha de rede ou limite de cota do Neon DB excedido), preserva o turno ativo local
-          let cachedShift: ShiftType | null = null;
+          // O banco de dados confirmou que não há turno ativo para esta turma.
+          // Limpar o estado do React e remover a cache antiga do localStorage para liberar o início de um novo turno.
+          setActiveShift(null);
           if (typeof window !== 'undefined') {
             try {
-              const saved = localStorage.getItem(`passaturno-active-shift-${userTurmaClean || 'A'}`) || localStorage.getItem('passaturno-active-shift-current');
-              if (saved) cachedShift = JSON.parse(saved);
+              localStorage.removeItem(`passaturno-active-shift-${userTurmaClean || 'A'}`);
+              localStorage.removeItem('passaturno-active-shift-current');
+              localStorage.removeItem('passaturno-active-shift-v2');
+              localStorage.removeItem('passaturno-active-shift');
             } catch (e) {}
-          }
-          if (cachedShift && cachedShift.status === 'ATIVO') {
-            setActiveShift(cachedShift);
-          } else {
-            setActiveShift(null);
           }
         }
       } else {
