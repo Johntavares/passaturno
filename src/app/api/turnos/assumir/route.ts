@@ -64,7 +64,8 @@ export async function POST(request: Request) {
 
       if (createdSupaShift) newShift = createdSupaShift;
 
-      // Buscar pendências no Supabase REST direcionadas a esta turma
+      // Assegurar que as pendências repassadas para esta turma continuem no estado PENDENCIA_PROXIMO_TURNO / HERDADA
+      // (NÃO mover automaticamente para EM_ANDAMENTO nem vincular ao shiftId para manter as colunas zeradas)
       const { data: supaIncidents } = await supabase
         .from('Incident')
         .select('*');
@@ -76,13 +77,11 @@ export async function POST(request: Request) {
         );
 
         for (const inc of pendingForTurma) {
-          const newStatus = inc.status === 'PENDENCIA_PROXIMO_TURNO' ? 'EM_ANDAMENTO' : inc.status;
           await supabase
             .from('Incident')
             .update({
-              shiftId: shiftId,
               turma: turmaFinal,
-              status: newStatus,
+              status: 'PENDENCIA_PROXIMO_TURNO',
               isPendenciaHerdada: true,
               atualizadoEm: nowIso,
             })
@@ -97,7 +96,7 @@ export async function POST(request: Request) {
                   : `hist-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
                 incidentId: inc.id,
                 tipoEvento: 'TRANSFERENCIA_TURNO',
-                descricao: `Ocorrência vinculada ao novo turno ativado pela Turma ${turmaFinal} (${respFinal}).`,
+                descricao: `Pendência repassada para o novo turno da Turma ${turmaFinal} (${respFinal}).`,
                 usuario: respFinal,
                 dataHora: nowIso,
               }]);
@@ -158,17 +157,9 @@ export async function POST(request: Request) {
         await prisma.incident.update({
           where: { id: inc.id },
           data: {
-            shiftId: shiftId,
             turma: turmaFinal,
-            status: inc.status === 'PENDENCIA_PROXIMO_TURNO' ? 'EM_ANDAMENTO' : inc.status,
+            status: 'PENDENCIA_PROXIMO_TURNO',
             isPendenciaHerdada: true,
-            historico: {
-              create: {
-                tipoEvento: 'TRANSFERENCIA_TURNO',
-                descricao: `Ocorrência vinculada ao novo turno ativado pela Turma ${turmaFinal} (${respFinal}).`,
-                usuario: respFinal,
-              },
-            },
           },
         }).catch(() => null);
       }
