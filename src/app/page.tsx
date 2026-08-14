@@ -1034,11 +1034,10 @@ export default function Home() {
             // Ao encerrar o turno (quando não há turno ativo), o painel fica 100% LIMPO!
             if (!activeShift) return [];
 
-            const isFilterTodas = selectedTurmaFilter === 'TODAS';
-            const currentTurmaClean = normalizeTurma(currentUser?.turma) || normalizeTurma(activeShift?.turma) || 'A';
-            const filterTurma = isFilterTodas
-              ? ''
-              : (normalizeTurma(selectedTurmaFilter) || currentTurmaClean);
+            const activeTurmaClean = normalizeTurma(activeShift.turma) || normalizeTurma(currentUser?.turma) || 'A';
+            const filterTurma = (selectedTurmaFilter && selectedTurmaFilter !== 'TODAS')
+              ? normalizeTurma(selectedTurmaFilter)
+              : activeTurmaClean;
 
             return incidents.filter((item) => {
               const itemTurma = normalizeTurma(item.turma);
@@ -1048,18 +1047,18 @@ export default function Home() {
                 typeof item.shiftId === 'string' &&
                 item.shiftId === activeShift.id;
 
-              // 2. Ocorrências finalizadas ou retroagidas: exibe APENAS se finalizadas no turno ativo atual
+              // 2. Ocorrências finalizadas ou retroagidas: exibe APENAS se concluídas no turno ativo atual
               if (item.status === 'FINALIZADO' || item.status === 'RETROAGIDO') {
                 return isDoTurnoAtivo;
               }
 
-              // 3. Ocorrências em andamento: exibe APENAS se tiverem sido aceitas/iniciadas no turno ativo atual
+              // 3. Ocorrências em andamento: exibe APENAS se iniciadas no turno ativo atual
               if (item.status === 'EM_ANDAMENTO' && !item.isPendenciaHerdada) {
                 return isDoTurnoAtivo;
               }
 
-              // 4. Pendências herdadas repassadas do turno anterior: exibe na coluna Pendências Herdadas para a turma destino
-              const matchesTurma = filterTurma === '' || itemTurma === filterTurma;
+              // 4. Pendências repassadas: exibe apenas se pertencerem à turma ativa do turno atual (ou turma filtrada)
+              const matchesTurma = itemTurma === filterTurma;
               return isDoTurnoAtivo || matchesTurma;
             });
           })();
