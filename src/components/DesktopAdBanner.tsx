@@ -26,6 +26,7 @@ export const DesktopAdBanner: React.FC<DesktopAdBannerProps> = ({
 }) => {
   const [isDesktop, setIsDesktop] = useState(false);
   const [adLoaded, setAdLoaded] = useState(false);
+  const [adEmpty, setAdEmpty] = useState(false);
   const adRef = useRef<HTMLModElement>(null);
 
   const isValidSlot = adSlot && adSlot.trim() !== '' && adSlot !== 'YYYYYYYYYY';
@@ -57,6 +58,18 @@ export const DesktopAdBanner: React.FC<DesktopAdBannerProps> = ({
     }
   }, [isDesktop, isValidSlot]);
 
+  // Se o AdSense não preencher o anúncio em alguns segundos (conta em análise, domínio
+  // não aprovado ou bloqueador de anúncios), exibe o card nativo no lugar do espaço vazio.
+  useEffect(() => {
+    if (!isDesktop || !isValidSlot) return;
+    const t = setTimeout(() => {
+      const el = adRef.current;
+      const filled = el && (el.getAttribute('data-ad-status') === 'filled' || el.querySelector('iframe'));
+      if (!filled) setAdEmpty(true);
+    }, 4500);
+    return () => clearTimeout(t);
+  }, [isDesktop, isValidSlot]);
+
   if (!isDesktop) return null;
 
   return (
@@ -81,8 +94,8 @@ export const DesktopAdBanner: React.FC<DesktopAdBannerProps> = ({
           </div>
         </div>
 
-        {/* MODO 1: Se houver Slot ID do Google AdSense VÁLIDO configurado */}
-        {isValidSlot ? (
+        {/* MODO 1: Se houver Slot ID do Google AdSense VÁLIDO configurado E o anúncio veio */}
+        {isValidSlot && !adEmpty ? (
           <div className="min-h-[90px] flex items-center justify-center bg-white/5 rounded-xl p-2 border border-white/5">
             <ins
               ref={adRef}
