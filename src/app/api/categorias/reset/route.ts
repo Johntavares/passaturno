@@ -12,6 +12,7 @@ export const DEFAULT_FAILURE_CATEGORIES = [
   'ALIMENTAÇÃO/ELETRICA',
   'MOVIMENTAÇÃO',
   'COMUNICAÇÃO',
+  'TELEMETRIA',
 ];
 
 export async function POST() {

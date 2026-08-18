@@ -23,6 +23,7 @@ const SEED = [
   'ALIMENTAÇÃO/ELETRICA',
   'MOVIMENTAÇÃO',
   'COMUNICAÇÃO',
+  'TELEMETRIA',
 ];
 
 async function main() {
