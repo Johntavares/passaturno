@@ -281,6 +281,13 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
     const noCodigoIncidents = activeIncidents.filter((i) => i.noCodigo);
     const oportunidadeIncidents = activeIncidents.filter((i) => !i.noCodigo);
 
+    // Dividir as atividades no código por forma de atuação:
+    // REMOTO (MONITORAMENTO) x CORRETIVA (campo)
+    const isRemoto = (inc: IncidentType) =>
+      ((inc.divisaoAtuacao || 'MONITORAMENTO') as string).toUpperCase() !== 'CORRETIVA_CAMPO';
+    const remotoIncidents = noCodigoIncidents.filter(isRemoto);
+    const corretivaIncidents = noCodigoIncidents.filter((inc) => !isRemoto(inc));
+
     const formatEquipInfo = (inc: IncidentType) => {
       const horaParada = new Date(inc.dataHoraParada).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
       const horaAcionamento = inc.dataHoraAcionamento
@@ -312,11 +319,20 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
     text += `${carteiraAberto} - ABERTO\n`;
     text += `${carteiraPendente} - PENDENTE\n\n`;
 
-    text += `${pad(noCodigoIncidents.length)} - EQUIPAMENTO NO CÓDIGO\n\n`;
-    if (noCodigoIncidents.length === 0) {
-      text += `Nenhum equipamento no código.\n\n`;
+    text += `${pad(remotoIncidents.length)} - EQUIPAMENTO NO CÓDIGO - REMOTO (MONITORAMENTO)\n\n`;
+    if (remotoIncidents.length === 0) {
+      text += `Nenhum equipamento no código (remoto/monitoramento).\n\n`;
     } else {
-      noCodigoIncidents.forEach((inc) => {
+      remotoIncidents.forEach((inc) => {
+        text += formatEquipInfo(inc);
+      });
+    }
+
+    text += `${pad(corretivaIncidents.length)} - EQUIPAMENTO NO CÓDIGO - CORRETIVA\n\n`;
+    if (corretivaIncidents.length === 0) {
+      text += `Nenhum equipamento no código (corretiva).\n\n`;
+    } else {
+      corretivaIncidents.forEach((inc) => {
         text += formatEquipInfo(inc);
       });
     }
