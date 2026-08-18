@@ -13,15 +13,6 @@ if (fs.existsSync(envPath)) {
 }
 
 const SEED = [
-  'Comunicação',
-  'PLC',
-  'Inversor',
-  'Instrumentação',
-  'Rede Industrial',
-  'Sensor',
-  'Supervisório',
-  'Hardware / Elétrica',
-  'Outro',
   'CASGPS',
   'OPTALERT',
   'MEMES',

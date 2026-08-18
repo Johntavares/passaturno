@@ -1,15 +1,6 @@
 import { supabase } from './supabaseClient';
 
 export const DEFAULT_FAILURE_CATEGORIES = [
-  'Comunicação',
-  'PLC',
-  'Inversor',
-  'Instrumentação',
-  'Rede Industrial',
-  'Sensor',
-  'Supervisório',
-  'Hardware / Elétrica',
-  'Outro',
   'CASGPS',
   'OPTALERT',
   'MEMES',

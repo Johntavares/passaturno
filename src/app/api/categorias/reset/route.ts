@@ -2,15 +2,6 @@ import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabaseClient';
 
 export const DEFAULT_FAILURE_CATEGORIES = [
-  'Comunicação',
-  'PLC',
-  'Inversor',
-  'Instrumentação',
-  'Rede Industrial',
-  'Sensor',
-  'Supervisório',
-  'Hardware / Elétrica',
-  'Outro',
   'CASGPS',
   'OPTALERT',
   'MEMES',
