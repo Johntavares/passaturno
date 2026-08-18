@@ -278,8 +278,12 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
     const activeIncidents = todayIncidents.filter(
       (i) => i.status !== 'FINALIZADO' && i.status !== 'RETROAGIDO'
     );
-    const noCodigoIncidents = activeIncidents.filter((i) => i.noCodigo);
-    const oportunidadeIncidents = activeIncidents.filter((i) => !i.noCodigo);
+    // Atividades em andamento divididas por forma de atuação:
+    // REMOTO (MONITORAMENTO) x CORRETIVA (campo)
+    const isRemoto = (inc: IncidentType) =>
+      ((inc.divisaoAtuacao || 'MONITORAMENTO') as string).toUpperCase() !== 'CORRETIVA_CAMPO';
+    const remotoIncidents = activeIncidents.filter(isRemoto);
+    const corretivaIncidents = activeIncidents.filter((inc) => !isRemoto(inc));
 
     const formatEquipInfo = (inc: IncidentType) => {
       const horaParada = new Date(inc.dataHoraParada).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
@@ -312,20 +316,20 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
     text += `${carteiraAberto} - ABERTO\n`;
     text += `${carteiraPendente} - PENDENTE\n\n`;
 
-    text += `${pad(noCodigoIncidents.length)} - EQUIPAMENTO NO CÓDIGO\n\n`;
-    if (noCodigoIncidents.length === 0) {
-      text += `Nenhum equipamento no código.\n\n`;
+    text += `${pad(remotoIncidents.length)} - EQUIPAMENTO EM ANDAMENTO - REMOTO (MONITORAMENTO)\n\n`;
+    if (remotoIncidents.length === 0) {
+      text += `Nenhum equipamento em andamento (remoto/monitoramento).\n\n`;
     } else {
-      noCodigoIncidents.forEach((inc) => {
+      remotoIncidents.forEach((inc) => {
         text += formatEquipInfo(inc);
       });
     }
 
-    text += `${pad(oportunidadeIncidents.length)} - EQUIPAMENTO EM OPORTUNIDADE\n\n`;
-    if (oportunidadeIncidents.length === 0) {
-      text += `Nenhum equipamento em oportunidade.\n\n`;
+    text += `${pad(corretivaIncidents.length)} - EQUIPAMENTO EM ANDAMENTO - CORRETIVA\n\n`;
+    if (corretivaIncidents.length === 0) {
+      text += `Nenhum equipamento em andamento (corretiva).\n\n`;
     } else {
-      oportunidadeIncidents.forEach((inc) => {
+      corretivaIncidents.forEach((inc) => {
         text += formatEquipInfo(inc);
       });
     }
