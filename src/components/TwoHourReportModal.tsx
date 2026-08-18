@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { isIncidentFromToday, getTodayYMDInBR } from '@/lib/turma';
 import { getBoletimConfig, saveBoletimConfig, subscribeBoletimConfigRealtime } from '@/lib/boletimConfig';
+import { getBoletimCarteira, saveBoletimCarteira, subscribeBoletimCarteiraRealtime } from '@/lib/boletimCarteira';
 
 const BOLETIM_STORAGE_KEY = 'passaturno-boletim-2h';
 
@@ -39,10 +40,10 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
 }) => {
   const [copied, setCopied] = useState(false);
   const [lastSentTime, setLastSentTime] = useState<string | null>(null);
-  // Estados da Carteira de Incidentes (Editáveis pelo operador)
-  const [carteiraTotal, setCarteiraTotal] = useState('23');
-  const [carteiraAndamento, setCarteiraAndamento] = useState('17');
-  const [carteiraAberto, setCarteiraAberto] = useState('06');
+  // Estados da Carteira de Incidentes (Editáveis pelo operador — chamados abertos da fila)
+  const [carteiraTotal, setCarteiraTotal] = useState('00');
+  const [carteiraAndamento, setCarteiraAndamento] = useState('00');
+  const [carteiraAberto, setCarteiraAberto] = useState('00');
   const [carteiraPendente, setCarteiraPendente] = useState('00');
 
   // Estados personalizáveis de GPS e Despacho
@@ -59,10 +60,19 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
   const [customReportText, setCustomReportText] = useState('');
   const [isCustomEdited, setIsCustomEdited] = useState(false);
 
-  // Guarda se o operador JÁ editou algum valor neste dia.
+  // Guarda se o operador JÁ editou algum valor nesta sessão do modal.
   // A partir do primeiro ajuste manual, os campos NÃO podem mais ser sobrescritos
   // automaticamente pelos efeitos (carteira) nem pelo sync do turno (equipes).
   const userTouchedRef = useRef(false);
+  // Guarda se a configuração fixa já foi carregada do banco nesta turma
+  const configLoadedRef = useRef(false);
+
+  // A cada abertura do modal, resetar o "editado" para carregar os dados salvos do banco
+  useEffect(() => {
+    if (isOpen) {
+      userTouchedRef.current = false;
+    }
+  }, [isOpen]);
 
   const markUserEdited = () => {
     userTouchedRef.current = true;
@@ -92,11 +102,28 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
   useEffect(() => {
     if (!isOpen) return;
     getBoletimConfig(turmaBoletim).then((config) => {
-      if (config && !userTouchedRef.current) {
-        applyConfigToFields(config);
+      if (config) {
+        configLoadedRef.current = true;
+        if (!userTouchedRef.current) {
+          applyConfigToFields(config);
+        }
       }
     }).catch(() => {});
   }, [isOpen, turmaBoletim]);
+
+  // Carregar os números diários da CARTEIRA (chamados abertos da fila) salvos no banco
+  const dataYmdHoje = getTodayYMDInBR();
+  useEffect(() => {
+    if (!isOpen) return;
+    getBoletimCarteira(turmaBoletim, dataYmdHoje).then((row) => {
+      if (row && !userTouchedRef.current) {
+        if (typeof row.total === 'string') setCarteiraTotal(row.total);
+        if (typeof row.andamento === 'string') setCarteiraAndamento(row.andamento);
+        if (typeof row.aberto === 'string') setCarteiraAberto(row.aberto);
+        if (typeof row.pendente === 'string') setCarteiraPendente(row.pendente);
+      }
+    }).catch(() => {});
+  }, [isOpen, turmaBoletim, dataYmdHoje]);
 
   // Salvar no banco (com debounce) os campos fixos editados pelo operador
   useEffect(() => {
@@ -115,15 +142,43 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
     return () => clearTimeout(t);
   }, [equipeSonda, liderVale, ausencia, equipSemDespacho, equipSemGps, equipPreventiva, equipManutencao, turmaBoletim]);
 
+  // Salvar no banco (com debounce) os números diários da carteira editados pelo operador
+  useEffect(() => {
+    if (!userTouchedRef.current) return;
+    const t = setTimeout(() => {
+      saveBoletimCarteira(turmaBoletim, dataYmdHoje, {
+        total: carteiraTotal,
+        andamento: carteiraAndamento,
+        aberto: carteiraAberto,
+        pendente: carteiraPendente,
+      });
+    }, 800);
+    return () => clearTimeout(t);
+  }, [carteiraTotal, carteiraAndamento, carteiraAberto, carteiraPendente, turmaBoletim, dataYmdHoje]);
+
   // Realtime: se outro operador salvar a configuração, atualiza este modal (sem sobrescrever edições locais)
   useEffect(() => {
     const unsubscribe = subscribeBoletimConfigRealtime((config) => {
       if (userTouchedRef.current) return;
       if (config.turma !== turmaBoletim) return;
+      configLoadedRef.current = true;
       applyConfigToFields(config);
     });
     return unsubscribe;
   }, [turmaBoletim]);
+
+  // Realtime: se outro operador salvar a carteira do dia, atualiza este modal
+  useEffect(() => {
+    const unsubscribe = subscribeBoletimCarteiraRealtime((row) => {
+      if (userTouchedRef.current) return;
+      if (row.turma !== turmaBoletim || row.data !== dataYmdHoje) return;
+      if (typeof row.total === 'string') setCarteiraTotal(row.total);
+      if (typeof row.andamento === 'string') setCarteiraAndamento(row.andamento);
+      if (typeof row.aberto === 'string') setCarteiraAberto(row.aberto);
+      if (typeof row.pendente === 'string') setCarteiraPendente(row.pendente);
+    });
+    return unsubscribe;
+  }, [turmaBoletim, dataYmdHoje]);
 
   // Edição dos números da carteira: sempre regenera o texto final com os novos
   // valores (desbloqueia o preview caso o operador tenha editado a mensagem antes).
@@ -157,7 +212,6 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
       // NOTA: o texto da mensagem NÃO é restaurado nem congelado. Ele é sempre
       // regenerado dinamicamente a partir dos valores acima, refletindo os números
       // editados no momento de copiar/enviar.
-      userTouchedRef.current = true;
     } catch (e) {
       console.error('Erro ao restaurar boletim de 2h:', e);
     }
@@ -189,26 +243,9 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
     }
   }, [carteiraTotal, carteiraAndamento, carteiraAberto, carteiraPendente, equipSemDespacho, equipSemGps, equipPreventiva, equipManutencao, equipeSonda, liderVale, ausencia]);
 
-  // Auto-calcular a CARTEIRA a partir dos atendimentos SOMENTE enquanto o operador
-  // não editou nenhum campo (evita sobrescrever os ajustes manuais a cada refresh).
+  // Sincronizar dados do turno (equipes/GPS) apenas se a configuração não veio do banco
   useEffect(() => {
-    if (userTouchedRef.current) return;
-    if (incidents.length > 0) {
-      const pad = (n: number) => String(n).padStart(2, '0');
-      const todayIncidents = incidents.filter((i) => isIncidentFromToday(i));
-      const activeToday = todayIncidents.filter(
-        (i) => i.status !== 'FINALIZADO' && i.status !== 'RETROAGIDO'
-      );
-      setCarteiraTotal(pad(todayIncidents.length));
-      setCarteiraAndamento(pad(activeToday.filter((i) => i.noCodigo).length));
-      setCarteiraAberto(pad(activeToday.filter((i) => !i.noCodigo).length));
-      setCarteiraPendente(pad(todayIncidents.filter(i => i.status === 'PENDENCIA_PROXIMO_TURNO').length));
-    }
-  }, [incidents]);
-
-  // Sincronizar dados do turno (equipes/GPS) apenas enquanto o operador não editou
-  useEffect(() => {
-    if (activeShift && !userTouchedRef.current) {
+    if (activeShift && !userTouchedRef.current && !configLoadedRef.current) {
       if (activeShift.equipeSonda) setEquipeSonda(activeShift.equipeSonda);
       if (activeShift.liderVale) setLiderVale(activeShift.liderVale);
       if (activeShift.ausencias) setAusencia(activeShift.ausencias);
@@ -268,8 +305,8 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
     text += `\n`;
 
     text += `${carteiraTotal} - INCIDENTES NA CARTEIRA\n`;
-    text += `${carteiraAndamento} - NO CÓDIGO\n`;
-    text += `${carteiraAberto} - EM OPORTUNIDADE\n`;
+    text += `${carteiraAndamento} - EM ANDAMENTO\n`;
+    text += `${carteiraAberto} - ABERTO\n`;
     text += `${carteiraPendente} - PENDENTE\n\n`;
 
     text += `${pad(noCodigoIncidents.length)} - EQUIPAMENTO NO CÓDIGO\n\n`;
@@ -395,7 +432,7 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
         <div className="mt-4 p-3 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2">
           <span className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
             <FileText className="w-3.5 h-3.5 text-sky-600" />
-            Editar Números da Carteira (Chamados para Tratar):
+            Editar Números da Carteira (Chamados Abertos na Fila — atualizados diariamente):
           </span>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
@@ -410,7 +447,7 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-[10px] font-bold text-rose-600 dark:text-rose-400 mb-0.5">No Código</label>
+              <label className="block text-[10px] font-bold text-rose-600 dark:text-rose-400 mb-0.5">Em Andamento</label>
               <input
                 type="text"
                 value={carteiraAndamento}
@@ -420,7 +457,7 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-[10px] font-bold text-amber-600 dark:text-amber-400 mb-0.5">Em Oportunidade</label>
+              <label className="block text-[10px] font-bold text-amber-600 dark:text-amber-400 mb-0.5">Aberto</label>
               <input
                 type="text"
                 value={carteiraAberto}

@@ -101,6 +101,18 @@ model BoletimConfig {
   atualizadoEm     DateTime?
 }
 
+model BoletimCarteira {
+  turma        String // A, B, C, D
+  data         String // YYYY-MM-DD
+  total        String?
+  andamento    String?
+  aberto       String?
+  pendente     String?
+  atualizadoEm DateTime?
+
+  @@id([turma, data])
+}
+
 model Incident {
   id                      String          @id @default(uuid())
   equipmentId             String?
