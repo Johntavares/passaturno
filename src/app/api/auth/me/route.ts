@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin';
+import { supabase } from '@/lib/supabaseClient';
 
 // GET /api/auth/me?id=xxx  ou  ?matricula=xxx
 // Retorna os dados mais frescos do usuário diretamente do banco.
