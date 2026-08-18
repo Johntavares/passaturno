@@ -10,6 +10,7 @@ export const DEFAULT_FAILURE_CATEGORIES = [
   'MODULAR',
   'ALIMENTAÇÃO/ELETRICA',
   'MOVIMENTAÇÃO',
+  'COMUNICAÇÃO',
 ];
 
 const STORAGE_KEY = 'passaturno-failure-categories-v1';
