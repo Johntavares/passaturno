@@ -328,7 +328,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
         <div className="bg-slate-100/80 border border-slate-200/70 rounded-2xl p-3 flex flex-col min-h-[500px]">
           <div className="bg-sky-500 text-white p-2.5 rounded-xl shadow-xs flex items-center justify-between mb-3">
             <h3 className="text-xs font-bold uppercase tracking-wide flex items-center">
-              Pendências Herdadas
+Próximo Turno
             </h3>
             <span className="bg-white/20 px-2 py-0.5 rounded-md text-[11px] font-bold">
               {colHerdados.length}
@@ -337,7 +337,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
           <div className="space-y-2.5 flex-1 overflow-y-auto max-h-[calc(100vh-280px)] pr-0.5">
             {colHerdados.length === 0 ? (
-              <div className="text-center py-10 text-xs text-slate-400 italic">Nenhuma pendência herdada</div>
+              <div className="text-center py-10 text-xs text-slate-400 italic">Nenhuma pendência para o próximo turno</div>
             ) : (
               colHerdados.map((item) => renderCard(item))
             )}
@@ -441,7 +441,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                 <option value="AGUARDANDO">🟡 Aguardando</option>
                 <option value="FINALIZADO">🟢 Concluído</option>
                 <option value="RETROAGIDO">🟣 Retroagido (Não era Automação)</option>
-                <option value="PENDENCIA_PROXIMO_TURNO">🔵 Pendência Herdada</option>
+                <option value="PENDENCIA_PROXIMO_TURNO">🔵 Próximo Turno</option>
               </select>
 
               {!isFinished && (
@@ -621,7 +621,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                   <option value="AGUARDANDO">🟡 Aguardando</option>
                   <option value="FINALIZADO">🟢 Concluído</option>
                   <option value="RETROAGIDO">🟣 Retroagido (Não era Automação)</option>
-                  <option value="PENDENCIA_PROXIMO_TURNO">🔵 Pendência Herdada</option>
+                  <option value="PENDENCIA_PROXIMO_TURNO">🔵 Próximo Turno</option>
                 </select>
               </div>
 

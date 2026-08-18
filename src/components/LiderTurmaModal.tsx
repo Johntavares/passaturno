@@ -143,7 +143,7 @@ export const LiderTurmaModal: React.FC<LiderTurmaModalProps> = ({
   };
 
   const handleExportLeadershipReport = () => {
-    const headers = ['Turma', 'Total Ocorrências', 'Concluídos', 'Em Andamento', 'Aguardando', 'Pendências Herdadas', 'Taxa Resolução'];
+    const headers = ['Turma', 'Total Ocorrências', 'Concluídos', 'Em Andamento', 'Aguardando', 'Próximo Turno', 'Taxa Resolução'];
     const rows = turmasList.map((t) => {
       const stats = getTurmaStats(t);
       return [`Turma ${t}`, stats.total, stats.concluidos, stats.emAndamento, stats.aguardando, stats.pendencias, `${stats.taxaConclusao}%`];
@@ -448,7 +448,7 @@ export const LiderTurmaModal: React.FC<LiderTurmaModalProps> = ({
                           <strong className="text-amber-600">{stats.aguardando}</strong>
                         </div>
                         <div className="flex justify-between">
-                          <span>🔵 Pendências Herdadas:</span>
+                          <span>🔵 Próximo Turno:</span>
                           <strong className="text-sky-600">{stats.pendencias}</strong>
                         </div>
                       </div>
@@ -467,7 +467,7 @@ export const LiderTurmaModal: React.FC<LiderTurmaModalProps> = ({
                     <th className="px-4 py-3">Total Ocorrências</th>
                     <th className="px-4 py-3">🟢 Concluídos</th>
                     <th className="px-4 py-3">🔴 Em Andamento</th>
-                    <th className="px-4 py-3">🔵 Pendências Herdadas</th>
+                    <th className="px-4 py-3">🔵 Próximo Turno</th>
                     <th className="px-4 py-3 text-right">Taxa Resolução</th>
                   </tr>
                 </thead>

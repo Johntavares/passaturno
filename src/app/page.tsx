@@ -1353,7 +1353,7 @@ export default function Home() {
                   <option value="AGUARDANDO">🟡 Aguardando</option>
                   <option value="FINALIZADO">🟢 Concluído</option>
                   <option value="RETROAGIDO">🟣 Retroagido (Não era Automação)</option>
-                  <option value="PENDENCIA_PROXIMO_TURNO">🔵 Pendência Herdada</option>
+                  <option value="PENDENCIA_PROXIMO_TURNO">🔵 Próximo Turno</option>
                 </select>
               </div>
 

@@ -88,7 +88,7 @@ export const IncidentHistoryTabModal: React.FC<IncidentHistoryTabModalProps> = (
         return <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800">🟡 Aguardando</span>;
       case 'PENDENCIA_PROXIMO_TURNO':
       default:
-        return <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-sky-100 dark:bg-sky-950 text-sky-800 dark:text-sky-300 border border-sky-300 dark:border-sky-800">🔵 Pendência Herdada</span>;
+        return <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-sky-100 dark:bg-sky-950 text-sky-800 dark:text-sky-300 border border-sky-300 dark:border-sky-800">🔵 Próximo Turno</span>;
     }
   };
 
@@ -240,7 +240,7 @@ export const IncidentHistoryTabModal: React.FC<IncidentHistoryTabModalProps> = (
               <option value="RETROAGIDO">🟣 Retroagidos</option>
               <option value="EM_ANDAMENTO">🔴 Em Andamento</option>
               <option value="AGUARDANDO">🟡 Aguardando</option>
-              <option value="PENDENCIA_PROXIMO_TURNO">🔵 Pendências Herdadas</option>
+              <option value="PENDENCIA_PROXIMO_TURNO">🔵 Próximo Turno</option>
             </select>
           </div>
 
