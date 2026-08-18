@@ -27,6 +27,7 @@ export async function POST(request: Request) {
       : `shift-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
     let newShift: any = null;
+    let hadActiveSameTurma = false;
 
     // 1. SUPABASE REST: Encerrar turno anterior APENAS da MESMA turma e criar novo turno ativo
     // (NUNCA encerrar turnos de outras turmas — cada turma é independente)
@@ -39,6 +40,7 @@ export async function POST(request: Request) {
       if (supaShifts && supaShifts.length > 0) {
         const prevActive = supaShifts.find((s: any) => normalizeTurma(s.turma) === turmaFinal);
         if (prevActive) {
+          hadActiveSameTurma = true;
           await supabase
             .from('Shift')
             .update({ status: 'ENCERRADO', horaFim: nowIso })
@@ -106,6 +108,20 @@ export async function POST(request: Request) {
       }
     } catch (supaErr) {
       console.warn('Alerta assumir turno Supabase REST:', supaErr);
+    }
+
+    // Resetar a carteira diária do boletim quando um NOVO turno começa de fato
+    // (sem turno ativo anterior da mesma turma — re-login no mesmo turno NÃO zera os valores)
+    if (!hadActiveSameTurma) {
+      try {
+        await supabase
+          .from('BoletimCarteira')
+          .delete()
+          .eq('turma', turmaFinal)
+          .eq('data', today);
+      } catch (eReset) {
+        console.warn('Alerta reset carteira boletim:', eReset);
+      }
     }
 
     // 2. PRISMA POSTGRESQL (Fallback: mesmo banco Supabase — encerra APENAS o turno ativo da MESMA turma)
