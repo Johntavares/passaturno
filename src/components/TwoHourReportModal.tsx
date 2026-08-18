@@ -18,6 +18,7 @@ import {
   FileText
 } from 'lucide-react';
 import { isIncidentFromToday, getTodayYMDInBR } from '@/lib/turma';
+import { getBoletimConfig, saveBoletimConfig, subscribeBoletimConfigRealtime } from '@/lib/boletimConfig';
 
 const BOLETIM_STORAGE_KEY = 'passaturno-boletim-2h';
 
@@ -66,6 +67,55 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
   const markUserEdited = () => {
     userTouchedRef.current = true;
   };
+
+  const turmaBoletim = (activeShift?.turma || currentUser?.turma || 'A').toUpperCase();
+
+  const applyConfigToFields = (config: any) => {
+    if (typeof config.equipeSonda === 'string') setEquipeSonda(config.equipeSonda);
+    if (typeof config.liderVale === 'string') setLiderVale(config.liderVale);
+    if (typeof config.ausencia === 'string') setAusencia(config.ausencia);
+    if (typeof config.equipSemDespacho === 'string') setEquipSemDespacho(config.equipSemDespacho);
+    if (typeof config.equipSemGps === 'string') setEquipSemGps(config.equipSemGps);
+    if (typeof config.equipPreventiva === 'string') setEquipPreventiva(config.equipPreventiva);
+    if (typeof config.equipManutencao === 'string') setEquipManutencao(config.equipManutencao);
+  };
+
+  // Carregar a configuração fixa do boletim direto do banco (compartilhada entre todos)
+  useEffect(() => {
+    if (!isOpen) return;
+    getBoletimConfig(turmaBoletim).then((config) => {
+      if (config && !userTouchedRef.current) {
+        applyConfigToFields(config);
+      }
+    }).catch(() => {});
+  }, [isOpen, turmaBoletim]);
+
+  // Salvar no banco (com debounce) os campos fixos editados pelo operador
+  useEffect(() => {
+    if (!userTouchedRef.current) return;
+    const t = setTimeout(() => {
+      saveBoletimConfig(turmaBoletim, {
+        equipeSonda,
+        liderVale,
+        ausencia,
+        equipSemDespacho,
+        equipSemGps,
+        equipPreventiva,
+        equipManutencao,
+      });
+    }, 800);
+    return () => clearTimeout(t);
+  }, [equipeSonda, liderVale, ausencia, equipSemDespacho, equipSemGps, equipPreventiva, equipManutencao, turmaBoletim]);
+
+  // Realtime: se outro operador salvar a configuração, atualiza este modal (sem sobrescrever edições locais)
+  useEffect(() => {
+    const unsubscribe = subscribeBoletimConfigRealtime((config) => {
+      if (userTouchedRef.current) return;
+      if (config.turma !== turmaBoletim) return;
+      applyConfigToFields(config);
+    });
+    return unsubscribe;
+  }, [turmaBoletim]);
 
   // Edição dos números da carteira: sempre regenera o texto final com os novos
   // valores (desbloqueia o preview caso o operador tenha editado a mensagem antes).

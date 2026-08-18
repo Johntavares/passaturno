@@ -87,6 +87,18 @@ model FailureCategory {
   atualizadoEm DateTime?
 }
 
+model BoletimConfig {
+  turma            String    @id // A, B, C, D
+  equipeSonda      String?
+  liderVale        String?
+  ausencia         String?
+  equipSemDespacho String?
+  equipSemGps      String?
+  equipPreventiva  String?
+  equipManutencao  String?
+  atualizadoEm     DateTime?
+}
+
 model Incident {
   id                      String          @id @default(uuid())
   equipmentId             String?
