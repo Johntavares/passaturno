@@ -1,3 +1,5 @@
+import { supabase } from './supabaseClient';
+
 export const DEFAULT_FAILURE_CATEGORIES = [
   'Comunicação',
   'PLC',
@@ -8,66 +10,137 @@ export const DEFAULT_FAILURE_CATEGORIES = [
   'Supervisório',
   'Hardware / Elétrica',
   'Outro',
+  'CASGPS',
+  'OPTALERT',
+  'MEMES',
+  'DESMONTE',
+  'TELEOP',
+  'AUTONOMOS',
+  'MODULAR',
+  'ALIMENTAÇÃO/ELETRICA',
+  'MOVIMENTAÇÃO',
 ];
 
 const STORAGE_KEY = 'passaturno-failure-categories-v1';
+const API_URL = '/api/categorias';
 
-export function getFailureCategories(): string[] {
-  if (typeof window === 'undefined') return DEFAULT_FAILURE_CATEGORIES;
+function getCached(): string[] | null {
+  if (typeof window === 'undefined') return null;
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch (e) {}
+  return null;
+}
+
+function cacheCategories(categories: string[]): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(categories));
+  } catch (e) {}
+}
+
+export function notifyCategoriesUpdated(): void {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new Event('categories-updated'));
+}
+
+export async function getFailureCategories(): Promise<string[]> {
+  try {
+    const res = await fetch(API_URL, { cache: 'no-store' });
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data) && data.length > 0) {
+        cacheCategories(data);
+        return data;
       }
     }
   } catch (e) {
-    console.error('Erro ao ler categorias de falha do localStorage:', e);
+    console.error('Erro ao buscar categorias do banco:', e);
   }
-  return DEFAULT_FAILURE_CATEGORIES;
+  const cached = getCached();
+  return cached || DEFAULT_FAILURE_CATEGORIES;
 }
 
-export function saveFailureCategories(categories: string[]): void {
-  if (typeof window === 'undefined') return;
-  try {
-    const unique = Array.from(new Set(categories.map((c) => c.trim()).filter(Boolean)));
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(unique));
-    window.dispatchEvent(new Event('categories-updated'));
-  } catch (e) {
-    console.error('Erro ao salvar categorias de falha no localStorage:', e);
+async function mutateCategories(init: RequestInit): Promise<string[]> {
+  const res = await fetch(API_URL, init);
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new Error(data?.error || 'Erro ao atualizar categorias');
   }
+  if (Array.isArray(data)) {
+    cacheCategories(data);
+    notifyCategoriesUpdated();
+    return data;
+  }
+  throw new Error('Resposta inválida do servidor');
 }
 
-export function addFailureCategory(newCategory: string): string[] {
-  const current = getFailureCategories();
+export async function addFailureCategory(newCategory: string): Promise<string[]> {
   const trimmed = newCategory.trim();
-  if (!trimmed) return current;
-  if (!current.some((c) => c.toLowerCase() === trimmed.toLowerCase())) {
-    const updated = [...current, trimmed];
-    saveFailureCategories(updated);
-    return updated;
+  if (!trimmed) return getFailureCategories();
+  return mutateCategories({
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ nome: trimmed }),
+  });
+}
+
+export async function removeFailureCategory(categoryToRemove: string): Promise<string[]> {
+  return mutateCategories({
+    method: 'DELETE',
+    body: JSON.stringify({ nome: categoryToRemove.trim() }),
+  });
+}
+
+export async function updateFailureCategory(oldName: string, newName: string): Promise<string[]> {
+  return mutateCategories({
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ antigo: oldName.trim(), novo: newName.trim() }),
+  });
+}
+
+export async function resetFailureCategories(): Promise<string[]> {
+  const res = await fetch(`${API_URL}/reset`, { method: 'POST' });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new Error(data?.error || 'Erro ao restaurar categorias padrão');
   }
-  return current;
+  if (Array.isArray(data)) {
+    cacheCategories(data);
+    notifyCategoriesUpdated();
+    return data;
+  }
+  throw new Error('Resposta inválida do servidor');
 }
 
-export function removeFailureCategory(categoryToRemove: string): string[] {
-  const current = getFailureCategories();
-  const updated = current.filter((c) => c.toLowerCase() !== categoryToRemove.trim().toLowerCase());
-  saveFailureCategories(updated);
-  return updated;
-}
+let realtimeSubscribed = false;
 
-export function updateFailureCategory(oldName: string, newName: string): string[] {
-  const current = getFailureCategories();
-  const trimmedNew = newName.trim();
-  if (!trimmedNew) return current;
-  const updated = current.map((c) => (c.toLowerCase() === oldName.trim().toLowerCase() ? trimmedNew : c));
-  saveFailureCategories(updated);
-  return updated;
-}
+export function subscribeFailureCategoriesRealtime(): () => void {
+  if (typeof window === 'undefined') return () => {};
+  if (realtimeSubscribed) return () => {};
 
-export function resetFailureCategories(): string[] {
-  saveFailureCategories(DEFAULT_FAILURE_CATEGORIES);
-  return DEFAULT_FAILURE_CATEGORIES;
+  const channel = supabase
+    .channel('failure-categories-realtime')
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'FailureCategory' },
+      () => {
+        getFailureCategories().then(() => {
+          notifyCategoriesUpdated();
+        }).catch(() => {});
+      }
+    )
+    .subscribe();
+
+  realtimeSubscribed = true;
+
+  return () => {
+    realtimeSubscribed = false;
+    supabase.removeChannel(channel);
+  };
 }

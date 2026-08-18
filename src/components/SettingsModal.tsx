@@ -90,21 +90,38 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   React.useEffect(() => {
     if (isOpen) {
-      setCategoriesList(getFailureCategories());
+      getFailureCategories().then(setCategoriesList).catch(() => {});
     }
   }, [isOpen]);
 
-  const handleAddCategory = (e: React.FormEvent) => {
+  React.useEffect(() => {
+    const handleCategoriesChanged = () => {
+      getFailureCategories().then(setCategoriesList).catch(() => {});
+    };
+    window.addEventListener('categories-updated', handleCategoriesChanged);
+    return () => window.removeEventListener('categories-updated', handleCategoriesChanged);
+  }, []);
+
+  const handleAddCategory = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCatInput.trim()) return;
-    const updated = addFailureCategory(newCatInput);
-    setCategoriesList(updated);
-    setNewCatInput('');
+    try {
+      const updated = await addFailureCategory(newCatInput);
+      setCategoriesList(updated);
+      setNewCatInput('');
+    } catch (err: any) {
+      setCategoriesList(await getFailureCategories());
+      setNewCatInput('');
+    }
   };
 
-  const handleRemoveCategory = (catName: string) => {
-    const updated = removeFailureCategory(catName);
-    setCategoriesList(updated);
+  const handleRemoveCategory = async (catName: string) => {
+    try {
+      const updated = await removeFailureCategory(catName);
+      setCategoriesList(updated);
+    } catch (err: any) {
+      setCategoriesList(await getFailureCategories());
+    }
   };
 
   const handleStartEditCategory = (index: number, catName: string) => {
@@ -112,17 +129,25 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     setEditingCatValue(catName);
   };
 
-  const handleSaveEditCategory = (oldName: string) => {
+  const handleSaveEditCategory = async (oldName: string) => {
     if (!editingCatValue.trim()) return;
-    const updated = updateFailureCategory(oldName, editingCatValue);
-    setCategoriesList(updated);
+    try {
+      const updated = await updateFailureCategory(oldName, editingCatValue);
+      setCategoriesList(updated);
+    } catch (err: any) {
+      setCategoriesList(await getFailureCategories());
+    }
     setEditingCatIndex(null);
     setEditingCatValue('');
   };
 
-  const handleResetCategories = () => {
-    const updated = resetFailureCategories();
-    setCategoriesList(updated);
+  const handleResetCategories = async () => {
+    try {
+      const updated = await resetFailureCategories();
+      setCategoriesList(updated);
+    } catch (err: any) {
+      setCategoriesList(await getFailureCategories());
+    }
   };
 
   React.useEffect(() => {

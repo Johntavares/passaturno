@@ -35,13 +35,13 @@ export const NewIncidentModal: React.FC<NewIncidentModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-      setCategoriesList(getFailureCategories());
+      getFailureCategories().then(setCategoriesList).catch(() => {});
     }
   }, [isOpen]);
 
   useEffect(() => {
     const handleCategoriesChanged = () => {
-      setCategoriesList(getFailureCategories());
+      getFailureCategories().then(setCategoriesList).catch(() => {});
     };
     window.addEventListener('categories-updated', handleCategoriesChanged);
     return () => window.removeEventListener('categories-updated', handleCategoriesChanged);

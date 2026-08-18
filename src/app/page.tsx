@@ -27,6 +27,7 @@ import { EditTurmaProfileModal } from '@/components/EditTurmaProfileModal';
 import { SettingsModal } from '@/components/SettingsModal';
 import { TeamsCheckModal } from '@/components/TeamsCheckModal';
 import { normalizeTurma, getNextTurma, isSameDayAsToday, isIncidentFromToday } from '@/lib/turma';
+import { subscribeFailureCategoriesRealtime } from '@/lib/categories';
 import { supabase } from '@/lib/supabaseClient';
 
 export default function Home() {
@@ -322,9 +323,12 @@ export default function Home() {
 
     setupRealtime();
 
+    const unsubscribeCategories = subscribeFailureCategoriesRealtime();
+
     return () => {
       active = false;
       if (channel) supabase.removeChannel(channel);
+      unsubscribeCategories();
     };
   }, [loadData]);
 

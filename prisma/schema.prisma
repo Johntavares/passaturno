@@ -80,6 +80,13 @@ model Equipment {
   criadoEm         DateTime   @default(now())
 }
 
+model FailureCategory {
+  id           String    @id @default(uuid())
+  nome         String    @unique // Categoria de falha exibida nas ocorrências (compartilhada entre todos os usuários)
+  criadoEm     DateTime  @default(now())
+  atualizadoEm DateTime?
+}
+
 model Incident {
   id                      String          @id @default(uuid())
   equipmentId             String?
