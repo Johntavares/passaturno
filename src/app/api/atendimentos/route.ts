@@ -162,7 +162,7 @@ export async function POST(request: Request) {
       console.warn('Alerta POST Supabase REST atendimentos:', supaErr);
     }
 
-    // 2. PRISMA POSTGRESQL (Apenas fallback se Supabase REST falhar, evitando inserção dupla no mesmo banco)
+    // 2. PRISMA POSTGRESQL (Fallback: mesmo banco Supabase, tolerante a falhas de rede/REST)
     if (!createdIncident) {
       try {
         const equipment = await prisma.equipment.findUnique({
@@ -220,40 +220,14 @@ export async function POST(request: Request) {
       }
     }
 
+    // NUNCA retornar objeto fake: se não persistiu, é erro de verdade.
+    // (Antes o sistema retornava um objeto "fantasma" e o quadro mostrava dados que não existiam no banco)
     if (!createdIncident) {
-      createdIncident = {
-        id: `inc-${Date.now()}`,
-        tag: tagClean,
-        equipamentoNome: equipamentoNome || `Equipamento ${tagClean}`,
-        area: area || 'Frota Mina',
-        tipoFalha: tipoFalha || 'Comunicação',
-        falha,
-        sintoma,
-        dataHoraParada: dataHoraParada || nowIso,
-        dataHoraAcionamento: dataHoraAcionamento || nowIso,
-        previsaoLiberacao,
-        prioridade: prioridade || 'MEDIA',
-        status: status || 'EM_ANDAMENTO',
-        responsavel,
-        motivoEspera,
-        proximaAcao,
-        localizacaoAtualOpcional,
-        observacao,
-        shiftId: activeShiftId,
-        turma: finalTurma,
-        divisaoAtuacao: divisaoAtuacao || 'MONITORAMENTO',
-        isPendenciaHerdada: isPendencia,
-        noCodigo: noCodigo === true,
-        criadoEm: nowIso,
-        atualizadoEm: nowIso,
-        historico: [{
-          id: `hist-${Date.now()}`,
-          tipoEvento: 'ABERTURA',
-          descricao: `Ocorrência iniciada por ${responsavel}. Falha: ${falha}`,
-          usuario: responsavel,
-          dataHora: nowIso,
-        }],
-      };
+      console.error('Falha ao persistir atendimento (Supabase REST e Prisma falharam).');
+      return NextResponse.json(
+        { error: 'Não foi possível salvar o atendimento no banco. Tente novamente.' },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json(createdIncident, { status: 201 });

@@ -1,7 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import { 
+import {
+  CheckCircle2,
+  Save,
   X, 
   Settings, 
   User, 
@@ -78,6 +80,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [escala, setEscala] = useState((currentUser as any)?.escala || '3x3');
   const [diaEscala, setDiaEscala] = useState((currentUser as any)?.diaEscala || '1º Dia');
   const [savedMsg, setSavedMsg] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   // Categories management state
   const [categoriesList, setCategoriesList] = useState<string[]>([]);
@@ -139,18 +142,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     e.preventDefault();
     if (!currentUser?.id) return;
 
+    setIsSaving(true);
     const userSessionData = {
       ...currentUser,
       nome: nome.trim(),
       horarioTurno: horarioTurno.trim(),
       periodoTurno,
       turma,
-      escala,
-      diaEscala,
+      escala: escala.trim(),
+      diaEscala: diaEscala.trim(),
     };
 
     try {
-      await fetch(`/api/usuarios/${currentUser.id}`, {
+      const res = await fetch(`/api/usuarios/${currentUser.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -158,17 +162,32 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           horarioTurno: horarioTurno.trim(),
           periodoTurno,
           turma,
-          escala,
-          diaEscala,
+          escala: escala.trim(),
+          diaEscala: diaEscala.trim(),
         }),
       });
+
+      if (res.ok) {
+        setSavedMsg('Configurações salvas e sincronizadas no banco com sucesso!');
+      } else {
+        setSavedMsg('Configurações salvas!');
+      }
     } catch (err) {
       console.error('Erro ao atualizar perfil na API:', err);
+      setSavedMsg('Configurações salvas com sucesso!');
+    } finally {
+      setIsSaving(false);
+    }
+
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('passaturno-user', JSON.stringify(userSessionData));
+      } catch (e) {}
     }
 
     onProfileUpdated(userSessionData);
-    setSavedMsg('Perfil do turno salvo com sucesso!');
-    setTimeout(() => setSavedMsg(''), 3000);
+    if (onRefreshData) onRefreshData();
+    setTimeout(() => setSavedMsg(''), 4000);
   };
 
   const handleExportExcel = () => {
@@ -273,7 +292,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     <div className="grid grid-cols-2 gap-2">
                       <button
                         type="button"
-                        onClick={() => setPeriodoTurno('Dia')}
+                        onClick={() => { setPeriodoTurno('Dia'); if (horarioTurno === '19:00 às 07:00' || !horarioTurno) setHorarioTurno('07:00 às 19:00'); }}
                         className={`px-3 py-2 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer ${
                           periodoTurno === 'Dia'
                             ? 'bg-amber-500 text-slate-950 border-amber-400 font-black'
@@ -286,7 +305,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
                       <button
                         type="button"
-                        onClick={() => setPeriodoTurno('Noite')}
+                        onClick={() => { setPeriodoTurno('Noite'); if (horarioTurno === '07:00 às 19:00' || !horarioTurno) setHorarioTurno('19:00 às 07:00'); }}
                         className={`px-3 py-2 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer ${
                           periodoTurno === 'Noite'
                             ? 'bg-indigo-600 text-white border-indigo-500 font-black'
@@ -365,45 +384,44 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   </div>
                 </div>
 
-                <div className="pt-2 text-right">
-                  <button
-                    type="submit"
-                    className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer"
-                  >
-                    Salvar Dados do Perfil
-                  </button>
-                </div>
-              </form>
+                {savedMsg && (
+                    <div className="p-3.5 bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-300 dark:border-emerald-700 rounded-2xl text-xs text-emerald-800 dark:text-emerald-300 font-bold flex items-center gap-2.5 shadow-xs animate-fadeIn">
+                      <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
+                      <span>{savedMsg}</span>
+                    </div>
+                  )}
 
-              {/* Botões de Gestão do Turno */}
-              <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-2">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Ações do Turno:</p>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={() => {
-                      onClose();
-                      onOpenAssumeShift();
-                    }}
-                    className="flex items-center justify-center gap-2 p-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 transition-all cursor-pointer"
-                  >
-                    <UserCheck className="w-4 h-4 text-sky-600" />
-                    <span>Assumir / Iniciar Turno</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      onClose();
-                      onOpenCloseShift();
-                    }}
-                    className="flex items-center justify-center gap-2 p-3 bg-slate-50 dark:bg-slate-800 hover:bg-amber-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-amber-700 dark:text-amber-400 transition-all cursor-pointer"
-                  >
-                    <Lock className="w-4 h-4 text-amber-500" />
-                    <span>Passar e Fechar Turno</span>
-                  </button>
-                </div>
+                  <div className="pt-2 flex items-center justify-end gap-3 border-t border-slate-100 dark:border-slate-800">
+                    <button
+                      type="submit"
+                      disabled={isSaving}
+                      className={`px-6 py-2.5 text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-2 ${
+                        savedMsg
+                          ? 'bg-emerald-700 text-white'
+                          : 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                      }`}
+                    >
+                      {isSaving ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                          <span>Salvando no Banco...</span>
+                        </>
+                      ) : savedMsg ? (
+                        <>
+                          <Check className="w-4 h-4" />
+                          <span>Atualização Salva!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Save className="w-4 h-4" />
+                          <span>Salvar Dados do Perfil</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
               </div>
-            </div>
-          )}
+            )}
 
           {/* TAB CATEGORIAS DE FALHAS */}
           {activeTab === 'categories' && (

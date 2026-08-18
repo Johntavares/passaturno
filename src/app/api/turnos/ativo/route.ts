@@ -4,6 +4,9 @@ import { prisma } from '@/lib/prisma';
 import { supabase } from '@/lib/supabaseClient';
 import { normalizeTurma, turmaInFilter } from '@/lib/turma';
 
+// GET /api/turnos/ativo?turma=X
+// SOMENTE LEITURA — este endpoint NUNCA altera o banco.
+// A instabilidade anterior vinha de GETs que encerravam turnos automaticamente.
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const turma = normalizeTurma(searchParams.get('turma'));
@@ -22,8 +25,6 @@ export async function GET(request: Request) {
       } else {
         active = shifts[0];
       }
-
-      const activeTurma = active ? normalizeTurma(active.turma) : turma;
 
       const { data: openIncidents } = await supabase
         .from('Incident')
@@ -75,7 +76,7 @@ export async function GET(request: Request) {
       openIncidents,
     });
   } catch (error) {
-    console.error('Erro ao buscar turno ativo no Supabase:', error);
+    console.error('Erro ao buscar turno ativo:', error);
     return NextResponse.json({ error: 'Erro ao buscar turno ativo' }, { status: 500 });
   }
 }

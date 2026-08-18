@@ -28,7 +28,8 @@ export async function POST(request: Request) {
 
     let newShift: any = null;
 
-    // 1. SUPABASE REST: Encerrar turno anterior da turma e criar novo turno ativo
+    // 1. SUPABASE REST: Encerrar turno anterior APENAS da MESMA turma e criar novo turno ativo
+    // (NUNCA encerrar turnos de outras turmas — cada turma é independente)
     try {
       const { data: supaShifts } = await supabase
         .from('Shift')
@@ -107,7 +108,7 @@ export async function POST(request: Request) {
       console.warn('Alerta assumir turno Supabase REST:', supaErr);
     }
 
-    // 2. PRISMA POSTGRESQL (Redundância no banco)
+    // 2. PRISMA POSTGRESQL (Fallback: mesmo banco Supabase — encerra APENAS o turno ativo da MESMA turma)
     try {
       const activeShift = await prisma.shift.findFirst({
         where: { status: 'ATIVO', turma: turmaInFilter(turmaFinal) },
@@ -167,18 +168,13 @@ export async function POST(request: Request) {
       console.warn('Alerta Prisma assumir turno:', prismaErr);
     }
 
+    // NUNCA retornar turno fake: se não persistiu, é erro de verdade
     if (!newShift) {
-      newShift = {
-        id: shiftId,
-        equipe: equipeFinal,
-        responsavelNome: respFinal,
-        turma: turmaFinal,
-        escala: escala || '3x3',
-        data: today,
-        horaInicio: nowIso,
-        status: 'ATIVO',
-        observacoes,
-      };
+      console.error('Falha ao assumir turno: Supabase REST e Prisma falharam.');
+      return NextResponse.json(
+        { error: 'Não foi possível iniciar o turno no banco. Tente novamente.' },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json(newShift, { status: 201 });

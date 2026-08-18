@@ -10,7 +10,6 @@ import { KanbanBoard } from '@/components/KanbanBoard';
 import { NewIncidentModal } from '@/components/NewIncidentModal';
 import { IncidentTimelineModal } from '@/components/IncidentTimelineModal';
 import { EquipmentHistoryModal } from '@/components/EquipmentHistoryModal';
-import { AssumeShiftModal } from '@/components/AssumeShiftModal';
 import { CloseShiftModal } from '@/components/CloseShiftModal';
 import { WhatsappModal } from '@/components/WhatsappModal';
 import { EquipmentManagerModal } from '@/components/EquipmentManagerModal';
@@ -52,7 +51,6 @@ export default function Home() {
 
   // Modals state
   const [isNewIncidentOpen, setIsNewIncidentOpen] = useState(false);
-  const [isAssumeShiftOpen, setIsAssumeShiftOpen] = useState(false);
   const [isCloseShiftOpen, setIsCloseShiftOpen] = useState(false);
   const [isEquipmentManagerOpen, setIsEquipmentManagerOpen] = useState(false);
   const [isOneNoteRoutineOpen, setIsOneNoteRoutineOpen] = useState(false);
@@ -270,33 +268,64 @@ export default function Home() {
 
   // Inscrição em Tempo Real (Supabase Realtime WebSockets: < 50ms sync entre Líder e Operadores)
   useEffect(() => {
-    try {
-      const channel = supabase
-        .channel('passaturno-realtime-changes')
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'Incident' },
-          (payload) => {
-            console.log('⚡ Realtime update on Incident:', payload);
-            loadData();
-          }
-        )
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'Shift' },
-          (payload) => {
-            console.log('⚡ Realtime update on Shift:', payload);
-            loadData();
-          }
-        )
-        .subscribe();
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let active = true;
 
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    } catch (e) {
-      console.error('Realtime subscription error:', e);
-    }
+    const setupRealtime = () => {
+      if (!active) return;
+      try {
+        channel = supabase
+          .channel('passaturno-realtime-changes')
+          .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'Incident' },
+            (payload) => {
+              console.log('⚡ Realtime update on Incident:', payload.eventType);
+              loadData();
+            }
+          )
+          .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'Shift' },
+            (payload) => {
+              console.log('⚡ Realtime update on Shift:', payload.eventType);
+              loadData();
+            }
+          )
+          .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'IncidentHistory' },
+            (payload) => {
+              console.log('⚡ Realtime update on IncidentHistory:', payload.eventType);
+              loadData();
+            }
+          )
+          .subscribe((status) => {
+            console.log('⚡ Realtime status:', status);
+            if (status === 'SUBSCRIBED') {
+              // Sincronização imediata ao conectar (cobre perdas de evento durante reconnect)
+              loadData();
+            } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+              console.warn('⚡ Realtime com problema, tentando reconectar em 5s...');
+              setTimeout(() => {
+                if (active) setupRealtime();
+              }, 5000);
+            }
+          });
+      } catch (e) {
+        console.error('Realtime subscription error:', e);
+        setTimeout(() => {
+          if (active) setupRealtime();
+        }, 5000);
+      }
+    };
+
+    setupRealtime();
+
+    return () => {
+      active = false;
+      if (channel) supabase.removeChannel(channel);
+    };
   }, [loadData]);
 
   const handleIncidentCreated = (newInc?: IncidentType) => {
@@ -386,49 +415,135 @@ export default function Home() {
   };
 
   // Carregar lista de usuários salvos e usuário ativo (roda na montagem)
+  // Sempre sincroniza com o banco de dados ao restaurar a sessão — dados nunca ficam desatualizados
   useEffect(() => {
-    try {
-      const savedList = localStorage.getItem('passaturno-users-list');
-      let usersList: UserSession[] = [];
-      if (savedList) {
-        usersList = JSON.parse(savedList) as UserSession[];
-        setLoggedInUsers(usersList);
-      }
-
-      const savedUserStr = localStorage.getItem('passaturno-user');
-      if (savedUserStr) {
-        const u = JSON.parse(savedUserStr) as UserSession;
-        setCurrentUser(u);
-        
-        // Garantir que u está na lista de loggedInUsers
-        if (!usersList.some((x) => x.id === u.id)) {
-          const newList = [u, ...usersList];
-          setLoggedInUsers(newList);
-          localStorage.setItem('passaturno-users-list', JSON.stringify(newList));
+    const restoreSession = async () => {
+      try {
+        const savedList = localStorage.getItem('passaturno-users-list');
+        let usersList: UserSession[] = [];
+        if (savedList) {
+          usersList = JSON.parse(savedList) as UserSession[];
+          setLoggedInUsers(usersList);
         }
 
-        setSelectedTurmaFilter('TODAS');
-        const userKey = `passaturno-theme-${u.id}`;
-        const userTheme = (localStorage.getItem(userKey) as ThemeMode) || 'light';
-        setTheme(userTheme);
-        applyTheme(userTheme);
-        loadData();
-        return;
-      }
-    } catch (e) {
-      console.error('Erro ao carregar sessão do usuário:', e);
-    }
+        const savedUserStr = localStorage.getItem('passaturno-user');
+        if (savedUserStr) {
+          const cached = JSON.parse(savedUserStr) as UserSession;
 
-    const guestTheme = (localStorage.getItem('passaturno-theme-guest') as ThemeMode) || 'light';
-    setTheme(guestTheme);
-    applyTheme(guestTheme);
-    setSelectedTurmaFilter('TODAS');
-    loadData();
+          // Mostra imediatamente os dados do cache para não travar a tela
+          setCurrentUser(cached);
+          const userKey = `passaturno-theme-${cached.id}`;
+          const userTheme = (localStorage.getItem(userKey) as ThemeMode) || 'light';
+          setTheme(userTheme);
+          applyTheme(userTheme);
+
+          // Em background, busca dados frescos do banco e atualiza silenciosamente
+          if (cached.id) {
+            try {
+              const freshRes = await fetch(`/api/auth/me?id=${encodeURIComponent(cached.id)}`);
+              if (freshRes.ok) {
+                const { user: freshUser } = await freshRes.json();
+                if (freshUser && freshUser.id) {
+                  const merged: UserSession = { ...cached, ...freshUser };
+                  setCurrentUser(merged);
+                  localStorage.setItem('passaturno-user', JSON.stringify(merged));
+
+                  // Atualiza também a lista de users logados
+                  const updatedList = usersList.map((u) =>
+                    u.id === merged.id ? { ...u, ...merged } : u
+                  );
+                  const inList = updatedList.some((u) => u.id === merged.id);
+                  const finalList = inList ? updatedList : [merged, ...updatedList];
+                  setLoggedInUsers(finalList);
+                  localStorage.setItem('passaturno-users-list', JSON.stringify(finalList));
+                }
+              }
+            } catch (syncErr) {
+              // Falha silenciosa — usa dados do cache normalmente
+              console.warn('Sincronização de perfil em background falhou:', syncErr);
+            }
+          }
+
+          if (!usersList.some((x) => x.id === cached.id)) {
+            const newList = [cached, ...usersList];
+            setLoggedInUsers(newList);
+            localStorage.setItem('passaturno-users-list', JSON.stringify(newList));
+          }
+
+          setSelectedTurmaFilter('TODAS');
+          loadData();
+          return;
+        }
+      } catch (e) {
+        console.error('Erro ao carregar sessão do usuário:', e);
+      }
+
+      const guestTheme = (localStorage.getItem('passaturno-theme-guest') as ThemeMode) || 'light';
+      setTheme(guestTheme);
+      applyTheme(guestTheme);
+      setSelectedTurmaFilter('TODAS');
+      loadData();
+    };
+
+    restoreSession();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Ao realizar login de um operador
-  const handleLoginSuccess = (user: UserSession) => {
+  // Ao realizar login de um operador — assume o turno SOMENTE se a turma não tiver turno ativo
+  const autoAssumeShift = async (u: UserSession) => {
+    if (!u || u.cargo === 'LÍDER DE TURMA' || u.turma === 'GERAL') return;
+    const turmaFinal = normalizeTurma(u.turma) || u.turma || 'A';
+    try {
+      // 1. Verifica se já existe turno ATIVO da turma — se existir, usa ele (NÃO cria outro)
+      try {
+        const checkRes = await fetch(`/api/turnos/ativo?turma=${encodeURIComponent(turmaFinal)}`);
+        if (checkRes.ok) {
+          const checkData = await checkRes.json();
+          if (checkData.activeShift && checkData.activeShift.status === 'ATIVO') {
+            setActiveShift(checkData.activeShift);
+            if (typeof window !== 'undefined') {
+              try {
+                localStorage.setItem('passaturno-active-shift-current', JSON.stringify(checkData.activeShift));
+                localStorage.setItem(`passaturno-active-shift-${turmaFinal}`, JSON.stringify(checkData.activeShift));
+              } catch (e) {}
+            }
+            return;
+          }
+        }
+      } catch (checkErr) {
+        console.warn('Falha ao verificar turno ativo, seguindo para assumir:', checkErr);
+      }
+
+      // 2. Sem turno ativo da turma: assume (encerra apenas o turno anterior da MESMA turma)
+      const res = await fetch('/api/turnos/assumir', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          equipe: u.equipe || `Automação ${turmaFinal}`,
+          responsavelNome: u.nome,
+          turma: turmaFinal,
+          escala: u.escala || '3x3',
+          observacoes: `Turno assumido automaticamente pelo login de ${u.nome} (Turma ${turmaFinal}).`,
+        }),
+      });
+      if (res.ok) {
+        const newShift = await res.json();
+        setActiveShift(newShift);
+        if (typeof window !== 'undefined') {
+          try {
+            localStorage.setItem('passaturno-active-shift-current', JSON.stringify(newShift));
+            localStorage.setItem(`passaturno-active-shift-${turmaFinal}`, JSON.stringify(newShift));
+          } catch (e) {}
+        }
+      } else {
+        console.error('Falha ao assumir turno:', res.status, await res.text().catch(() => ''));
+      }
+    } catch (err) {
+      console.error('Erro ao assumir turno automaticamente:', err);
+    }
+  };
+
+  const handleLoginSuccess = async (user: UserSession) => {
     setCurrentUser(user);
     setLoggedInUsers((prev) => {
       const filtered = prev.filter((u) => u.id !== user.id);
@@ -439,16 +554,20 @@ export default function Home() {
     localStorage.setItem('passaturno-user', JSON.stringify(user));
     setIsAddUserModalOpen(false);
 
-    setSelectedTurmaFilter('TODAS');
+    const uTurma = normalizeTurma(user.turma) || user.turma || 'A';
+    setSelectedTurmaFilter(uTurma);
     const userKey = `passaturno-theme-${user.id}`;
     const userSavedTheme = (localStorage.getItem(userKey) as ThemeMode) || 'light';
     setTheme(userSavedTheme);
     applyTheme(userSavedTheme);
-    loadData();
+
+    // Assume automaticamente o turno com os dados do operador logado (sem nenhum modal!)
+    await autoAssumeShift(user);
+    loadData(uTurma);
   };
 
   // Alternar para outro usuário que já está logado
-  const handleSelectUser = (user: UserSession) => {
+  const handleSelectUser = async (user: UserSession) => {
     setCurrentUser(user);
     localStorage.setItem('passaturno-user', JSON.stringify(user));
     const uTurma = normalizeTurma(user.turma) || user.turma?.toUpperCase().trim() || 'A';
@@ -457,6 +576,7 @@ export default function Home() {
     const userSavedTheme = (localStorage.getItem(userKey) as ThemeMode) || 'light';
     setTheme(userSavedTheme);
     applyTheme(userSavedTheme);
+    await autoAssumeShift(user);
     loadData(uTurma);
   };
 
@@ -992,7 +1112,7 @@ export default function Home() {
       <HeaderNav
         activeShift={activeShift}
         onOpenNewIncident={() => setIsNewIncidentOpen(true)}
-        onOpenAssumeShift={() => setIsAssumeShiftOpen(true)}
+        onOpenAssumeShift={() => { if (currentUser) { autoAssumeShift(currentUser); loadData(); } }}
         onOpenCloseShift={() => setIsCloseShiftOpen(true)}
         onOpenTwoHourReport={() => setIsTwoHourReportOpen(true)}
         onOpenTeamsCheck={() => setIsTeamsCheckOpen(true)}
@@ -1161,12 +1281,7 @@ export default function Home() {
         equipments={equipments}
       />
 
-      <AssumeShiftModal
-        isOpen={isAssumeShiftOpen}
-        onClose={() => setIsAssumeShiftOpen(false)}
-        onShiftAssumed={loadData}
-        currentUser={currentUser}
-      />
+      
 
       <CloseShiftModal
         isOpen={isCloseShiftOpen}
@@ -1321,7 +1436,7 @@ export default function Home() {
         activeShift={activeShift}
         currentTheme={theme}
         onThemeChange={handleThemeChange}
-        onOpenAssumeShift={() => setIsAssumeShiftOpen(true)}
+        onOpenAssumeShift={() => { if (currentUser) { autoAssumeShift(currentUser); loadData(); } }}
         onOpenCloseShift={() => setIsCloseShiftOpen(true)}
         onOpenEquipmentManager={() => setIsEquipmentManagerOpen(true)}
         onOpenTwoHourReport={() => setIsTwoHourReportOpen(true)}

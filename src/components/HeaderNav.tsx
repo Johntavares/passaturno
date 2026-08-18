@@ -24,6 +24,10 @@ export interface UserSession {
   equipe: string;
   cargo: string;
   turma?: string;
+  horarioTurno?: string;
+  periodoTurno?: string;
+  escala?: string;
+  diaEscala?: string;
 }
 
 export interface HeaderNavProps {
@@ -126,18 +130,7 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
               </div>
             </div>
 
-            {/* Card: Operador Autenticado */}
-            {currentUser && (
-              <div className="hidden md:flex items-center bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl px-3 py-1.5 gap-1.5 text-xs">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                <span className="font-bold text-emerald-900 dark:text-emerald-200 text-[11px]">
-                  {currentUser.nome}
-                </span>
-                <span className="text-[10px] text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/80 px-1.5 py-0.5 rounded font-mono font-bold">
-                  {currentUser.equipe}
-                </span>
-              </div>
-            )}
+            
           </div>
 
 

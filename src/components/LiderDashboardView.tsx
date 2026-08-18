@@ -106,6 +106,8 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
   const [newOpNome, setNewOpNome] = useState('');
   const [newOpMatricula, setNewOpMatricula] = useState('');
   const [newOpTurma, setNewOpTurma] = useState('A');
+  const [newOpEscala, setNewOpEscala] = useState('3x3');
+  const [newOpDiaEscala, setNewOpDiaEscala] = useState('1º Dia');
   const [newOpSenha, setNewOpSenha] = useState('123456');
   const [userCreatedMsg, setUserCreatedMsg] = useState('');
 
@@ -118,6 +120,8 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
   const [editTurma, setEditTurma] = useState('A');
   const [editHorario, setEditHorario] = useState('07:00 às 19:00');
   const [editPeriodo, setEditPeriodo] = useState<'Dia' | 'Noite'>('Dia');
+  const [editEscala, setEditEscala] = useState('3x3');
+  const [editDiaEscala, setEditDiaEscala] = useState('1º Dia');
 
   // Notificações / Chat State
   const [targetTurmaChannel, setTargetTurmaChannel] = useState<string>('GERAL');
@@ -252,6 +256,8 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
     setEditTurma(user.turma);
     setEditHorario(user.horarioTurno || '07:00 às 19:00');
     setEditPeriodo(user.periodoTurno || (user.turma === 'D' ? 'Noite' : 'Dia'));
+    setEditEscala(user.escala || '3x3');
+    setEditDiaEscala(user.diaEscala || '1º Dia');
   };
 
   const handleSaveEditUser = async (e: React.FormEvent) => {
@@ -270,6 +276,8 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
           turma: editTurma,
           horarioTurno: editHorario.trim(),
           periodoTurno: editPeriodo,
+          escala: editEscala.trim(),
+          diaEscala: editDiaEscala.trim(),
         }),
       });
 
@@ -289,7 +297,7 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
   };
 
   // Seletor de Turma e Mapeamento de Turnos Ativos de Todas as Turmas
-  const [selectedKanbanTurma, setSelectedKanbanTurma] = useState<string>('TODAS');
+  // Apenas a turma ativa é exibida na home do líder
   const [allActiveShifts, setAllActiveShifts] = useState<Record<string, any>>({});
 
   useEffect(() => {
@@ -314,24 +322,25 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
       }
     };
     fetchAllShifts();
-    const interval = setInterval(fetchAllShifts, 4000);
+    const interval = setInterval(fetchAllShifts, 20000);
     return () => clearInterval(interval);
   }, []);
 
-  // Resolução Estável e Prioritária da Turma Ativa Oficial do CCO
+  // Resolução Estável e Determinística da Turma Ativa Oficial do CCO
   const officialActiveTurma = (() => {
-    // 1. Procura nas apis se existe alguma turma com status ATIVO rodando no banco (prioriza o turno mais recente)
-    const activeFromMap = Object.values(allActiveShifts).find((s) => s?.status === 'ATIVO');
-    if (activeFromMap?.turma) {
-      return normalizeTurma(activeFromMap.turma) || 'C';
-    }
-
-    // 2. Se o prop activeShift possuir um turno ATIVO, ele é a fonte da verdade!
+    // 1. Se o prop activeShift possuir um turno ATIVO, ele é a fonte da verdade oficial do CCO!
     if (activeShift?.status === 'ATIVO' && activeShift.turma) {
       return normalizeTurma(activeShift.turma) || 'C';
     }
 
-    // 3. Verifica se existe alguma turma com atendimentos em andamento no dia de hoje
+    // 2. Se houver algum turno ativo no mapa, seleciona o mais recente cronologicamente
+    const activeList = Object.values(allActiveShifts).filter((s) => s?.status === 'ATIVO');
+    if (activeList.length > 0) {
+      activeList.sort((a, b) => new Date(b.criadoEm || b.horaInicio || 0).getTime() - new Date(a.criadoEm || a.horaInicio || 0).getTime());
+      return normalizeTurma(activeList[0].turma) || 'C';
+    }
+
+    // 3. Verifica a turma com atendimentos ativos no dia
     const counts: Record<string, number> = { A: 0, B: 0, C: 0, D: 0 };
     incidents.forEach((i) => {
       if (i.status !== 'FINALIZADO' && i.status !== 'RETROAGIDO') {
@@ -346,12 +355,12 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
       return turmasComAtendimentos[0];
     }
 
-    // 4. Fallback final: 'C'
+    // 4. Fallback padrão: 'C'
     return 'C';
   })();
 
   const currentActiveTurma = officialActiveTurma;
-  const effectiveKanbanTurma = selectedKanbanTurma === 'AUTO' ? currentActiveTurma : selectedKanbanTurma;
+  const effectiveKanbanTurma = currentActiveTurma;
 
   // Helper para buscar o nome do técnico responsavel de cada turma
   const getTechnicianForTurma = (turmaKey: string) => {
@@ -377,8 +386,8 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
   const activeShiftFromApi = Object.values(allActiveShifts).find((s) => s?.status === 'ATIVO') || activeShift;
 
   // Turno a ser exibido no Card de Topo (Card da Equipe do Dia)
-  const displayedShift = (effectiveKanbanTurma !== 'TODAS' && allActiveShifts[effectiveKanbanTurma])
-    || (effectiveKanbanTurma === normalizeTurma(activeShift?.turma) ? activeShift : null)
+  const displayedShift = allActiveShifts[currentActiveTurma]
+    || (normalizeTurma(activeShift?.turma) === currentActiveTurma ? activeShift : null)
     || activeShiftFromApi
     || activeShift;
 
@@ -394,15 +403,13 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
     return null;
   })();
 
-  // Atendimentos pertencentes à turma ativa no dia/turno (ou turma selecionada)
+  // Atendimentos pertencentes à turma ativa no dia/turno
   const atendimentosDoDia = incidents.filter((i) => {
     const iTurma = normalizeTurma(i.turma) || 'A';
 
-    // Filtra pela turma selecionada (ou AUTO da turma ativa do turno)
-    if (effectiveKanbanTurma !== 'TODAS') {
-      const isDaTurma = iTurma === effectiveKanbanTurma || (displayedShift && i.shiftId === displayedShift.id && normalizeTurma(displayedShift.turma) === effectiveKanbanTurma);
-      if (!isDaTurma) return false;
-    }
+    // Apenas a turma ativa no momento
+    const isDaTurma = iTurma === currentActiveTurma || (displayedShift && i.shiftId === displayedShift.id);
+    if (!isDaTurma) return false;
 
     // Se o atendimento não está finalizado (No Código, Em Andamento, Aguardando, Pendência Herdada), exibe SEMPRE!
     if (i.status !== 'FINALIZADO' && i.status !== 'RETROAGIDO') return true;
@@ -834,15 +841,11 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
               <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white rounded-3xl p-5 shadow-lg border border-slate-700 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="flex items-center space-x-4">
                   <div className="w-12 h-12 bg-emerald-500/20 text-emerald-400 rounded-2xl flex items-center justify-center font-black text-xl border border-emerald-500/40">
-                    {effectiveKanbanTurma !== 'TODAS'
-                      ? effectiveKanbanTurma
-                      : (displayedShift?.turma ? displayedShift.turma.replace('Turma ', '').replace('TURMA ', '') : '-')}
+                    {currentActiveTurma}
                   </div>
                   <div>
                     <h2 className="text-xl font-black text-white flex items-center gap-3">
-                      {displayedShift?.turma
-                        ? (displayedShift.turma.toLowerCase().includes('turma') ? displayedShift.turma : `Turma ${displayedShift.turma}`)
-                        : (effectiveKanbanTurma !== 'TODAS' ? `Turma ${effectiveKanbanTurma}` : 'Sem Turno Iniciado')}
+                      {displayedShift?.turma ? (displayedShift.turma.toLowerCase().includes('turma') ? displayedShift.turma : `Turma ${displayedShift.turma}`) : `Turma ${currentActiveTurma}`}
                       {displayedShift?.status === 'ATIVO' ? (
                         <span className="text-[10px] font-black uppercase bg-emerald-500 text-slate-950 px-2 py-0.5 rounded font-mono">
                           TURNO ATIVO
@@ -854,7 +857,7 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
                       ) : null}
                     </h2>
                     <p className="text-sm text-slate-300 mt-1">
-                      Responsável / Colaborador: <strong className="text-emerald-300">{displayedShift?.responsavelNome || (getTechnicianForTurma(effectiveKanbanTurma) || '-')}</strong>
+                      Responsável / Colaborador: <strong className="text-emerald-300">{displayedShift?.responsavelNome || (getTechnicianForTurma(currentActiveTurma) || '-')}</strong>
                     </p>
                   </div>
                 </div>
@@ -879,7 +882,7 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
                     </div>
                     <div>
                       <h3 className="text-base font-black text-slate-900 leading-tight">
-                        Quadro Kanban de Atendimentos — {effectiveKanbanTurma === 'TODAS' ? 'Todas as Turmas' : `Turma ${effectiveKanbanTurma}`}
+                        Quadro Kanban de Atendimentos — Turma {currentActiveTurma}
                       </h3>
                       <p className="text-xs text-slate-500 font-medium">
                         Acompanhamento em colunas: No Código, Em Andamento, Concluídos e Herdados
@@ -887,29 +890,12 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
                     </div>
                   </div>
 
-                  {/* SELETOR RÁPIDO DE TURMAS */}
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    {[
-                      { id: 'TODAS', label: 'Todas as Turmas' },
-                      { id: 'AUTO', label: `Turma Ativa (${currentActiveTurma})` },
-                      { id: 'A', label: 'Turma A' },
-                      { id: 'B', label: 'Turma B' },
-                      { id: 'C', label: 'Turma C' },
-                      { id: 'D', label: 'Turma D' },
-                    ].map((t) => (
-                      <button
-                        key={t.id}
-                        onClick={() => setSelectedKanbanTurma(t.id)}
-                        className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                          selectedKanbanTurma === t.id
-                            ? 'bg-indigo-600 text-white shadow-xs'
-                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                        }`}
-                      >
-                        {t.label}
-                      </button>
-                    ))}
-                    <span className="text-xs font-bold bg-indigo-100 text-indigo-900 px-3 py-1 rounded-full border border-indigo-300 ml-1">
+                  {/* BADGE DA TURMA ATIVA */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-black bg-emerald-100 text-emerald-800 px-3 py-1 rounded-xl border border-emerald-300">
+                      Turma Ativa ({currentActiveTurma})
+                    </span>
+                    <span className="text-xs font-bold bg-indigo-100 text-indigo-900 px-3 py-1 rounded-xl border border-indigo-300">
                       {atendimentosDoDia.length} {atendimentosDoDia.length === 1 ? 'atividade' : 'atividades'}
                     </span>
                   </div>
@@ -1755,9 +1741,39 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
                             type="text"
                             value={editHorario}
                             onChange={(e) => setEditHorario(e.target.value)}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 font-bold"
                             placeholder="07:00 às 19:00"
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 font-mono"
+                            required
                           />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="font-bold text-slate-700 block mb-1">Escala (ex: 3x3)</label>
+                          <input
+                            type="text"
+                            value={editEscala}
+                            onChange={(e) => setEditEscala(e.target.value)}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 font-bold"
+                            placeholder="3x3"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="font-bold text-slate-700 block mb-1">Dia do Turno</label>
+                          <select
+                            value={editDiaEscala}
+                            onChange={(e) => setEditDiaEscala(e.target.value)}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 font-bold"
+                          >
+                            <option value="1º Dia">1º Dia</option>
+                            <option value="2º Dia">2º Dia</option>
+                            <option value="3º Dia">3º Dia</option>
+                            <option value="4º Dia">4º Dia</option>
+                            <option value="5º Dia">5º Dia</option>
+                            <option value="Folga">Folga</option>
+                          </select>
                         </div>
                       </div>
 

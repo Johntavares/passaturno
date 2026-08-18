@@ -237,6 +237,6 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error('Error closing shift:', error);
-    return NextResponse.json({ success: true, message: 'Turno encerrado com sucesso' });
+    return NextResponse.json({ error: 'Erro ao encerrar turno' }, { status: 500 });
   }
 }

@@ -174,59 +174,42 @@ export const NewIncidentModal: React.FC<NewIncidentModalProps> = ({
       let createdIncident: any = null;
 
       // 3. Registrar o atendimento via API oficial (garante gravação única, ID do turno e histórico)
-      try {
-        const res = await fetch('/api/atendimentos', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            tag: formattedTag,
-            equipamentoNome: equipamentoNome.trim() || `Equipamento ${formattedTag}`,
-            area,
-            tipoFalha,
-            falha,
-            sintoma,
-            dataHoraParada: safeDataHoraParada,
-            previsaoLiberacao: previsaoLiberacao.trim() || null,
-            prioridade,
-            status,
-            noCodigo: status === 'EM_ANDAMENTO' && noCodigo,
-            responsavel: effectiveResponsavel,
-            motivoEspera,
-            proximaAcao,
-            observacao,
-            turma: turma || currentUser?.turma || 'A',
-            divisaoAtuacao,
-          }),
-        });
-
-        if (res.ok) {
-          createdIncident = await res.json();
-        }
-      } catch (e) {
-        console.warn('API POST /api/atendimentos note:', e);
-      }
-
-      if (!createdIncident) {
-        // Fallback local garantido para não travar a experiência do usuário
-        createdIncident = {
-          id: `inc-${Date.now()}`,
+      const res = await fetch('/api/atendimentos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           tag: formattedTag,
           equipamentoNome: equipamentoNome.trim() || `Equipamento ${formattedTag}`,
-          area: area || 'Frota Mina',
-          tipoFalha: tipoFalha || 'Comunicação',
+          area,
+          tipoFalha,
           falha,
           sintoma,
           dataHoraParada: safeDataHoraParada,
+          previsaoLiberacao: previsaoLiberacao.trim() || null,
           prioridade,
           status,
-          responsavel: effectiveResponsavel,
-          turma: turma || 'A',
           noCodigo: status === 'EM_ANDAMENTO' && noCodigo,
-          divisaoAtuacao: divisaoAtuacao || 'MONITORAMENTO',
-          isPendenciaHerdada: status === 'PENDENCIA_PROXIMO_TURNO',
-          criadoEm: new Date().toISOString(),
-          atualizadoEm: new Date().toISOString(),
-        };
+          responsavel: effectiveResponsavel,
+          motivoEspera,
+          proximaAcao,
+          observacao,
+          turma: turma || currentUser?.turma || 'A',
+          divisaoAtuacao,
+        }),
+      });
+
+      if (res.ok) {
+        createdIncident = await res.json();
+      } else {
+        // Nunca criar dado local "fantasma": se o banco não salvou, mostra o erro ao usuário
+        let apiMsg = 'Não foi possível salvar o atendimento. Tente novamente.';
+        try {
+          const errBody = await res.json();
+          if (errBody?.error) apiMsg = errBody.error;
+        } catch {}
+        setErrorMsg(apiMsg);
+        setIsSubmitting(false);
+        return;
       }
 
       // Limpar formulário para próximo uso

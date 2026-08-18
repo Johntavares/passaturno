@@ -48,8 +48,8 @@ export const EditTurmaProfileModal: React.FC<EditTurmaProfileModalProps> = ({
       horarioTurno: horarioTurno.trim(),
       periodoTurno,
       turma,
-      escala,
-      diaEscala,
+      escala: escala.trim(),
+      diaEscala: diaEscala.trim(),
     };
 
     if (currentUser?.id) {
@@ -62,8 +62,8 @@ export const EditTurmaProfileModal: React.FC<EditTurmaProfileModalProps> = ({
             horarioTurno: horarioTurno.trim(),
             periodoTurno,
             turma,
-            escala,
-            diaEscala,
+            escala: escala.trim(),
+            diaEscala: diaEscala.trim(),
           }),
         });
       } catch (err) {
@@ -71,12 +71,18 @@ export const EditTurmaProfileModal: React.FC<EditTurmaProfileModalProps> = ({
       }
     }
 
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('passaturno-user', JSON.stringify(userSessionData));
+      } catch (e) {}
+    }
+
     onProfileUpdated(userSessionData);
     setSavedSuccess(true);
     setTimeout(() => {
       setSavedSuccess(false);
       onClose();
-    }, 1200);
+    }, 1000);
   };
 
   return (

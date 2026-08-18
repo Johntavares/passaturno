@@ -10,7 +10,6 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@prisma/adapter-neon": "^6.19.3",
     "@prisma/client": "^6.19.3",
     "@supabase/supabase-js": "^2.112.3",
     "bcryptjs": "^3.0.3",

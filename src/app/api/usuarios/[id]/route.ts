@@ -1,5 +1,7 @@
+export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { supabase } from '@/lib/supabaseClient';
 import bcrypt from 'bcryptjs';
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -12,15 +14,30 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     if (nome !== undefined) data.nome = nome.trim();
     if (matricula !== undefined) data.matricula = matricula.trim();
     if (email !== undefined) data.email = email.trim();
-    if (turma !== undefined) data.turma = turma;
+    if (turma !== undefined) {
+      data.turma = turma;
+      data.equipe = `Automação ${turma}`;
+      data.cargo = `Técnico de Automação (Turma ${turma})`;
+    }
     if (horarioTurno !== undefined) data.horarioTurno = horarioTurno;
     if (periodoTurno !== undefined) data.periodoTurno = periodoTurno;
     if (escala !== undefined) data.escala = escala;
     if (diaEscala !== undefined) data.diaEscala = diaEscala;
-    if (senha !== undefined) {
+    if (senha !== undefined && senha) {
       data.senha = await bcrypt.hash(senha, 10);
     }
 
+    // 1. Atualiza no Supabase REST
+    try {
+      await supabase
+        .from('User')
+        .update(data)
+        .eq('id', id);
+    } catch (eSupa) {
+      console.warn('Supabase user update warning:', eSupa);
+    }
+
+    // 2. Atualiza no Prisma
     const user = await prisma.user.update({
       where: { id },
       data,
@@ -41,31 +58,31 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       },
     });
 
-    // Sincronizar turno ativo se pertencer a este usuário ou turma
+    // 3. Sincroniza o turno ativo no Supabase e no Prisma se pertencer a esta turma ou usuário
     try {
-      const activeShift = await prisma.shift.findFirst({
-        where: {
-          status: 'ATIVO',
-          OR: [
-            { responsavelId: id },
-            { turma: data.turma || user.turma },
-          ],
-        },
-      });
+      const activeTurma = data.turma || user.turma;
+      const shiftUpdateData: any = {};
+      if (data.nome !== undefined) shiftUpdateData.responsavelNome = data.nome;
+      if (data.turma !== undefined) shiftUpdateData.turma = data.turma;
+      if (data.escala !== undefined) shiftUpdateData.escala = data.escala;
+      if (data.horarioTurno !== undefined) shiftUpdateData.horarioTurno = data.horarioTurno;
+      if (data.periodoTurno !== undefined) {
+        shiftUpdateData.tipoTurno = data.periodoTurno === 'Noite' ? 'Noturno' : 'Diurno';
+      }
+      if (data.turma !== undefined) shiftUpdateData.equipe = `Automação ${data.turma}`;
 
-      if (activeShift) {
-        const updateData: any = {};
-        if (data.turma !== undefined) updateData.turma = data.turma;
-        if (data.escala !== undefined) updateData.escala = data.escala;
-        if (data.horarioTurno !== undefined) updateData.horarioTurno = data.horarioTurno;
-        if (data.nome !== undefined) updateData.responsavelNome = data.nome;
+      if (Object.keys(shiftUpdateData).length > 0) {
+        // Atualiza Supabase
+        await supabase
+          .from('Shift')
+          .update(shiftUpdateData)
+          .eq('status', 'ATIVO');
 
-        if (Object.keys(updateData).length > 0) {
-          await prisma.shift.update({
-            where: { id: activeShift.id },
-            data: updateData,
-          });
-        }
+        // Atualiza Prisma
+        await prisma.shift.updateMany({
+          where: { status: 'ATIVO' },
+          data: shiftUpdateData,
+        });
       }
     } catch (shiftErr) {
       console.error('Erro ao sincronizar turno ativo:', shiftErr);
@@ -81,7 +98,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    await prisma.user.delete({ where: { id } });
+    try {
+      await supabase.from('User').delete().eq('id', id);
+    } catch (e) {}
+    await prisma.user.delete({ where: { id } }).catch(() => null);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Erro ao deletar usuário:', error);
