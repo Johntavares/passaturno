@@ -6,6 +6,8 @@ export interface BoletimConfigType {
   equipeSonda?: string;
   liderVale?: string;
   ausencia?: string;
+  ausenciaNome?: string;
+  ausenciaMotivo?: string;
   equipSemDespacho?: string;
   equipSemGps?: string;
   equipPreventiva?: string;
@@ -42,7 +44,7 @@ export async function PUT(request: Request) {
     }
 
     const fields: any = {};
-    for (const key of ['equipeSonda', 'liderVale', 'ausencia', 'equipSemDespacho', 'equipSemGps', 'equipPreventiva', 'equipManutencao']) {
+    for (const key of ['equipeSonda', 'liderVale', 'ausencia', 'ausenciaNome', 'ausenciaMotivo', 'equipSemDespacho', 'equipSemGps', 'equipPreventiva', 'equipManutencao']) {
       if (body[key] !== undefined) fields[key] = String(body[key]);
     }
     fields.atualizadoEm = new Date().toISOString();

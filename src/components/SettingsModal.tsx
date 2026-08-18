@@ -24,7 +24,9 @@ import {
   Plus,
   Trash2,
   Edit2,
-  RotateCcw
+  RotateCcw,
+  Users,
+  UserX
 } from 'lucide-react';
 import { ShiftType } from '@/types';
 import { ThemeMode, UserSession } from './HeaderNav';
@@ -35,6 +37,7 @@ import {
   updateFailureCategory, 
   resetFailureCategories 
 } from '@/lib/categories';
+import { getBoletimConfig, saveBoletimConfig } from '@/lib/boletimConfig';
 
 
 interface SettingsModalProps {
@@ -70,7 +73,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onRefreshData,
   onProfileUpdated,
 }) => {
-  const [activeTab, setActiveTab] = useState<'profile' | 'categories' | 'fleet' | 'reports' | 'theme'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'equipe' | 'categories' | 'fleet' | 'reports' | 'theme'>('profile');
 
   // Form states for profile editing
   const [nome, setNome] = useState(currentUser?.nome || '');
@@ -87,6 +90,44 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [newCatInput, setNewCatInput] = useState('');
   const [editingCatIndex, setEditingCatIndex] = useState<number | null>(null);
   const [editingCatValue, setEditingCatValue] = useState('');
+
+  // Equipe (perfil da turma) state
+  const turmaEquipe = ((currentUser?.turma || 'A') as string).toUpperCase();
+  const [equipeMembros, setEquipeMembros] = useState('');
+  const [ausenciaNome, setAusenciaNome] = useState('');
+  const [ausenciaMotivo, setAusenciaMotivo] = useState('');
+  const [equipeSaving, setEquipeSaving] = useState(false);
+  const [equipeSavedMsg, setEquipeSavedMsg] = useState('');
+
+  // Carregar configuração da equipe da turma ao abrir o modal
+  React.useEffect(() => {
+    if (isOpen) {
+      getBoletimConfig(turmaEquipe).then((config) => {
+        if (!config) return;
+        if (typeof config.equipeSonda === 'string' && config.equipeSonda.trim()) {
+          setEquipeMembros(config.equipeSonda.split('/').map((m) => m.trim()).join('\n'));
+        } else {
+          setEquipeMembros('');
+        }
+        setAusenciaNome(config.ausenciaNome || '');
+        setAusenciaMotivo(config.ausenciaMotivo || '');
+      }).catch(() => {});
+    }
+  }, [isOpen, turmaEquipe]);
+
+  const handleSaveEquipe = async () => {
+    if (!currentUser?.id) return;
+    setEquipeSaving(true);
+    const membros = equipeMembros.split('\n').map((l) => l.trim()).filter(Boolean);
+    const equipeSonda = membros.join(' / ');
+    const nomeAus = ausenciaNome.trim();
+    const motivoAus = ausenciaMotivo.trim();
+    const ausencia = nomeAus ? (motivoAus ? `${nomeAus} (${motivoAus})` : nomeAus) : '';
+    await saveBoletimConfig(turmaEquipe, { equipeSonda, ausencia, ausenciaNome: nomeAus, ausenciaMotivo: motivoAus });
+    setEquipeSaving(false);
+    setEquipeSavedMsg('Configuração da equipe salva!');
+    setTimeout(() => setEquipeSavedMsg(''), 2500);
+  };
 
   React.useEffect(() => {
     if (isOpen) {
@@ -251,6 +292,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         <div className="flex items-center gap-1 px-6 pt-3 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-x-auto">
           {[
             { id: 'profile',    label: 'Perfil do Turno', icon: User },
+            { id: 'equipe',     label: 'Equipe', icon: Users },
             { id: 'categories', label: 'Categorias de Falhas', icon: Tags },
             { id: 'fleet',      label: 'Frota & Equipamentos', icon: Truck },
             { id: 'reports',    label: 'Relatórios & Ferramentas', icon: Clock },
@@ -447,6 +489,95 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </form>
               </div>
             )}
+
+          {/* TAB EQUIPE */}
+          {activeTab === 'equipe' && (
+            <div className="space-y-4">
+              <div className="p-4 bg-emerald-50/60 dark:bg-emerald-950/40 rounded-2xl border border-emerald-200 dark:border-emerald-800 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-emerald-500 text-white rounded-xl shadow-xs">
+                    <Users className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-bold text-slate-800 dark:text-white">Configuração da Equipe da Turma {turmaEquipe}</h3>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">Membros da equipe e ausências — salvo no banco e sincronizado para todos os usuários da turma.</p>
+                  </div>
+                </div>
+                {equipeSavedMsg && (
+                  <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300 bg-white dark:bg-emerald-900 px-2.5 py-1 rounded-full border border-emerald-200 dark:border-emerald-700">
+                    <Check className="w-3 h-3 inline mr-1" />
+                    {equipeSavedMsg}
+                  </span>
+                )}
+              </div>
+
+              <div className="p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl space-y-4">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                    Membros da Equipe (um por linha)
+                  </label>
+                  <textarea
+                    value={equipeMembros}
+                    onChange={(e) => setEquipeMembros(e.target.value)}
+                    rows={6}
+                    placeholder={'Valdenir\nVitor\nGustavo'}
+                    className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 dark:text-white focus:outline-none focus:border-emerald-500 custom-scrollbar resize-y"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                      <UserX className="w-3.5 h-3.5 text-rose-500" />
+                      Ausência (nome)
+                    </label>
+                    <input
+                      type="text"
+                      value={ausenciaNome}
+                      onChange={(e) => setAusenciaNome(e.target.value)}
+                      placeholder="ex: Baia"
+                      className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs font-bold text-slate-800 dark:text-white focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                      Motivo da Ausência
+                    </label>
+                    <input
+                      type="text"
+                      value={ausenciaMotivo}
+                      onChange={(e) => setAusenciaMotivo(e.target.value)}
+                      placeholder="ex: férias, atestado, folga..."
+                      className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs font-bold text-slate-800 dark:text-white focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleSaveEquipe}
+                  disabled={equipeSaving}
+                  className={`w-full px-4 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition-all cursor-pointer ${
+                    equipeSaving
+                      ? 'bg-emerald-700 text-white'
+                      : 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                  }`}
+                >
+                  {equipeSaving ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>Salvando no Banco...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4" />
+                      <span>Salvar Configuração da Equipe</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* TAB CATEGORIAS DE FALHAS */}
           {activeTab === 'categories' && (

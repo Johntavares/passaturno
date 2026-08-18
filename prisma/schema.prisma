@@ -92,6 +92,8 @@ model BoletimConfig {
   equipeSonda      String?
   liderVale        String?
   ausencia         String?
+  ausenciaNome     String?
+  ausenciaMotivo   String?
   equipSemDespacho String?
   equipSemGps      String?
   equipPreventiva  String?

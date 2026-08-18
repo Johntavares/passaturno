@@ -5,6 +5,8 @@ export interface BoletimConfigType {
   equipeSonda?: string;
   liderVale?: string;
   ausencia?: string;
+  ausenciaNome?: string;
+  ausenciaMotivo?: string;
   equipSemDespacho?: string;
   equipSemGps?: string;
   equipPreventiva?: string;

@@ -73,7 +73,15 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
   const applyConfigToFields = (config: any) => {
     if (typeof config.equipeSonda === 'string') setEquipeSonda(config.equipeSonda);
     if (typeof config.liderVale === 'string') setLiderVale(config.liderVale);
-    if (typeof config.ausencia === 'string') setAusencia(config.ausencia);
+    if (typeof config.ausencia === 'string' && config.ausencia.trim()) {
+      setAusencia(config.ausencia);
+    } else if (typeof config.ausenciaNome === 'string' && config.ausenciaNome.trim()) {
+      setAusencia(
+        config.ausenciaMotivo && config.ausenciaMotivo.trim()
+          ? `${config.ausenciaNome} (${config.ausenciaMotivo})`
+          : config.ausenciaNome
+      );
+    }
     if (typeof config.equipSemDespacho === 'string') setEquipSemDespacho(config.equipSemDespacho);
     if (typeof config.equipSemGps === 'string') setEquipSemGps(config.equipSemGps);
     if (typeof config.equipPreventiva === 'string') setEquipPreventiva(config.equipPreventiva);
