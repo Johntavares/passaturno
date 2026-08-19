@@ -36,11 +36,10 @@ export function getTodayYMDInBR(): string {
   return new Intl.DateTimeFormat('en-CA', options).format(new Date());
 }
 
-// Verifica se uma data em ISO ou string refere-se ao dia de HOJE no fuso do Brasil (America/Sao_Paulo)
-export function isSameDayAsToday(dateVal?: string | Date | null): boolean {
-  if (!dateVal) return false;
+// Verifica se uma data em ISO ou string refere-se ao dia alvo (YYYY-MM-DD) no fuso do Brasil (America/Sao_Paulo)
+export function isSameDayAsYMD(dateVal?: string | Date | null, targetYMD?: string): boolean {
+  if (!dateVal || !targetYMD || !/^\d{4}-\d{2}-\d{2}$/.test(targetYMD)) return false;
   try {
-    const todayYMD = getTodayYMDInBR();
     let d: Date;
 
     if (dateVal instanceof Date) {
@@ -51,17 +50,13 @@ export function isSameDayAsToday(dateVal?: string | Date | null): boolean {
 
       // Se for formato simples YYYY-MM-DD sem horário
       if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
-        return trimmed === todayYMD;
+        return trimmed === targetYMD;
       }
 
-      // Se contiver data em formato DD/MM/YYYY
-      const todayDate = new Date();
-      const dd = String(todayDate.getDate()).padStart(2, '0');
-      const mm = String(todayDate.getMonth() + 1).padStart(2, '0');
-      const yyyy = String(todayDate.getFullYear());
-      const brToday = `${dd}/${mm}/${yyyy}`;
-      if (trimmed.includes(brToday)) {
-        return true;
+      // Se contiver data em formato DD/MM/YYYY (dados legados)
+      const brMatch = trimmed.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+      if (brMatch) {
+        return `${brMatch[3]}-${brMatch[2]}-${brMatch[1]}` === targetYMD;
       }
 
       d = new Date(trimmed);
@@ -78,15 +73,20 @@ export function isSameDayAsToday(dateVal?: string | Date | null): boolean {
       day: '2-digit',
     };
     const itemYMD = new Intl.DateTimeFormat('en-CA', options).format(d);
-    return itemYMD === todayYMD;
+    return itemYMD === targetYMD;
   } catch {
     return false;
   }
 }
 
-// Verifica se a OCORRÊNCIA (parada, liberação ou criação) pertence estritamente ao dia de HOJE
-export function isIncidentFromToday(item: any): boolean {
-  if (!item) return false;
+// Verifica se uma data em ISO ou string refere-se ao dia de HOJE no fuso do Brasil (America/Sao_Paulo)
+export function isSameDayAsToday(dateVal?: string | Date | null): boolean {
+  return isSameDayAsYMD(dateVal, getTodayYMDInBR());
+}
+
+// Verifica se a OCORRÊNCIA (parada, liberação ou criação) pertence estritamente ao dia alvo (YYYY-MM-DD, fuso BR)
+export function isIncidentOnDate(item: any, targetYMD: string): boolean {
+  if (!item || !targetYMD) return false;
 
   // Apenas campos de negócio de data da ocorrência (NÃO checar atualizadoEm!)
   const businessDateFields = [
@@ -97,10 +97,15 @@ export function isIncidentFromToday(item: any): boolean {
   ];
 
   for (const dateVal of businessDateFields) {
-    if (dateVal && isSameDayAsToday(dateVal)) {
+    if (dateVal && isSameDayAsYMD(dateVal, targetYMD)) {
       return true;
     }
   }
 
   return false;
+}
+
+// Verifica se a OCORRÊNCIA (parada, liberação ou criação) pertence estritamente ao dia de HOJE
+export function isIncidentFromToday(item: any): boolean {
+  return isIncidentOnDate(item, getTodayYMDInBR());
 }

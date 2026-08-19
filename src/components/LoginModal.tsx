@@ -16,6 +16,7 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { X } from 'lucide-react';
+import { DesktopAdBanner } from './DesktopAdBanner';
 
 interface UserSession {
   id: string;
@@ -450,6 +451,11 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess, onClose 
 
         </div>
 
+      </div>
+
+      {/* Anúncio visível publicamente (também indexado pelo robô do AdSense) */}
+      <div className="w-full max-w-4xl mx-auto">
+        <DesktopAdBanner className="my-0" />
       </div>
 
     </div>

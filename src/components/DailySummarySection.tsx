@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { IncidentType, ShiftType } from '@/types';
 import { FileText, Copy, Check, ChevronDown, ChevronUp, AlertCircle, CheckCircle2, Clock, Calendar, RotateCcw } from 'lucide-react';
 import { format } from 'date-fns';
-import { normalizeTurma, isIncidentFromToday } from '@/lib/turma';
+import { normalizeTurma, isIncidentFromToday, isIncidentOnDate } from '@/lib/turma';
 
 interface DailySummarySectionProps {
   incidents: IncidentType[];
@@ -41,11 +41,8 @@ export const DailySummarySection: React.FC<DailySummarySectionProps> = ({
 
     if (selectedDate) {
       // Modo Consulta Histórica por Data Específica
-      const createdDate = item.criadoEm ? item.criadoEm.split('T')[0] : '';
-      const updatedDate = item.atualizadoEm ? item.atualizadoEm.split('T')[0] : createdDate;
-      const finishedDate = item.dataHoraLiberacao ? item.dataHoraLiberacao.split('T')[0] : updatedDate;
-
-      return createdDate === selectedDate || updatedDate === selectedDate || finishedDate === selectedDate;
+      // Usa campos de negócio da ocorrência no fuso do Brasil (NÃO atualizadoEm!)
+      return isIncidentOnDate(item, selectedDate);
     }
 
     // Modo Turno Ativo Atual (Padrão): Estritamente apenas atendimentos do dia de HOJE
