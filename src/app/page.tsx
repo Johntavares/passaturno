@@ -1250,7 +1250,9 @@ export default function Home() {
             <DesktopAdBanner />
 
             {/* 4. Resumo dos Atendimentos Diários & Passagem de Turno (Posicionado na parte inferior) */}
-            <DailySummarySection incidents={displayedIncidents} activeShift={activeShift} currentUser={currentUser} />
+            {/* Passa TODOS os incidentes do servidor, não apenas os do turno ativo:
+                assim o filtro de data continua funcionando mesmo após encerrar o turno */}
+            <DailySummarySection incidents={incidents} activeShift={activeShift} currentUser={currentUser} />
           </>
           );
         })()}
