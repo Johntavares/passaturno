@@ -22,6 +22,8 @@ export const DailySummarySection: React.FC<DailySummarySectionProps> = ({
   const [selectedDate, setSelectedDate] = useState<string>(''); // Vazio = Turno Ativo Atual
 
   const currentTurma = normalizeTurma(activeShift?.turma) || normalizeTurma(currentUser?.turma) || 'A';
+  // Turma efetivamente conhecida (vazia = líder/GERAL, sem filtro por turma)
+  const knownTurma = normalizeTurma(activeShift?.turma) || normalizeTurma(currentUser?.turma) || '';
 
   // Determinar o momento exato de início do turno ativo atual
   let shiftStartMs = 0;
@@ -38,6 +40,12 @@ export const DailySummarySection: React.FC<DailySummarySectionProps> = ({
   // Filtragem: Se data for selecionada, consulta histórico por data (YYYY-MM-DD); caso contrário, usa a lista ativa do turno
   const filteredIncidents = incidents.filter((item) => {
     if (item.tag && item.tag.toUpperCase().trim() === 'TT92') return false;
+
+    // Filtro por turma: só atendimentos da turma do turno/usuário (líder/GERAL vê tudo)
+    if (knownTurma) {
+      const itemTurma = normalizeTurma(item.turma);
+      if (itemTurma && itemTurma !== knownTurma) return false;
+    }
 
     if (selectedDate) {
       // Modo Consulta Histórica por Data Específica
