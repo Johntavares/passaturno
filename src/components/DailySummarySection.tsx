@@ -157,7 +157,11 @@ export const DailySummarySection: React.FC<DailySummarySectionProps> = ({
       });
     }
 
-    text += `\nObservações Gerais: ${activeShift?.observacoes || ''}\n`;
+    // Ignora a observação automática de "Turno assumido" gerada pelo login
+    const observacoesFinais = (activeShift?.observacoes || '').trim();
+    const ehObservacaoAutoAssumida = /^Turno assumido automaticamente/.test(observacoesFinais);
+
+    text += `\nObservações Gerais: ${ehObservacaoAutoAssumida ? '' : observacoesFinais}\n`;
 
     return text;
   };
