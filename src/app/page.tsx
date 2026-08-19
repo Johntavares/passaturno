@@ -527,7 +527,7 @@ export default function Home() {
           responsavelNome: u.nome,
           turma: turmaFinal,
           escala: u.escala || '3x3',
-          observacoes: `Turno assumido automaticamente pelo login de ${u.nome} (Turma ${turmaFinal}).`,
+          observacoes: 'Turno assumido automaticamente pelo sistema.',
         }),
       });
       if (res.ok) {
