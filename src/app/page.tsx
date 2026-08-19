@@ -1176,7 +1176,14 @@ export default function Home() {
                 return isDoTurnoAtivo;
               }
 
-              // 3. Ocorrências em aberto (EM_ANDAMENTO, AGUARDANDO, PENDENCIA_PROXIMO_TURNO, NO_CODIGO):
+              // 2b. Pendências deixadas para o próximo turno: exibe para a turma que está
+              // com turno ATIVO, mesmo que o destino marcado seja outra letra
+              // (ex: pendências deixadas pela Turma C aparecem para quem assumiu o turno).
+              if (item.status === 'PENDENCIA_PROXIMO_TURNO' || item.isPendenciaHerdada) {
+                return true;
+              }
+
+              // 3. Ocorrências em aberto (EM_ANDAMENTO, AGUARDANDO, NO_CODIGO):
               // Exibe se pertencer ao turno ativo atual OU se for pertencente à mesma turma ativa do operador (ex: Turma C)
               const matchesTurma = itemTurma === filterTurma;
               return isDoTurnoAtivo || matchesTurma;
