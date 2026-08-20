@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { IncidentType } from '@/types';
 import { X, MessageSquare, Copy, Check, Edit3 } from 'lucide-react';
-import { format, differenceInMinutes } from 'date-fns';
+import { differenceInMinutes } from 'date-fns';
+import { parseStoredDate, formatBRTime } from '@/lib/turma';
 
 interface WhatsappModalProps {
   incident: IncidentType | null;
@@ -20,11 +21,11 @@ export const WhatsappModal: React.FC<WhatsappModalProps> = ({
   const [editableText, setEditableText] = useState('');
 
   const generateWhatsappText = (inc: IncidentType) => {
-    const paradaDate = new Date(inc.dataHoraParada);
-    const liberacaoDate = inc.dataHoraLiberacao ? new Date(inc.dataHoraLiberacao) : null;
-    
+    const paradaDate = parseStoredDate(inc.dataHoraParada);
+    const liberacaoDate = inc.dataHoraLiberacao ? parseStoredDate(inc.dataHoraLiberacao) : null;
+
     let tempoTotalStr = '';
-    if (liberacaoDate) {
+    if (liberacaoDate && paradaDate) {
       const mins = differenceInMinutes(liberacaoDate, paradaDate);
       const hours = Math.floor(mins / 60);
       const remMins = mins % 60;
@@ -37,11 +38,11 @@ export const WhatsappModal: React.FC<WhatsappModalProps> = ({
     text += `📍 *Área:* ${inc.area}\n`;
     text += `⚠️ *Prioridade:* ${inc.prioridade}\n\n`;
     text += `🔧 *Falha:*\n${inc.falha}\n\n`;
-    text += `⏰ *Hora parada:*\n${format(paradaDate, 'HH:mm • dd/MM/yyyy')}\n\n`;
+    text += `⏰ *Hora parada:*\n${paradaDate ? formatBRTime(paradaDate, { day: '2-digit', month: '2-digit', year: 'numeric' }) : '--:--'}\n\n`;
     text += `📋 *Status:*\n${inc.status}\n\n`;
 
     if (liberacaoDate) {
-      text += `🏁 *Hora liberação:*\n${format(liberacaoDate, 'HH:mm • dd/MM/yyyy')}\n\n`;
+      text += `🏁 *Hora liberação:*\n${formatBRTime(liberacaoDate, { day: '2-digit', month: '2-digit', year: 'numeric' })}\n\n`;
       text += `⏳ *Tempo total de parada:*\n${tempoTotalStr}\n\n`;
     }
 

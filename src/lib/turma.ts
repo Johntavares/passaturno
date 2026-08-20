@@ -109,3 +109,40 @@ export function isIncidentOnDate(item: any, targetYMD: string): boolean {
 export function isIncidentFromToday(item: any): boolean {
   return isIncidentOnDate(item, getTodayYMDInBR());
 }
+
+// O banco grava os timestamps como colunas TIMESTAMP sem time zone (o valor guardado é o
+// horário UTC, pois a sessão do banco roda em UTC e o cliente envia strings ISO com 'Z').
+// Converte o valor bruto vindo do banco para um instante Date, tratando strings sem sufixo
+// de fuso como UTC (evita o JavaScript interpretá-las no fuso local do navegador).
+export function parseStoredDate(dateVal?: string | Date | null): Date | null {
+  if (dateVal == null) return null;
+  if (dateVal instanceof Date) {
+    return isNaN(dateVal.getTime()) ? null : dateVal;
+  }
+  const s = String(dateVal).trim();
+  if (!s) return null;
+  // Se já tiver indicador de fuso (Z ou ±HH:MM), o valor já é um instante absoluto
+  if (/(Z|[+-]\d{2}:?\d{2})$/i.test(s)) {
+    const d = new Date(s);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  // Sem fuso: o banco armazenou o horário UTC (wall clock UTC)
+  const d = new Date(s + 'Z');
+  return isNaN(d.getTime()) ? null : d;
+}
+
+// Formata hora/minuto (ou data+hora) de um valor armazenado no banco para o fuso do Brasil
+// (America/Sao_Paulo), independente do fuso do navegador/servidor. Ex.: '14:30' ou '14/08/2026 14:30'.
+export function formatBRTime(
+  dateVal?: string | Date | null,
+  options: Intl.DateTimeFormatOptions = {}
+): string {
+  const d = parseStoredDate(dateVal);
+  if (!d) return '--:--';
+  return new Intl.DateTimeFormat('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    hour: '2-digit',
+    minute: '2-digit',
+    ...options,
+  }).format(d);
+}

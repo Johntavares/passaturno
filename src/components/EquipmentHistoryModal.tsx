@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { EquipmentType } from '@/types';
 import { X, Truck, History, Tag } from 'lucide-react';
-import { format } from 'date-fns';
+import { formatBRTime } from '@/lib/turma';
 
 interface EquipmentHistoryModalProps {
   initialTag?: string;
@@ -132,7 +132,6 @@ export const EquipmentHistoryModal: React.FC<EquipmentHistoryModalProps> = ({
 
               {equipmentData.incidents && equipmentData.incidents.length > 0 ? (
                 equipmentData.incidents.map((inc: any) => {
-                  const parada = new Date(inc.dataHoraParada);
                   return (
                     <div
                       key={inc.id}
@@ -140,7 +139,7 @@ export const EquipmentHistoryModal: React.FC<EquipmentHistoryModalProps> = ({
                     >
                       <div className="flex items-center justify-between text-xs">
                         <span className="font-mono text-sky-700 font-bold">
-                          {format(parada, 'dd/MM/yyyy • HH:mm')}
+                          {formatBRTime(inc.dataHoraParada, { day: '2-digit', month: '2-digit', year: 'numeric' })}
                         </span>
                         <span
                           className={`text-[10px] px-2 py-0.5 rounded-md font-bold ${

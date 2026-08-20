@@ -42,6 +42,17 @@ export async function GET(request: Request) {
       const liberacao = inc.dataHoraLiberacao ? new Date(inc.dataHoraLiberacao) : null;
       let tempoParadaText = 'Em aberto';
 
+      // Formata no fuso do Brasil (America/Sao_Paulo), já que o banco guarda os timestamps em UTC
+      const brFmt = new Intl.DateTimeFormat('pt-BR', {
+        timeZone: 'America/Sao_Paulo',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      });
+
       if (liberacao) {
         const diffMinutes = differenceInMinutes(liberacao, parada);
         const hours = Math.floor(diffMinutes / 60);
@@ -56,8 +67,8 @@ export async function GET(request: Request) {
         'Tipo de Falha': inc.tipoFalha,
         'Falha Apresentada': inc.falha,
         'Sintoma': inc.sintoma || '-',
-        'Hora da Parada': format(parada, 'dd/MM/yyyy HH:mm'),
-        'Hora da Liberação': liberacao ? format(liberacao, 'dd/MM/yyyy HH:mm') : 'Pendente',
+        'Hora da Parada': brFmt.format(parada),
+        'Hora da Liberação': liberacao ? brFmt.format(liberacao) : 'Pendente',
         'Tempo de Parada': tempoParadaText,
         'Status': inc.status,
         'Prioridade': inc.prioridade,

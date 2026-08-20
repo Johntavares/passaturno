@@ -21,7 +21,7 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { differenceInMinutes, format } from 'date-fns';
-import { normalizeTurma } from '@/lib/turma';
+import { normalizeTurma, parseStoredDate, formatBRTime } from '@/lib/turma';
 
 interface KanbanBoardProps {
   incidents: IncidentType[];
@@ -106,8 +106,9 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   );
 
   const calculateDowntime = (dataParada: string, dataLiberacao?: string | null) => {
-    const start = new Date(dataParada);
-    const end = dataLiberacao ? new Date(dataLiberacao) : new Date();
+    const start = parseStoredDate(dataParada);
+    const end = dataLiberacao ? (parseStoredDate(dataLiberacao) || new Date()) : new Date();
+    if (!start) return '--';
     const mins = differenceInMinutes(end, start);
     const hours = Math.floor(mins / 60);
     const remainingMins = mins % 60;
@@ -131,7 +132,8 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
   // Equipamentos no código com mais de 2 horas (120 minutos) de parada
   const itemsOver2HoursInCode = colNoCodigo.filter((i) => {
-    const start = new Date(i.dataHoraParada || i.criadoEm);
+    const start = parseStoredDate(i.dataHoraParada || i.criadoEm);
+    if (!start) return false;
     const mins = differenceInMinutes(new Date(), start);
     return mins >= 120;
   });
@@ -157,8 +159,8 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
             {itemsOver2HoursInCode.map((item) => {
-              const start = new Date(item.dataHoraParada || item.criadoEm);
-              const mins = differenceInMinutes(new Date(), start);
+              const start = parseStoredDate(item.dataHoraParada || item.criadoEm);
+              const mins = start ? differenceInMinutes(new Date(), start) : 0;
               const h = Math.floor(mins / 60);
               const m = mins % 60;
               return (
@@ -350,7 +352,7 @@ Próximo Turno
 
   // Renderizador do Card do Atendimento (Minimizado por padrão)
   function renderCard(item: IncidentType) {
-    const paradaDate = new Date(item.dataHoraParada);
+    const paradaDate = parseStoredDate(item.dataHoraParada) || new Date();
     const downtimeMins = differenceInMinutes(new Date(), paradaDate);
     const downtimeStr = calculateDowntime(item.dataHoraParada, item.dataHoraLiberacao);
     const isFinished = item.status === 'FINALIZADO' || item.status === 'RETROAGIDO';
@@ -475,7 +477,7 @@ Próximo Turno
               )}
 
               <div className="flex items-center justify-between text-[11px] text-slate-600 dark:text-slate-300">
-                <span className="font-semibold flex items-center gap-1" title={format(paradaDate, 'dd/MM/yyyy HH:mm')}>
+                <span className="font-semibold flex items-center gap-1" title={formatBRTime(item.dataHoraParada, { year: 'numeric', month: '2-digit', day: '2-digit' })}>
                   <Clock className="w-3.5 h-3.5 text-slate-400" />
                   Parado: <strong>{downtimeStr}</strong>
                 </span>
@@ -483,7 +485,7 @@ Próximo Turno
                 {isFinished ? (
                   <span className="font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950 px-2 py-0.5 rounded border border-emerald-300 dark:border-emerald-800 flex items-center gap-1">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                    <span>Finalizado: <strong>{item.dataHoraLiberacao ? format(new Date(item.dataHoraLiberacao), 'HH:mm') : format(new Date(), 'HH:mm')}</strong></span>
+                    <span>Finalizado: <strong>{item.dataHoraLiberacao ? formatBRTime(item.dataHoraLiberacao) : format(new Date(), 'HH:mm')}</strong></span>
                   </span>
                 ) : (
                   <span className="font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
@@ -599,7 +601,7 @@ Próximo Turno
                 <span className="truncate">{item.responsavel}</span>
               </div>
 
-              <div className="flex items-center space-x-1 text-slate-600 justify-end" title={format(paradaDate, 'dd/MM/yyyy HH:mm')}>
+              <div className="flex items-center space-x-1 text-slate-600 justify-end" title={formatBRTime(item.dataHoraParada, { year: 'numeric', month: '2-digit', day: '2-digit' })}>
                 <Clock className="w-3 h-3 text-slate-400" />
                 <span>Parado: <strong>{downtimeStr}</strong></span>
               </div>

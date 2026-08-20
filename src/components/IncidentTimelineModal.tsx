@@ -13,7 +13,7 @@ import {
   ArrowRightLeft, 
   Wrench 
 } from 'lucide-react';
-import { format } from 'date-fns';
+import { parseStoredDate, formatBRTime } from '@/lib/turma';
 
 interface IncidentTimelineModalProps {
   incident: IncidentType | null;
@@ -232,11 +232,9 @@ export const IncidentTimelineModal: React.FC<IncidentTimelineModalProps> = ({
               <div className="relative border-l-2 border-slate-200 ml-3 pl-4 space-y-3">
                 {incident.historico.map((h) => {
                   let dateStr = h.dataHora;
-                  try {
-                    const dateObj = new Date(h.dataHora);
-                    dateStr = format(dateObj, 'HH:mm • dd/MM/yyyy');
-                  } catch (e) {
-                    dateStr = h.dataHora;
+                  const dateObj = parseStoredDate(h.dataHora);
+                  if (dateObj) {
+                    dateStr = formatBRTime(dateObj, { day: '2-digit', month: '2-digit', year: 'numeric' });
                   }
 
                   return (

@@ -42,7 +42,7 @@ import {
 import { format } from 'date-fns';
 import { ChatMessage } from './LiderTurmaModal';
 import { OperatorReply } from './LeaderMessageNotification';
-import { normalizeTurma, isIncidentFromToday } from '@/lib/turma';
+import { normalizeTurma, isIncidentFromToday, parseStoredDate, formatBRTime } from '@/lib/turma';
 import { KanbanBoard } from './KanbanBoard';
 import { IncidentStatusType, PriorityLevel } from '@/types';
 
@@ -393,12 +393,8 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
 
   const displayedHoraInicioTxt = (() => {
     if (displayedShift?.criadoEm || displayedShift?.horaInicio) {
-      try {
-        const d = new Date(displayedShift.criadoEm || displayedShift.horaInicio);
-        return isNaN(d.getTime()) ? null : format(d, 'HH:mm');
-      } catch {
-        return null;
-      }
+      const d = parseStoredDate(displayedShift.criadoEm || displayedShift.horaInicio);
+      return d ? formatBRTime(d) : null;
     }
     return null;
   })();
@@ -443,7 +439,8 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
     const isDoTurno = activeShift ? i.shiftId === activeShift.id : isIncidentFromToday(i);
     if (!isDoTurno) return false;
 
-    const start = new Date(i.criadoEm);
+    const start = parseStoredDate(i.criadoEm);
+    if (!start) return false;
     const now = new Date();
     const diffHours = (now.getTime() - start.getTime()) / (1000 * 60 * 60);
     return diffHours >= 2;
@@ -471,12 +468,8 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
 
   const horaInicioTxt = (() => {
     if (!activeShift?.horaInicio) return null;
-    try {
-      const d = new Date(activeShift.horaInicio);
-      return isNaN(d.getTime()) ? null : format(d, 'HH:mm');
-    } catch {
-      return null;
-    }
+    const d = parseStoredDate(activeShift.horaInicio);
+    return d ? formatBRTime(d) : null;
   })();
 
   // Funções de atalhos rápidos de período
@@ -563,16 +556,16 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
 
     // Filtro por Data Inicial
     if (reportStartDate) {
-      const itemDate = new Date(i.criadoEm || i.dataHoraParada);
+      const itemDate = parseStoredDate(i.criadoEm || i.dataHoraParada);
       const startDate = new Date(reportStartDate + 'T00:00:00');
-      if (itemDate < startDate) return false;
+      if (!itemDate || itemDate < startDate) return false;
     }
 
     // Filtro por Data Final
     if (reportEndDate) {
-      const itemDate = new Date(i.criadoEm || i.dataHoraParada);
+      const itemDate = parseStoredDate(i.criadoEm || i.dataHoraParada);
       const endDate = new Date(reportEndDate + 'T23:59:59');
-      if (itemDate > endDate) return false;
+      if (!itemDate || itemDate > endDate) return false;
     }
 
     // Filtro de Busca por Texto
@@ -609,9 +602,9 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
     }
     acc[rawKey].count += 1;
 
-    const start = new Date(item.dataHoraParada || item.criadoEm);
-    const end = item.dataHoraLiberacao ? new Date(item.dataHoraLiberacao) : new Date();
-    const mins = Math.max(0, Math.floor((end.getTime() - start.getTime()) / (1000 * 60)));
+    const start = parseStoredDate(item.dataHoraParada || item.criadoEm);
+    const end = item.dataHoraLiberacao ? (parseStoredDate(item.dataHoraLiberacao) || new Date()) : new Date();
+    const mins = start ? Math.max(0, Math.floor((end.getTime() - start.getTime()) / (1000 * 60))) : 0;
     acc[rawKey].totalMins += mins;
 
     return acc;
@@ -652,9 +645,9 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
       acc[key] = { tag: key, nome: item.equipamentoNome, count: 0, totalMins: 0 };
     }
     acc[key].count += 1;
-    const start = new Date(item.dataHoraParada || item.criadoEm);
-    const end = item.dataHoraLiberacao ? new Date(item.dataHoraLiberacao) : new Date();
-    acc[key].totalMins += Math.max(0, Math.floor((end.getTime() - start.getTime()) / (1000 * 60)));
+    const start = parseStoredDate(item.dataHoraParada || item.criadoEm);
+    const end = item.dataHoraLiberacao ? (parseStoredDate(item.dataHoraLiberacao) || new Date()) : new Date();
+    acc[key].totalMins += start ? Math.max(0, Math.floor((end.getTime() - start.getTime()) / (1000 * 60))) : 0;
     return acc;
   }, {} as Record<string, { tag: string; nome: string; count: number; totalMins: number }>);
 
@@ -703,7 +696,9 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
     const rows = filteredHistory.map((i) => [
       i.id, i.tag, `"${i.equipamentoNome}"`, `Turma ${i.turma || 'A'}`, getTurmaDestino(i.turma || 'A'),
       `"${i.tipoFalha}"`, `"${i.falha.replace(/"/g, '""')}"`, i.status, i.prioridade, `"${i.responsavel}"`,
-      i.dataHoraParada, i.dataHoraLiberacao || '', `"${(i.observacao || '').replace(/"/g, '""')}"`,
+      formatBRTime(i.dataHoraParada, { day: '2-digit', month: '2-digit', year: 'numeric' }),
+      i.dataHoraLiberacao ? formatBRTime(i.dataHoraLiberacao, { day: '2-digit', month: '2-digit', year: 'numeric' }) : '',
+      `"${(i.observacao || '').replace(/"/g, '""')}"`,
       `"${(i.solucao || '').replace(/"/g, '""')}"`
     ]);
 
@@ -1334,9 +1329,9 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
                         </tr>
                       ) : (
                         paginatedReportIncidents.map((item) => {
-                          const start = new Date(item.dataHoraParada || item.criadoEm);
-                          const end = item.dataHoraLiberacao ? new Date(item.dataHoraLiberacao) : new Date();
-                          const mins = Math.max(0, Math.floor((end.getTime() - start.getTime()) / (1000 * 60)));
+                          const start = parseStoredDate(item.dataHoraParada || item.criadoEm);
+                          const end = item.dataHoraLiberacao ? (parseStoredDate(item.dataHoraLiberacao) || new Date()) : new Date();
+                          const mins = start ? Math.max(0, Math.floor((end.getTime() - start.getTime()) / (1000 * 60))) : 0;
                           const durationFormatted = `${Math.floor(mins / 60)}h ${mins % 60}m`;
 
                           return (
@@ -1900,7 +1895,7 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
                             {m.sender} ➔ <strong className="uppercase bg-white px-2 py-0.5 rounded border border-slate-200 text-slate-800">Para: {m.targetTurma === 'GERAL' ? 'Mural Geral' : `Turma ${m.targetTurma}`}</strong>
                           </span>
                           <span className="font-mono text-slate-500 font-medium">
-                            {m.timestamp ? (() => { const d = new Date(m.timestamp); return isNaN(d.getTime()) ? '' : format(d, 'dd/MM/yyyy HH:mm'); })() : ''}
+                            {m.timestamp ? formatBRTime(m.timestamp, { day: '2-digit', month: '2-digit', year: 'numeric' }) : ''}
                           </span>
                         </div>
                         <p className="text-slate-800 font-medium leading-relaxed">
@@ -1935,7 +1930,7 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
                               <div className="flex items-center justify-between gap-2 mb-1">
                                 <span className="font-bold text-slate-800 text-[11px]">{r.sender}</span>
                                 <span className="text-[10px] text-slate-400 font-mono flex-shrink-0">
-                                  {r.timestamp ? (() => { const d = new Date(r.timestamp); return isNaN(d.getTime()) ? '' : format(d, 'dd/MM HH:mm'); })() : ''}
+                                  {r.timestamp ? formatBRTime(r.timestamp, { day: '2-digit', month: '2-digit' }) : ''}
                                 </span>
                               </div>
                               <p className="text-slate-700 leading-relaxed">{r.text}</p>

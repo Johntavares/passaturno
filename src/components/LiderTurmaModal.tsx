@@ -22,6 +22,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { formatBRTime } from '@/lib/turma';
 
 export interface ChatMessage {
   id: string;
@@ -375,7 +376,7 @@ export const LiderTurmaModal: React.FC<LiderTurmaModalProps> = ({
                               Para: {m.targetTurma === 'GERAL' ? 'Todas as Turmas' : `Turma ${m.targetTurma}`}
                             </span>
                           </span>
-                          <span className="font-mono text-slate-400">{format(new Date(m.timestamp), 'dd/MM HH:mm')}</span>
+                          <span className="font-mono text-slate-400">{formatBRTime(m.timestamp, { day: '2-digit', month: '2-digit' })}</span>
                         </div>
                         <p className="text-slate-800 dark:text-slate-200 font-medium leading-relaxed">
                           {m.text}

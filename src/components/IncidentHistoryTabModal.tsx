@@ -25,6 +25,7 @@ import {
   MessageSquare
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { formatBRTime } from '@/lib/turma';
 
 interface IncidentHistoryTabModalProps {
   isOpen: boolean;
@@ -120,8 +121,8 @@ export const IncidentHistoryTabModal: React.FC<IncidentHistoryTabModalProps> = (
       i.status,
       i.prioridade,
       `"${i.responsavel}"`,
-      i.dataHoraParada,
-      i.dataHoraLiberacao || '',
+      formatBRTime(i.dataHoraParada, { day: '2-digit', month: '2-digit', year: 'numeric' }),
+      i.dataHoraLiberacao ? formatBRTime(i.dataHoraLiberacao, { day: '2-digit', month: '2-digit', year: 'numeric' }) : '',
       `"${(i.solucao || '').replace(/"/g, '""')}"`,
     ]);
 
@@ -337,7 +338,7 @@ export const IncidentHistoryTabModal: React.FC<IncidentHistoryTabModalProps> = (
 
                       <span className="flex items-center space-x-1 font-mono text-[10px]">
                         <Clock className="w-3.5 h-3.5 text-slate-400" />
-                        <span>{format(new Date(item.dataHoraParada), 'dd/MM/yy HH:mm')}</span>
+                        <span>{formatBRTime(item.dataHoraParada, { day: '2-digit', month: '2-digit', year: '2-digit' })}</span>
                       </span>
                     </div>
 
@@ -436,7 +437,7 @@ export const IncidentHistoryTabModal: React.FC<IncidentHistoryTabModalProps> = (
 
                       {/* Data / Hora Parada */}
                       <td className="px-4 py-3 align-top text-slate-500 dark:text-slate-400 font-mono text-[11px]">
-                        {format(new Date(item.dataHoraParada), 'dd/MM/yyyy HH:mm')}
+                        {formatBRTime(item.dataHoraParada, { day: '2-digit', month: '2-digit', year: 'numeric' })}
                       </td>
 
                       {/* Ações */}

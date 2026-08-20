@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { MessageSquare, X, ShieldCheck, ChevronDown, Send } from 'lucide-react';
-import { format } from 'date-fns';
+import { parseStoredDate, formatBRTime } from '@/lib/turma';
 import { ChatMessage } from './LiderTurmaModal';
 
 export interface OperatorReply {
@@ -129,11 +129,9 @@ export const LeaderMessageNotification: React.FC<LeaderMessageNotificationProps>
 
   const activeMessages = messages.filter((m) => !dismissedIds.includes(m.id));
 
-  const safeFormat = (value?: string | null, pattern = 'HH:mm') => {
+  const safeFormat = (value?: string | null, pattern?: Intl.DateTimeFormatOptions) => {
     if (!value) return '';
-    const d = new Date(value);
-    if (isNaN(d.getTime())) return '';
-    return format(d, pattern);
+    return formatBRTime(value, pattern);
   };
 
   // Mescla mensagens do líder e respostas do operador por timestamp
@@ -141,8 +139,8 @@ export const LeaderMessageNotification: React.FC<LeaderMessageNotificationProps>
     ...activeMessages.map((m) => ({ ...m, type: 'leader' as const })),
     ...replies.map((r) => ({ ...r, type: 'operator' as const })),
   ].sort((a, b) => {
-    const ta = a.timestamp ? new Date(a.timestamp).getTime() : 0;
-    const tb = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+    const ta = parseStoredDate(a.timestamp)?.getTime() ?? 0;
+    const tb = parseStoredDate(b.timestamp)?.getTime() ?? 0;
     return ta - tb;
   });
 
@@ -194,7 +192,7 @@ export const LeaderMessageNotification: React.FC<LeaderMessageNotificationProps>
                       {isLeader ? (item as ChatMessage).sender : 'Você'}
                     </span>
                     <span className="text-[10px] text-slate-300 font-mono">
-                      {safeFormat(item.timestamp, 'HH:mm')}
+                      {safeFormat(item.timestamp)}
                     </span>
                     {isLeader && (
                       <button

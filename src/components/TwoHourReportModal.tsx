@@ -17,7 +17,7 @@ import {
   Radio,
   FileText
 } from 'lucide-react';
-import { isIncidentFromToday, getTodayYMDInBR } from '@/lib/turma';
+import { isIncidentFromToday, getTodayYMDInBR, formatBRTime } from '@/lib/turma';
 import { getBoletimConfig, saveBoletimConfig, subscribeBoletimConfigRealtime } from '@/lib/boletimConfig';
 import { getBoletimCarteira, saveBoletimCarteira, subscribeBoletimCarteiraRealtime } from '@/lib/boletimCarteira';
 
@@ -289,9 +289,9 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
     const noCodigoCount = noCodigoIncidents.length;
 
     const formatEquipInfo = (inc: IncidentType) => {
-      const horaParada = new Date(inc.dataHoraParada).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      const horaParada = formatBRTime(inc.dataHoraParada);
       const horaAcionamento = inc.dataHoraAcionamento
-        ? new Date(inc.dataHoraAcionamento).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+        ? formatBRTime(inc.dataHoraAcionamento)
         : horaParada;
       const previsao = inc.previsaoLiberacao || '---';
 

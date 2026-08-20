@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { IncidentType } from '@/types';
 import { X, MessageSquare, Send, User, Clock, CheckCircle2 } from 'lucide-react';
-import { format } from 'date-fns';
+import { formatBRTime } from '@/lib/turma';
 
 interface CommentModalProps {
   incident: IncidentType | null;
@@ -95,7 +95,6 @@ export const CommentModal: React.FC<CommentModalProps> = ({
               Histórico de Notas ({notesHistory.length})
             </h4>
             {notesHistory.map((h) => {
-              const dateObj = new Date(h.dataHora);
               return (
                 <div key={h.id} className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/70 text-xs">
                   <div className="flex items-center justify-between text-[10px] text-slate-500 mb-1">
@@ -104,7 +103,7 @@ export const CommentModal: React.FC<CommentModalProps> = ({
                       {h.usuario}
                     </span>
                     <span className="font-mono text-slate-400">
-                      {format(dateObj, 'dd/MM HH:mm')}
+                      {formatBRTime(h.dataHora, { day: '2-digit', month: '2-digit' })}
                     </span>
                   </div>
                   <p className="text-slate-700 leading-snug">{h.descricao}</p>

@@ -16,7 +16,7 @@ import {
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-import { normalizeTurma } from '@/lib/turma';
+import { normalizeTurma, parseStoredDate } from '@/lib/turma';
 
 interface CriticalPrioritiesProps {
   incidents: IncidentType[];
@@ -173,8 +173,8 @@ export const CriticalPriorities: React.FC<CriticalPrioritiesProps> = ({
       {/* Cards Compactos */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 mt-2.5">
         {visibleItems.map((item) => {
-          const paradaDate = new Date(item.dataHoraParada);
-          const timeAgo = formatDistanceToNow(paradaDate, { locale: ptBR, addSuffix: true });
+          const paradaDate = parseStoredDate(item.dataHoraParada);
+          const timeAgo = paradaDate ? formatDistanceToNow(paradaDate, { locale: ptBR, addSuffix: true }) : '';
           const isCritical = item.prioridade === 'CRITICA';
 
           return (
