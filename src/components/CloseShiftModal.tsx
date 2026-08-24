@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { IncidentType, ShiftType } from '@/types';
 import { X, Lock, AlertTriangle, Copy, Check, FileText, Star, Flame } from 'lucide-react';
 import { format } from 'date-fns';
@@ -64,17 +64,25 @@ export const CloseShiftModal: React.FC<CloseShiftModalProps> = ({
   const [customWhatsappText, setCustomWhatsappText] = useState('');
   const [isCustomEdited, setIsCustomEdited] = useState(false);
 
+  // Inicializa os campos SOMENTE ao abrir o modal (não a cada atualização de incidents),
+  // para não sobrescrever a seleção manual do usuário (ex: Próxima Turma / Destino).
+  const shiftInitRef = useRef(false);
   useEffect(() => {
     if (isOpen) {
-      setLocalIncidents(incidents);
-      const effTurma = normalizeTurma(activeShift?.turma) || normalizeTurma(currentUser?.turma) || 'A';
-      const effResp = activeShift?.responsavelNome || currentUser?.nome || 'Operador';
-      setTurma(effTurma);
-      setProximaTurma(getNextTurmaLetter(effTurma));
-      setResponsavelSaida(effResp);
-      setMonitoramento(activeShift?.monitoramento || effResp);
-      setChecklistMalaoResponsavel(effResp);
-      setSolicitacaoMaterialResponsavel(effResp);
+      if (!shiftInitRef.current) {
+        setLocalIncidents(incidents);
+        const effTurma = normalizeTurma(activeShift?.turma) || normalizeTurma(currentUser?.turma) || 'A';
+        const effResp = activeShift?.responsavelNome || currentUser?.nome || 'Operador';
+        setTurma(effTurma);
+        setProximaTurma(getNextTurmaLetter(effTurma));
+        setResponsavelSaida(effResp);
+        setMonitoramento(activeShift?.monitoramento || effResp);
+        setChecklistMalaoResponsavel(effResp);
+        setSolicitacaoMaterialResponsavel(effResp);
+        shiftInitRef.current = true;
+      }
+    } else {
+      shiftInitRef.current = false;
     }
   }, [isOpen, activeShift, currentUser, incidents]);
 
