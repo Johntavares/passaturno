@@ -212,9 +212,10 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
       if (typeof data.equipeSonda === 'string') setEquipeSonda(data.equipeSonda);
       if (typeof data.liderVale === 'string') setLiderVale(data.liderVale);
       if (typeof data.ausencia === 'string') setAusencia(data.ausencia);
-      // NOTA: o texto da mensagem NÃO é restaurado nem congelado. Ele é sempre
-      // regenerado dinamicamente a partir dos valores acima, refletindo os números
-      // editados no momento de copiar/enviar.
+      // Restaura também a mensagem editada manualmente (texto customizado do boletim),
+      // evitando que o operador precise reeditar o informe a cada envio.
+      if (typeof data.customReportText === 'string') setCustomReportText(data.customReportText);
+      if (typeof data.isCustomEdited === 'boolean') setIsCustomEdited(data.isCustomEdited);
     } catch (e) {
       console.error('Erro ao restaurar boletim de 2h:', e);
     }
@@ -239,12 +240,14 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
           equipeSonda,
           liderVale,
           ausencia,
+          customReportText,
+          isCustomEdited,
         })
       );
     } catch (e) {
       console.error('Erro ao salvar boletim de 2h:', e);
     }
-  }, [carteiraTotal, carteiraAndamento, carteiraAberto, carteiraPendente, equipSemDespacho, equipSemGps, equipPreventiva, equipManutencao, equipeSonda, liderVale, ausencia]);
+  }, [carteiraTotal, carteiraAndamento, carteiraAberto, carteiraPendente, equipSemDespacho, equipSemGps, equipPreventiva, equipManutencao, equipeSonda, liderVale, ausencia, customReportText, isCustomEdited]);
 
   // Sincronizar dados do turno (equipes/GPS) apenas se a configuração não veio do banco
   useEffect(() => {
