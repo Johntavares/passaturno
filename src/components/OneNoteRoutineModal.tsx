@@ -16,6 +16,7 @@ import {
   Activity,
   FileText
 } from 'lucide-react';
+import { getBoletimConfig } from '@/lib/boletimConfig';
 
 interface OneNoteRoutineModalProps {
   isOpen: boolean;
@@ -32,17 +33,18 @@ export const OneNoteRoutineModal: React.FC<OneNoteRoutineModalProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'checklist' | 'equipes' | 'gps' | 'malao'>('checklist');
   const [copied, setCopied] = useState(false);
+  const [savedSuccess, setSavedSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Estados dos campos do OneNote
   const [tipoTurno, setTipoTurno] = useState('Diurno');
   const [escala, setEscala] = useState('2x3');
   const [turma, setTurma] = useState('C');
-  const [ausencias, setAusencias] = useState('Baia (férias)');
+  const [ausencias, setAusencias] = useState('');
   
   // Equipes
-  const [liderVale, setLiderVale] = useState('Vinicius');
-  const [equipeSonda, setEquipeSonda] = useState('Valdenir, Gustavo, Vitor');
+  const [liderVale, setLiderVale] = useState('');
+  const [equipeSonda, setEquipeSonda] = useState('');
   const [equipeContratadas, setEquipeContratadas] = useState('Flanders (Railton), COM3 (Igor), ALCON (Marcos, Gustavo), Creare ADM (Tarcisio)');
 
   // Checklist FMDS
@@ -56,10 +58,10 @@ export const OneNoteRoutineModal: React.FC<OneNoteRoutineModalProps> = ({
   const [fmdsEnviarManobraCarga, setFmdsEnviarManobraCarga] = useState(true);
 
   // Diagnóstico GPS & Despacho
-  const [equipSemDespacho, setEquipSemDespacho] = useState('EC10, PZ15, PZ20, PZ21, PZ42, PZ43, TT52, TT53, TT81, TT84');
-  const [equipSemGps, setEquipSemGps] = useState('TT57');
-  const [equipPreventiva, setEquipPreventiva] = useState('EC17, PZ02, TT84, TT85');
-  const [equipManutencao, setEquipManutencao] = useState('PZ14, PZ47, TT56');
+  const [equipSemDespacho, setEquipSemDespacho] = useState('');
+  const [equipSemGps, setEquipSemGps] = useState('');
+  const [equipPreventiva, setEquipPreventiva] = useState('');
+  const [equipManutencao, setEquipManutencao] = useState('');
 
   // Checklist Malaão & Materiais
   const [checklistMalaoStatus, setChecklistMalaoStatus] = useState('Realizado');
@@ -71,16 +73,32 @@ export const OneNoteRoutineModal: React.FC<OneNoteRoutineModalProps> = ({
       if (activeShift.turma) setTurma(activeShift.turma);
       if (activeShift.tipoTurno) setTipoTurno(activeShift.tipoTurno);
       if (activeShift.escala) setEscala(activeShift.escala);
-      if (activeShift.ausencias) setAusencias(activeShift.ausencias);
-      if (activeShift.liderVale) setLiderVale(activeShift.liderVale);
-      if (activeShift.equipeSonda) setEquipeSonda(activeShift.equipeSonda);
-      if (activeShift.equipeContratadas) setEquipeContratadas(activeShift.equipeContratadas);
-      if (activeShift.equipamentosSemDespacho) setEquipSemDespacho(activeShift.equipamentosSemDespacho);
-      if (activeShift.equipamentosSemGps) setEquipSemGps(activeShift.equipamentosSemGps);
-      if (activeShift.equipamentosPreventiva) setEquipPreventiva(activeShift.equipamentosPreventiva);
-      if (activeShift.equipamentosManutencao) setEquipManutencao(activeShift.equipamentosManutencao);
+      if (typeof activeShift.ausencias === 'string') setAusencias(activeShift.ausencias);
+      if (typeof activeShift.liderVale === 'string') setLiderVale(activeShift.liderVale);
+      if (typeof activeShift.equipeSonda === 'string') setEquipeSonda(activeShift.equipeSonda);
+      if (typeof activeShift.equipeContratadas === 'string') setEquipeContratadas(activeShift.equipeContratadas);
+      if (typeof activeShift.equipamentosSemDespacho === 'string') setEquipSemDespacho(activeShift.equipamentosSemDespacho);
+      if (typeof activeShift.equipamentosSemGps === 'string') setEquipSemGps(activeShift.equipamentosSemGps);
+      if (typeof activeShift.equipamentosPreventiva === 'string') setEquipPreventiva(activeShift.equipamentosPreventiva);
+      if (typeof activeShift.equipamentosManutencao === 'string') setEquipManutencao(activeShift.equipamentosManutencao);
     }
   }, [activeShift]);
+
+  useEffect(() => {
+    if (isOpen) {
+      const t = (activeShift?.turma || turma || 'A').toUpperCase().replace('TURMA', '').trim() || 'A';
+      getBoletimConfig(t).then((cfg) => {
+        if (!cfg) return;
+        if (typeof cfg.ausencia === 'string') setAusencias(cfg.ausencia);
+        if (typeof cfg.equipeSonda === 'string' && cfg.equipeSonda) setEquipeSonda(cfg.equipeSonda);
+        if (typeof cfg.liderVale === 'string' && cfg.liderVale) setLiderVale(cfg.liderVale);
+        if (typeof cfg.equipSemDespacho === 'string' && cfg.equipSemDespacho) setEquipSemDespacho(cfg.equipSemDespacho);
+        if (typeof cfg.equipSemGps === 'string' && cfg.equipSemGps) setEquipSemGps(cfg.equipSemGps);
+        if (typeof cfg.equipPreventiva === 'string' && cfg.equipPreventiva) setEquipPreventiva(cfg.equipPreventiva);
+        if (typeof cfg.equipManutencao === 'string' && cfg.equipManutencao) setEquipManutencao(cfg.equipManutencao);
+      }).catch(() => {});
+    }
+  }, [isOpen, activeShift?.turma, turma]);
 
   if (!isOpen) return null;
 

@@ -48,15 +48,15 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
   const [carteiraPendente, setCarteiraPendente] = useState('00');
 
   // Estados personalizáveis de GPS e Despacho
-  const [equipSemDespacho, setEquipSemDespacho] = useState('EC10, PZ15, PZ20, PZ21, PZ42, PZ43, TT52, TT53, TT81, TT84');
-  const [equipSemGps, setEquipSemGps] = useState('TT57');
-  const [equipPreventiva, setEquipPreventiva] = useState('EC17, PZ02, TT84, TT85');
-  const [equipManutencao, setEquipManutencao] = useState('PZ14, PZ47, TT56');
+  const [equipSemDespacho, setEquipSemDespacho] = useState('');
+  const [equipSemGps, setEquipSemGps] = useState('');
+  const [equipPreventiva, setEquipPreventiva] = useState('');
+  const [equipManutencao, setEquipManutencao] = useState('');
 
   // Equipes
-  const [equipeSonda, setEquipeSonda] = useState('Valdenir / Vitor / Gustavo');
-  const [liderVale, setLiderVale] = useState('Vinicius');
-  const [ausencia, setAusencia] = useState('Baia (férias)');
+  const [equipeSonda, setEquipeSonda] = useState('');
+  const [liderVale, setLiderVale] = useState('');
+  const [ausencia, setAusencia] = useState('');
 
   const [customReportText, setCustomReportText] = useState('');
   const [isCustomEdited, setIsCustomEdited] = useState(false);
@@ -86,16 +86,17 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
   const turmaBoletim = (activeShift?.turma || currentUser?.turma || 'A').toUpperCase();
 
   const applyConfigToFields = (config: any) => {
+    if (!config) return;
     if (typeof config.equipeSonda === 'string') setEquipeSonda(config.equipeSonda);
     if (typeof config.liderVale === 'string') setLiderVale(config.liderVale);
-    if (typeof config.ausencia === 'string' && config.ausencia.trim()) {
+    if (typeof config.ausencia === 'string') {
       setAusencia(config.ausencia);
-    } else if (typeof config.ausenciaNome === 'string' && config.ausenciaNome.trim()) {
-      setAusencia(
-        config.ausenciaMotivo && config.ausenciaMotivo.trim()
-          ? `${config.ausenciaNome} (${config.ausenciaMotivo})`
-          : config.ausenciaNome
-      );
+    } else if (typeof config.ausenciaNome === 'string') {
+      const nomeAus = config.ausenciaNome.trim();
+      const motivoAus = (config.ausenciaMotivo || '').trim();
+      setAusencia(nomeAus ? (motivoAus ? `${nomeAus} (${motivoAus})` : nomeAus) : '');
+    } else {
+      setAusencia('');
     }
     if (typeof config.equipSemDespacho === 'string') setEquipSemDespacho(config.equipSemDespacho);
     if (typeof config.equipSemGps === 'string') setEquipSemGps(config.equipSemGps);
