@@ -7,8 +7,9 @@ import {
   Clock, 
   Send, 
   Copy, 
-  Check, 
+  Check,
   RefreshCw, 
+  RotateCcw,
   Share2, 
   CheckCircle2, 
   AlertCircle,
@@ -17,7 +18,7 @@ import {
   Radio,
   FileText
 } from 'lucide-react';
-import { isIncidentFromToday, getTodayYMDInBR, formatBRTime } from '@/lib/turma';
+import { normalizeTurma, isIncidentFromToday, getTodayYMDInBR, formatBRTime } from '@/lib/turma';
 import { getBoletimConfig, saveBoletimConfig, subscribeBoletimConfigRealtime } from '@/lib/boletimConfig';
 import { getBoletimCarteira, saveBoletimCarteira, subscribeBoletimCarteiraRealtime } from '@/lib/boletimCarteira';
 
@@ -266,39 +267,53 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
     const dataFormatada = now.toLocaleDateString('pt-BR');
     const pad = (n: number) => String(n).padStart(2, '0');
 
-    const tipoTurno = currentUser?.periodoTurno 
-      ? (currentUser.periodoTurno === 'Noite' ? 'Noturno' : 'Diurno') 
-      : (activeShift?.tipoTurno || 'Diurno');
+    const tipoTurno = activeShift?.tipoTurno
+      ? activeShift.tipoTurno
+      : currentUser?.periodoTurno 
+        ? (currentUser.periodoTurno === 'Noite' ? 'Noturno' : 'Diurno') 
+        : 'Diurno';
 
-    const horarioTurno = currentUser?.horarioTurno || '07:00 às 19:00';
+    const horarioTurno = activeShift?.horarioTurno || currentUser?.horarioTurno || (tipoTurno === 'Noturno' ? '19:00 às 07:00' : '07:00 às 19:00');
     const nomeOperador = currentUser?.nome || activeShift?.responsavelNome || 'John Tavares';
-    const letraTurma = activeShift?.turma || currentUser?.turma || 'A';
+    const letraTurma = activeShift?.turma ? activeShift.turma.toUpperCase().replace('TURMA', '').trim() : (currentUser?.turma || 'A');
 
-    // Incluir apenas as atividades do dia atual (estritamente HOJE)
-    const todayIncidents = (incidents || []).filter((i) => isIncidentFromToday(i));
-    const activeIncidents = todayIncidents.filter(
-      (i) => i.status !== 'FINALIZADO' && i.status !== 'RETROAGIDO'
-    );
+    const activeTurmaClean = normalizeTurma(activeShift?.turma) || normalizeTurma(currentUser?.turma) || 'A';
+
+    // Selecionar ocorrências ativas (não finalizadas e não retroagidas) da turma/turno
+    const activeIncidents = (incidents || []).filter((i) => {
+      if (i.status === 'FINALIZADO' || i.status === 'RETROAGIDO') return false;
+      const isDoTurnoAtivo = Boolean(activeShift?.id && i.shiftId === activeShift.id);
+      const isFromToday = isIncidentFromToday(i);
+      const isSameTurma = normalizeTurma(i.turma) === activeTurmaClean;
+
+      // Se pertencer ao turno ativo atual, ou se for da turma atual de hoje, ou se estiver em andamento na mesma turma
+      if (isDoTurnoAtivo) return true;
+      if (isSameTurma && isFromToday) return true;
+      if (isSameTurma && (i.status === 'EM_ANDAMENTO' || i.status === 'AGUARDANDO' || i.status === 'PENDENCIA_PROXIMO_TURNO')) return true;
+      if (!i.shiftId && (isSameTurma || !i.turma)) return true;
+      return false;
+    });
+
     // Atividades em andamento divididas por forma de atuação:
     // REMOTO (MONITORAMENTO) x CORRETIVA (campo)
     const isRemoto = (inc: IncidentType) =>
       ((inc.divisaoAtuacao || 'MONITORAMENTO') as string).toUpperCase() !== 'CORRETIVA_CAMPO';
-    const noCodigoIncidents = activeIncidents.filter((i) => i.noCodigo);
+    const noCodigoIncidents = activeIncidents.filter((i) => Boolean(i.noCodigo));
     const restIncidents = activeIncidents.filter((i) => !i.noCodigo);
     const remotoIncidents = restIncidents.filter(isRemoto);
     const corretivaIncidents = restIncidents.filter((inc) => !isRemoto(inc));
     const noCodigoCount = noCodigoIncidents.length;
 
     const formatEquipInfo = (inc: IncidentType) => {
-      const horaParada = formatBRTime(inc.dataHoraParada);
+      const horaParada = formatBRTime(inc.dataHoraParada || inc.criadoEm);
       const horaAcionamento = inc.dataHoraAcionamento
         ? formatBRTime(inc.dataHoraAcionamento)
         : horaParada;
       const previsao = inc.previsaoLiberacao || '---';
 
       let line = `Equipamento: ${inc.tag}\n`;
-      line += `Ocorrência: ${inc.falha.toUpperCase()}\n`;
-      line += `Diagnóstico: ${inc.sintoma || inc.observacao || ''}\n`;
+      line += `Ocorrência: ${(inc.falha || inc.tipoFalha || 'FALHA DE SISTEMA').toUpperCase()}\n`;
+      line += `Diagnóstico: ${inc.sintoma || inc.observacao || inc.solucao || 'Em acompanhamento técnico'}\n`;
       line += `Hora da Parada: ${horaParada}\n`;
       line += `Hora de Acionamento: ${horaAcionamento}\n`;
       line += `Previsão de Liberação: ${previsao}\n\n`;
@@ -320,7 +335,7 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
     text += `${carteiraAberto} - ABERTO\n`;
     text += `${carteiraPendente} - PENDENTE\n\n`;
 
-    text += `\n*${pad(noCodigoCount)} - EQUIPAMENTO EM CÓDIGO*\n\n`;
+    text += `*${pad(noCodigoCount)} - EQUIPAMENTO EM CÓDIGO*\n\n`;
     if (noCodigoCount > 0) {
       noCodigoIncidents.forEach((inc) => {
         text += formatEquipInfo(inc);
@@ -346,6 +361,11 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
     }
 
     return text.trim();
+  };
+
+  const handleRecalculateText = () => {
+    setIsCustomEdited(false);
+    setCustomReportText(generateReportText());
   };
 
   useEffect(() => {
@@ -420,18 +440,27 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
         )}
 
         {/* Pré-visualização da Mensagem */}
-        <div className="space-y-3">
-          <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
-            <span className="flex items-center gap-1.5">
-              <span>Pré-visualização da Mensagem WhatsApp</span>
-              <span className="text-[10px] font-sans font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-950 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800">
+        <div className="space-y-2.5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                Pré-visualização da Mensagem WhatsApp
+              </span>
+              <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800">
                 ✏️ Editável
               </span>
-            </span>
-            <span className="text-[11px] font-medium text-slate-400">
-              Você pode alterar o texto diretamente antes de copiar ou enviar
-            </span>
-          </label>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleRecalculateText}
+              title="Recalcular e sincronizar o texto com as ocorrências e turno atuais"
+              className="inline-flex items-center gap-1.5 text-[11px] font-bold text-sky-700 dark:text-sky-300 hover:text-sky-800 bg-sky-50 dark:bg-sky-950 hover:bg-sky-100 dark:hover:bg-sky-900 px-2.5 py-1 rounded-lg border border-sky-200 dark:border-sky-800 transition-all cursor-pointer shadow-2xs"
+            >
+              <RotateCcw className="w-3.5 h-3.5 text-sky-500 hover:rotate-180 transition-transform duration-500" />
+              <span>Sincronizar / Recalcular Texto</span>
+            </button>
+          </div>
 
           <textarea
             value={customReportText}
