@@ -151,7 +151,6 @@ export default function Home() {
   };
 
   const loadData = useCallback(async (turmaOverride?: string) => {
-    setIsRefreshing(true);
     const deletedIds = getDeletedIds();
 
     const savedUserStr = typeof window !== 'undefined' ? localStorage.getItem('passaturno-user') : null;
@@ -256,7 +255,6 @@ export default function Home() {
       if (cached.length > 0) setIncidents(cached);
     } finally {
       setIsLoading(false);
-      setIsRefreshing(false);
       setLastUpdated(new Date());
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
