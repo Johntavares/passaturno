@@ -11,7 +11,8 @@ import {
   LogOut, 
   Settings,
   Bell,
-  Users
+  Users,
+  RotateCcw
 } from 'lucide-react';
 
 export type ThemeMode = 'light' | 'dark' | 'mina';
@@ -43,6 +44,9 @@ export interface HeaderNavProps {
   currentTheme?: ThemeMode;
   currentUser?: UserSession | null;
   onLogout?: () => void;
+  onRefresh?: () => void;
+  isRefreshing?: boolean;
+  lastUpdated?: Date | null;
 }
 
 export const HeaderNav: React.FC<HeaderNavProps> = ({
@@ -58,6 +62,9 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
   currentTheme = 'light',
   currentUser,
   onLogout,
+  onRefresh,
+  isRefreshing = false,
+  lastUpdated,
 }) => {
 
   const [isUserDropdownOpen, setIsUserDropdownOpen] = React.useState(false);
@@ -147,6 +154,23 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
               >
                 <Bell className="w-3.5 h-3.5 mr-1 text-rose-600 animate-bounce" />
                 <span>{unacceptedCount} Pendente{unacceptedCount > 1 ? 's' : ''}</span>
+              </button>
+            )}
+
+            {/* Botão de Atualizar Sistema (Sem recarregar a página) */}
+            {onRefresh && (
+              <button
+                onClick={onRefresh}
+                disabled={isRefreshing}
+                title={lastUpdated ? `Atualizar dados do sistema (Última: ${lastUpdated.toLocaleTimeString('pt-BR')} • Atalho: Alt+R)` : 'Atualizar dados do sistema (Atalho: Alt+R)'}
+                className={`inline-flex items-center px-2.5 py-1.5 font-bold text-[11px] rounded-lg border transition-all cursor-pointer shadow-2xs ${
+                  isRefreshing
+                    ? 'bg-sky-50 dark:bg-sky-950/80 text-sky-600 dark:text-sky-400 border-sky-300 dark:border-sky-800 cursor-wait'
+                    : 'bg-slate-100 dark:bg-slate-800 hover:bg-sky-50 dark:hover:bg-sky-950/50 text-slate-700 dark:text-slate-200 hover:text-sky-600 dark:hover:text-sky-300 border-slate-200 dark:border-slate-700 hover:border-sky-300 dark:hover:border-sky-700'
+                }`}
+              >
+                <RotateCcw className={`w-3.5 h-3.5 mr-1 text-sky-500 transition-transform ${isRefreshing ? 'animate-spin' : 'hover:rotate-180 duration-500'}`} />
+                <span>{isRefreshing ? 'Atualizando...' : 'Atualizar'}</span>
               </button>
             )}
 

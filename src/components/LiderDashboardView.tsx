@@ -61,6 +61,9 @@ interface LiderDashboardViewProps {
   onOpenWhatsapp?: (incident: IncidentType) => void;
   onOpenEquipmentHistory?: (tag: string) => void;
   onOpenEditIncident?: (incident: IncidentType) => void;
+  onRefresh?: () => void;
+  isRefreshing?: boolean;
+  lastUpdated?: Date | null;
 }
 
 export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
@@ -78,6 +81,9 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
   onOpenWhatsapp,
   onOpenEquipmentHistory,
   onOpenEditIncident,
+  onRefresh,
+  isRefreshing = false,
+  lastUpdated,
 }) => {
   // Navegação Lateral do Menu
   const [activeSection, setActiveSection] = useState<'dashboard' | 'reports' | 'team' | 'history' | 'notifications' | 'alerts'>('dashboard');
@@ -813,10 +819,27 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2.5">
+            {onRefresh && (
+              <button
+                onClick={onRefresh}
+                disabled={isRefreshing}
+                title={lastUpdated ? `Atualizar dados do sistema (Última: ${lastUpdated.toLocaleTimeString('pt-BR')} • Atalho: Alt+R)` : 'Atualizar dados do sistema (Atalho: Alt+R)'}
+                className={`inline-flex items-center px-3 py-2 font-bold text-xs rounded-xl border transition-all cursor-pointer shadow-xs ${
+                  isRefreshing
+                    ? 'bg-sky-50 text-sky-600 border-sky-300 cursor-wait'
+                    : 'bg-white hover:bg-slate-50 text-slate-700 hover:text-sky-600 border-slate-200 hover:border-sky-300'
+                }`}
+              >
+                <RotateCcw className={`w-3.5 h-3.5 mr-1.5 text-sky-500 transition-transform ${isRefreshing ? 'animate-spin' : 'hover:rotate-180 duration-500'}`} />
+                <span>{isRefreshing ? 'Atualizando...' : 'Atualizar Dados'}</span>
+              </button>
+            )}
+
             <button
               onClick={onLogout}
               className="lg:hidden p-2 text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"
+              title="Encerrar Sessão"
             >
               <LogOut className="w-5 h-5" />
             </button>

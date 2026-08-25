@@ -29,6 +29,7 @@ import { TeamsCheckModal } from '@/components/TeamsCheckModal';
 import { normalizeTurma, getNextTurma, isSameDayAsToday, isIncidentFromToday } from '@/lib/turma';
 import { subscribeFailureCategoriesRealtime } from '@/lib/categories';
 import { supabase } from '@/lib/supabaseClient';
+import { CheckCircle2 } from 'lucide-react';
 
 export default function Home() {
   const [incidents, setIncidents] = useState<IncidentType[]>(() => {
@@ -49,6 +50,8 @@ export default function Home() {
   const [theme, setTheme] = useState<'light' | 'dark' | 'mina'>('light');
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(() => new Date());
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Modals state
   const [isNewIncidentOpen, setIsNewIncidentOpen] = useState(false);
@@ -254,9 +257,38 @@ export default function Home() {
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
+      setLastUpdated(new Date());
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const handleManualRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await loadData();
+      setLastUpdated(new Date());
+      setToastMessage('Sistema sincronizado com sucesso!');
+      setTimeout(() => {
+        setToastMessage(null);
+      }, 2500);
+    } catch (e) {
+      console.error('Erro na sincronização manual:', e);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [loadData]);
+
+  // Atalho de teclado global: Alt + R para recarregar os dados do sistema sem refresh do navegador
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.altKey && (e.key === 'r' || e.key === 'R')) {
+        e.preventDefault();
+        handleManualRefresh();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleManualRefresh]);
 
   // Auto-polling em tempo real (4s) para manter os dados 100% atualizados entre Operador e Líder
   useEffect(() => {
@@ -997,6 +1029,9 @@ export default function Home() {
             setEditStatus(inc.status);
             setIsEditIncidentOpen(true);
           }}
+          onRefresh={handleManualRefresh}
+          isRefreshing={isRefreshing}
+          lastUpdated={lastUpdated}
         />
 
         {/* Modais de Linha do Tempo, Comentários, Histórico e Edição no Perfil do Líder */}
@@ -1098,6 +1133,14 @@ export default function Home() {
             </div>
           </div>
         )}
+
+        {/* Toast de Atualização / Feedback do Líder */}
+        {toastMessage && (
+          <div className="fixed bottom-5 right-5 z-50 flex items-center gap-2 bg-emerald-600 text-white px-4 py-2.5 rounded-2xl shadow-xl border border-emerald-500/30 text-xs font-bold transition-all duration-300">
+            <CheckCircle2 className="w-4 h-4 text-emerald-100 flex-shrink-0" />
+            <span>{toastMessage}</span>
+          </div>
+        )}
       </>
     );
   }
@@ -1126,6 +1169,9 @@ export default function Home() {
         currentTheme={theme}
         currentUser={currentUser}
         onLogout={handleLogout}
+        onRefresh={handleManualRefresh}
+        isRefreshing={isRefreshing}
+        lastUpdated={lastUpdated}
       />
 
 
@@ -1491,6 +1537,14 @@ export default function Home() {
         activeShift={activeShift}
         currentUser={currentUser}
       />
+
+      {/* Toast de Atualização / Feedback do Operador */}
+      {toastMessage && (
+        <div className="fixed bottom-5 right-5 z-50 flex items-center gap-2 bg-emerald-600 text-white px-4 py-2.5 rounded-2xl shadow-xl border border-emerald-500/30 text-xs font-bold transition-all duration-300">
+          <CheckCircle2 className="w-4 h-4 text-emerald-100 flex-shrink-0" />
+          <span>{toastMessage}</span>
+        </div>
+      )}
 
     </div>
   );
