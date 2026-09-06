@@ -1160,7 +1160,6 @@ export default function Home() {
       {/* Top Navbar (Reduzido, tela inteira) */}
       <HeaderNav
         activeShift={activeShift}
-        onOpenNewIncident={() => setIsNewIncidentOpen(true)}
         onOpenAssumeShift={() => { if (currentUser) { autoAssumeShift(currentUser); loadData(); } }}
         onOpenCloseShift={() => setIsCloseShiftOpen(true)}
         onOpenTwoHourReport={() => setIsTwoHourReportOpen(true)}

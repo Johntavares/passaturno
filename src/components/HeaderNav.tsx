@@ -34,13 +34,9 @@ export interface UserSession {
 
 export interface HeaderNavProps {
   activeShift: ShiftType | null;
-  onOpenNewIncident: () => void;
   onOpenAssumeShift: () => void;
   onOpenCloseShift: () => void;
   onOpenTwoHourReport?: () => void;
-  onOpenTeamsCheck?: () => void;
-  onOpenSettings: () => void;
-  onOpenTurmaReports?: () => void;
   unacceptedCount?: number;
   onRestoreNotifications?: () => void;
   currentTheme?: ThemeMode;
@@ -53,13 +49,9 @@ export interface HeaderNavProps {
 
 export const HeaderNav: React.FC<HeaderNavProps> = ({
   activeShift,
-  onOpenNewIncident,
   onOpenAssumeShift,
   onOpenCloseShift,
   onOpenTwoHourReport,
-  onOpenTeamsCheck,
-  onOpenSettings,
-  onOpenTurmaReports,
   unacceptedCount = 0,
   onRestoreNotifications,
   currentTheme = 'light',
