@@ -46,6 +46,7 @@ interface SettingsModalProps {
   currentUser: UserSession | null;
   activeShift: ShiftType | null;
   currentTheme: ThemeMode;
+  initialTab?: 'profile' | 'equipe' | 'categories' | 'fleet' | 'reports' | 'theme';
   onThemeChange: (theme: ThemeMode) => void;
   onOpenAssumeShift: () => void;
   onOpenCloseShift: () => void;
@@ -63,6 +64,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   currentUser,
   activeShift,
   currentTheme,
+  initialTab = 'profile',
   onThemeChange,
   onOpenAssumeShift,
   onOpenCloseShift,
@@ -73,7 +75,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onRefreshData,
   onProfileUpdated,
 }) => {
-  const [activeTab, setActiveTab] = useState<'profile' | 'equipe' | 'categories' | 'fleet' | 'reports' | 'theme'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'equipe' | 'categories' | 'fleet' | 'reports' | 'theme'>(initialTab);
+
+  React.useEffect(() => {
+    if (isOpen && initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [isOpen, initialTab]);
 
   // Form states for profile editing
   const [nome, setNome] = useState(currentUser?.nome || '');

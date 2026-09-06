@@ -26,6 +26,8 @@ import { LeaderMessageNotification } from '@/components/LeaderMessageNotificatio
 import { EditTurmaProfileModal } from '@/components/EditTurmaProfileModal';
 import { SettingsModal } from '@/components/SettingsModal';
 import { TeamsCheckModal } from '@/components/TeamsCheckModal';
+import { TurmaReportsModal } from '@/components/TurmaReportsModal';
+import { Sidebar } from '@/components/Sidebar';
 import { normalizeTurma, getNextTurma, isSameDayAsToday, isIncidentFromToday } from '@/lib/turma';
 import { subscribeFailureCategoriesRealtime } from '@/lib/categories';
 import { supabase } from '@/lib/supabaseClient';
@@ -65,6 +67,8 @@ export default function Home() {
   const [isLiderTurmaOpen, setIsLiderTurmaOpen] = useState(false);
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [settingsInitialTab, setSettingsInitialTab] = useState<'profile' | 'equipe' | 'categories' | 'fleet' | 'reports' | 'theme'>('profile');
+  const [isTurmaReportsOpen, setIsTurmaReportsOpen] = useState(false);
   const [selectedTurmaFilter, setSelectedTurmaFilter] = useState<string>('TODAS');
 
   // Refs para evitar recriação do loadData a cada mudança de estado (previne loop infinito)
@@ -444,7 +448,7 @@ export default function Home() {
     if (newTheme === 'dark') {
       document.documentElement.classList.add('dark');
     } else if (newTheme === 'mina') {
-      document.documentElement.classList.add('theme-mina');
+      document.documentElement.classList.add('dark', 'theme-mina');
     }
   };
 
@@ -1153,15 +1157,13 @@ export default function Home() {
         />
       )}
 
-      {/* Top Navbar */}
+      {/* Top Navbar (Reduzido, tela inteira) */}
       <HeaderNav
         activeShift={activeShift}
         onOpenNewIncident={() => setIsNewIncidentOpen(true)}
         onOpenAssumeShift={() => { if (currentUser) { autoAssumeShift(currentUser); loadData(); } }}
         onOpenCloseShift={() => setIsCloseShiftOpen(true)}
         onOpenTwoHourReport={() => setIsTwoHourReportOpen(true)}
-        onOpenTeamsCheck={() => setIsTeamsCheckOpen(true)}
-        onOpenSettings={() => setIsSettingsOpen(true)}
         unacceptedCount={unacceptedCount}
         onRestoreNotifications={handleRestoreNotifications}
         currentTheme={theme}
@@ -1172,10 +1174,27 @@ export default function Home() {
         lastUpdated={lastUpdated}
       />
 
-
-
-      {/* Main Content Area */}
-      <main className="flex-1 max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+      {/* Container inferior (Sidebar + Conteúdo) */}
+      <div className="flex-1 flex min-h-0 overflow-hidden">
+        
+        {/* Sidebar (Visão Operador) */}
+        {currentUser && (
+          <Sidebar
+            currentUser={currentUser}
+            onOpenNewIncident={() => setIsNewIncidentOpen(true)}
+            onOpenTeamsCheck={() => setIsTeamsCheckOpen(true)}
+            onOpenTurmaReports={() => setIsTurmaReportsOpen(true)}
+            onOpenSettings={(tab) => {
+              setSettingsInitialTab(tab);
+              setIsSettingsOpen(true);
+            }}
+            onLogout={handleLogout}
+          />
+        )}
+        
+        {/* Content Area Wrapper */}
+        <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
+          <main className="flex-1 max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20">
@@ -1303,10 +1322,13 @@ export default function Home() {
 
       </main>
 
-      {/* Footer */}
       <footer className="border-t border-slate-200 bg-white py-4 text-center text-xs text-slate-400 font-medium">
         <p>Passaturno • Gestão de Ocorrências e Continuidade Operacional</p>
       </footer>
+      {/* Fim do Footer */}
+      </div>
+      
+      </div>
 
       {/* Modals */}
       <NewIncidentModal
@@ -1492,6 +1514,7 @@ export default function Home() {
         currentUser={currentUser}
         activeShift={activeShift}
         currentTheme={theme}
+        initialTab={settingsInitialTab}
         onThemeChange={handleThemeChange}
         onOpenAssumeShift={() => { if (currentUser) { autoAssumeShift(currentUser); loadData(); } }}
         onOpenCloseShift={() => setIsCloseShiftOpen(true)}
@@ -1534,6 +1557,18 @@ export default function Home() {
         onClose={() => setIsTeamsCheckOpen(false)}
         activeShift={activeShift}
         currentUser={currentUser}
+      />
+
+      {/* Modal de Relatórios da Turma */}
+      <TurmaReportsModal
+        isOpen={isTurmaReportsOpen}
+        onClose={() => setIsTurmaReportsOpen(false)}
+        incidents={incidents}
+        currentUser={currentUser}
+        onOpenTimeline={(inc) => {
+          setSelectedTimelineIncident(inc);
+          setIsTimelineOpen(true);
+        }}
       />
 
       {/* Toast de Atualização / Feedback do Operador */}
