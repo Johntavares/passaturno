@@ -406,6 +406,14 @@ Próximo Turno
           </div>
 
           <div className="flex items-center space-x-1">
+            {item.isOfflinePending && (
+              <span
+                title="Salvo localmente no dispositivo. Aguardando sincronização com o banco de dados."
+                className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300 flex items-center gap-1 animate-pulse"
+              >
+                ⚡ Local
+              </span>
+            )}
             {!isFinished && (
               <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${getPriorityBadge(item.prioridade)}`}>
                 {item.prioridade}

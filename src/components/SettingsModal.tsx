@@ -26,7 +26,9 @@ import {
   Edit2,
   RotateCcw,
   Users,
-  UserX
+  UserX,
+  Database,
+  Download
 } from 'lucide-react';
 import { ShiftType } from '@/types';
 import { ThemeMode, UserSession } from './HeaderNav';
@@ -266,6 +268,29 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   const handleExportExcel = () => {
     window.open('/api/relatorio', '_blank');
+  };
+
+  const [isDownloadingBackup, setIsDownloadingBackup] = useState(false);
+  const handleDownloadBackup = async () => {
+    try {
+      setIsDownloadingBackup(true);
+      const res = await fetch('/api/backup');
+      if (!res.ok) throw new Error('Falha ao gerar backup');
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `passaturno_backup_${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (e) {
+      console.error('Erro ao baixar backup:', e);
+      alert('Erro ao baixar backup. Tente novamente.');
+    } finally {
+      setIsDownloadingBackup(false);
+    }
   };
 
   return (
@@ -754,6 +779,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </button>
 
               <button
+                type="button"
                 onClick={() => {
                   handleExportExcel();
                 }}
@@ -764,6 +790,24 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
                 </div>
                 <p className="text-[11px] text-slate-400">Baixa a planilha consolidada de atendimentos para análise.</p>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleDownloadBackup}
+                disabled={isDownloadingBackup}
+                className="p-4 bg-slate-50 dark:bg-slate-800 hover:bg-amber-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-2xl text-left transition-all cursor-pointer space-y-1.5 group disabled:opacity-50 sm:col-span-2"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-800 dark:text-white group-hover:text-amber-600 flex items-center gap-2">
+                    <Database className="w-4 h-4 text-amber-500" />
+                    {isDownloadingBackup ? 'Gerando Backup Integral...' : 'Baixar Backup Completo do Banco (.JSON)'}
+                  </span>
+                  <Download className={`w-4 h-4 text-amber-500 ${isDownloadingBackup ? 'animate-bounce' : ''}`} />
+                </div>
+                <p className="text-[11px] text-slate-400">
+                  Exporta uma cópia completa de segurança com todas as ocorrências, turnos, históricos e frotas para contingência imediata.
+                </p>
               </button>
             </div>
           )}

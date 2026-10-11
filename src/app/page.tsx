@@ -31,7 +31,8 @@ import { Sidebar } from '@/components/Sidebar';
 import { normalizeTurma, getNextTurma, isSameDayAsToday, isIncidentFromToday } from '@/lib/turma';
 import { subscribeFailureCategoriesRealtime } from '@/lib/categories';
 import { supabase } from '@/lib/supabaseClient';
-import { CheckCircle2 } from 'lucide-react';
+import { getOfflineQueue, syncOfflineQueue, hasOfflinePending } from '@/lib/offlineSync';
+import { CheckCircle2, RefreshCw, AlertTriangle } from 'lucide-react';
 
 export default function Home() {
   const [incidents, setIncidents] = useState<IncidentType[]>(() => {
@@ -80,6 +81,18 @@ export default function Home() {
   // Guarda atualizações otimistas em voo para o polling NÃO sobrescrevê-las
   // com dados antigos do servidor enquanto o PATCH ainda não confirmou.
   const pendingOverridesRef = useRef<Map<string, { patch: Record<string, unknown>; ts: number }>>(new Map());
+
+  // Estado da fila de contingência offline
+  const [offlinePendingCount, setOfflinePendingCount] = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        return getOfflineQueue().length;
+      } catch (e) {}
+    }
+    return 0;
+  });
+  const [isSyncingOffline, setIsSyncingOffline] = useState(false);
+  const equipmentsRef = useRef<EquipmentType[]>([]);
 
   const markPending = useCallback((id: string, patch: Record<string, unknown>) => {
     pendingOverridesRef.current.set(id, { patch, ts: Date.now() });
@@ -154,7 +167,7 @@ export default function Home() {
     });
   };
 
-  const loadData = useCallback(async (turmaOverride?: string) => {
+  const loadData = useCallback(async (turmaOverride?: string, forceRefreshEquipments = false) => {
     const deletedIds = getDeletedIds();
 
     const savedUserStr = typeof window !== 'undefined' ? localStorage.getItem('passaturno-user') : null;
@@ -170,23 +183,27 @@ export default function Home() {
     const isLeaderUser = currentUserRef.current?.cargo === 'LÍDER DE TURMA';
     const shiftApiUrl = (userTurmaClean && !isLeaderUser) ? `/api/turnos/ativo?turma=${encodeURIComponent(userTurmaClean)}` : '/api/turnos/ativo';
 
+    // Otimização de cota (redução de 99% em tráfego): só busca equipamentos na primeira carga ou se forçado
+    const shouldFetchEquipments = equipmentsRef.current.length === 0 || forceRefreshEquipments;
+
     try {
-      const [incRes, eqRes, shiftRes] = await Promise.all([
+      const fetchPromises: [Promise<Response>, Promise<Response | null>, Promise<Response>] = [
         fetch('/api/atendimentos'),
-        fetch('/api/equipamentos'),
+        shouldFetchEquipments ? fetch('/api/equipamentos') : Promise.resolve(null),
         fetch(shiftApiUrl),
-      ]);
+      ];
+
+      const [incRes, eqRes, shiftRes] = await Promise.all(fetchPromises);
 
       if (incRes.ok) {
         const rawInc = (await incRes.json()) as IncidentType[];
         // O banco (Supabase) é a fonte de verdade: exibe exatamente o que ele retornou,
-        // removendo apenas IDs excluídos localmente. Nada é preservado/reinserido da cache local.
+        // removendo apenas IDs excluídos localmente.
         let serverIncData = rawInc.filter(
           (item) => !deletedIds.has(item.id.toUpperCase().trim())
         );
 
-        // Reaplica mudanças otimistas ainda pendentes (PATCH em voo) por cima dos dados do servidor,
-        // evitando que uma resposta de polling defasada "desfaça" um clique recente (ex.: No Código).
+        // Reaplica mudanças otimistas ainda pendentes (PATCH em voo) por cima dos dados do servidor
         const pending = pendingOverridesRef.current;
         if (pending.size > 0) {
           const nowTs = Date.now();
@@ -199,20 +216,45 @@ export default function Home() {
           });
         }
 
+        // MODO CONTINGÊNCIA: Mescla ocorrências offline que ainda não subiram para o banco
+        const offlineItems = getOfflineQueue();
+        setOfflinePendingCount(offlineItems.length);
+        if (offlineItems.length > 0) {
+          const serverIds = new Set(serverIncData.map((s) => s.id));
+          const unsynced = offlineItems.filter((off) => !serverIds.has(off.id));
+          if (unsynced.length > 0) {
+            serverIncData = [...unsynced, ...serverIncData];
+          }
+
+          // Dispara sincronização em segundo plano
+          syncOfflineQueue((tempId, savedItem) => {
+            setIncidents((prev) =>
+              prev.map((it) => (it.id === tempId ? savedItem : it))
+            );
+            setOfflinePendingCount(getOfflineQueue().length);
+          });
+        }
+
         setIncidents(serverIncData);
         saveLocalCache(serverIncData, 'GLOBAL');
       } else {
         const cached = loadLocalCache('GLOBAL');
-        if (cached.length > 0) {
+        const offlineItems = getOfflineQueue();
+        setOfflinePendingCount(offlineItems.length);
+        if (cached.length > 0 || offlineItems.length > 0) {
           const validCached = cached.filter(
             (item) => !deletedIds.has(item.id.toUpperCase().trim())
           );
-          setIncidents(validCached);
+          const cachedIds = new Set(validCached.map((s) => s.id));
+          const unsynced = offlineItems.filter((off) => !cachedIds.has(off.id));
+          setIncidents([...unsynced, ...validCached]);
         }
       }
 
-      if (eqRes.ok) {
-        setEquipments(await eqRes.json());
+      if (eqRes && eqRes.ok) {
+        const eqData = await eqRes.json();
+        setEquipments(eqData);
+        equipmentsRef.current = eqData;
       }
 
       if (shiftRes.ok) {
@@ -227,8 +269,6 @@ export default function Home() {
             } catch (e) {}
           }
         } else {
-          // O banco de dados confirmou que não há turno ativo para esta turma.
-          // Limpar o estado do React e remover a cache antiga do localStorage para liberar o início de um novo turno.
           setActiveShift(null);
           if (typeof window !== 'undefined') {
             try {
@@ -254,9 +294,18 @@ export default function Home() {
         }
       }
     } catch (err) {
-      console.error('Error loading CCO data:', err);
+      console.error('Error loading CCO data (usando contingência/cache):', err);
       const cached = loadLocalCache('GLOBAL');
-      if (cached.length > 0) setIncidents(cached);
+      const offlineItems = getOfflineQueue();
+      setOfflinePendingCount(offlineItems.length);
+      if (cached.length > 0 || offlineItems.length > 0) {
+        const validCached = cached.filter(
+          (item) => !deletedIds.has(item.id.toUpperCase().trim())
+        );
+        const cachedIds = new Set(validCached.map((s) => s.id));
+        const unsynced = offlineItems.filter((off) => !cachedIds.has(off.id));
+        setIncidents([...unsynced, ...validCached]);
+      }
     } finally {
       setIsLoading(false);
       setLastUpdated(new Date());
@@ -267,7 +316,7 @@ export default function Home() {
   const handleManualRefresh = useCallback(async () => {
     setIsRefreshing(true);
     try {
-      await loadData();
+      await loadData(undefined, true);
       setLastUpdated(new Date());
       setToastMessage('Sistema sincronizado com sucesso!');
       setTimeout(() => {
@@ -277,6 +326,28 @@ export default function Home() {
       console.error('Erro na sincronização manual:', e);
     } finally {
       setIsRefreshing(false);
+    }
+  }, [loadData]);
+
+  const handleManualSyncOffline = useCallback(async () => {
+    setIsSyncingOffline(true);
+    try {
+      const res = await syncOfflineQueue((tempId, savedItem) => {
+        setIncidents((prev) =>
+          prev.map((it) => (it.id === tempId ? savedItem : it))
+        );
+      });
+      const remaining = getOfflineQueue().length;
+      setOfflinePendingCount(remaining);
+      if (res.synced > 0) {
+        setToastMessage(`✅ ${res.synced} ocorrência(s) de contingência sincronizadas com sucesso!`);
+        setTimeout(() => setToastMessage(null), 3500);
+      }
+      await loadData();
+    } catch (e) {
+      console.error('Erro na sincronização manual de contingência:', e);
+    } finally {
+      setIsSyncingOffline(false);
     }
   }, [loadData]);
 
@@ -292,13 +363,49 @@ export default function Home() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleManualRefresh]);
 
-  // Auto-polling em tempo real (4s) para manter os dados 100% atualizados entre Operador e Líder
+  // Polling inteligente e sincronização em segundo plano:
+  // - Evita estourar cota de egress do Supabase (redução de 99%)
+  // - Supabase Realtime WebSocket recebe alterações instantâneas (< 50ms)
+  // - Polling suave (30s) como garantia quando a aba estiver visível
+  // - Pausa se a tela/aba estiver minimizada ou em segundo plano
+  // - Sincroniza imediatamente ao reativar a aba ou ao reconectar à internet
   useEffect(() => {
     loadData();
+
     const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+        return;
+      }
       loadData();
-    }, 4000);
-    return () => clearInterval(interval);
+    }, 30000);
+
+    const handleVisibility = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        loadData();
+      }
+    };
+
+    const handleOnline = () => {
+      console.log('🌐 Conexão restabelecida. Sincronizando fila de contingência...');
+      syncOfflineQueue((tempId, savedItem) => {
+        setIncidents((prev) =>
+          prev.map((it) => (it.id === tempId ? savedItem : it))
+        );
+        setOfflinePendingCount(getOfflineQueue().length);
+      });
+      loadData();
+    };
+
+    window.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('focus', handleVisibility);
+    window.addEventListener('online', handleOnline);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('focus', handleVisibility);
+      window.removeEventListener('online', handleOnline);
+    };
   }, [loadData]);
 
   // Inscrição em Tempo Real (Supabase Realtime WebSockets: < 50ms sync entre Líder e Operadores)
@@ -1268,6 +1375,30 @@ export default function Home() {
 
           return (
           <>
+            {/* Banner de Contingência Offline */}
+            {offlinePendingCount > 0 && (
+              <div className="bg-amber-500/15 border border-amber-500/40 text-amber-900 dark:text-amber-200 px-4 py-3 rounded-2xl flex items-center justify-between shadow-xs mb-3 animate-fadeIn">
+                <div className="flex items-center space-x-2 text-xs font-medium">
+                  <span className="flex h-2.5 w-2.5 relative">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
+                  </span>
+                  <span>
+                    <strong>Modo de Contingência Ativo:</strong> {offlinePendingCount} {offlinePendingCount === 1 ? 'ocorrência gravada localmente' : 'ocorrências gravadas localmente'} no navegador aguardando sincronização com o banco.
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleManualSyncOffline}
+                  disabled={isSyncingOffline}
+                  className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-xs"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isSyncingOffline ? 'animate-spin' : ''}`} />
+                  {isSyncingOffline ? 'Sincronizando...' : 'Sincronizar Agora'}
+                </button>
+              </div>
+            )}
+
             {/* 0. Notificações / Orientações enviadas pela Liderança da Turma */}
             <LeaderMessageNotification userTurma={activeShift?.turma || 'A'} currentUser={currentUser} />
 

@@ -7,6 +7,7 @@ import { getFailureCategories } from '@/lib/categories';
 
 import { UserSession } from '@/components/HeaderNav';
 import { supabase } from '@/lib/supabaseClient';
+import { addToOfflineQueue } from '@/lib/offlineSync';
 
 interface NewIncidentModalProps {
   isOpen: boolean;
@@ -201,15 +202,48 @@ export const NewIncidentModal: React.FC<NewIncidentModalProps> = ({
       if (res.ok) {
         createdIncident = await res.json();
       } else {
-        // Nunca criar dado local "fantasma": se o banco não salvou, mostra o erro ao usuário
-        let apiMsg = 'Não foi possível salvar o atendimento. Tente novamente.';
-        try {
-          const errBody = await res.json();
-          if (errBody?.error) apiMsg = errBody.error;
-        } catch {}
-        setErrorMsg(apiMsg);
-        setIsSubmitting(false);
-        return;
+        // MODO CONTINGÊNCIA: Se o banco/servidor falhar, salva localmente e põe na fila de sincronização
+        console.warn('⚠️ Servidor indisponível ao salvar atendimento. Ativando Modo Contingência Offline...');
+        const tempId = 'offline-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7);
+        const offlineIncident: IncidentType = {
+          id: tempId,
+          tag: formattedTag,
+          equipamentoNome: equipamentoNome.trim() || `Equipamento ${formattedTag}`,
+          area,
+          tipoFalha,
+          falha,
+          sintoma: sintoma || null,
+          dataHoraParada: safeDataHoraParada,
+          dataHoraAcionamento: null,
+          previsaoLiberacao: previsaoLiberacao.trim() || null,
+          dataHoraLiberacao: null,
+          prioridade,
+          status,
+          noCodigo: status === 'EM_ANDAMENTO' && noCodigo,
+          isPendenciaHerdada: false,
+          isOfflinePending: true,
+          responsavel: effectiveResponsavel,
+          motivoEspera: motivoEspera || null,
+          proximaAcao: proximaAcao || null,
+          observacao: observacao || null,
+          turma: turma || currentUser?.turma || 'A',
+          divisaoAtuacao,
+          criadoEm: new Date().toISOString(),
+          atualizadoEm: new Date().toISOString(),
+          historico: [
+            {
+              id: 'hist-' + tempId,
+              incidentId: tempId,
+              tipoEvento: 'ABERTURA',
+              descricao: `Ocorrência registrada em Modo de Contingência (Local) por ${effectiveResponsavel}. Aguardando sincronização.`,
+              usuario: effectiveResponsavel,
+              dataHora: new Date().toISOString(),
+            }
+          ]
+        };
+
+        addToOfflineQueue(offlineIncident);
+        createdIncident = offlineIncident;
       }
 
       // Limpar formulário para próximo uso
@@ -224,7 +258,62 @@ export const NewIncidentModal: React.FC<NewIncidentModalProps> = ({
       onIncidentCreated(createdIncident);
       onClose();
     } catch (err: any) {
-      setErrorMsg(err.message || 'Erro de conexão com o servidor');
+      console.warn('⚠️ Erro de rede ou servidor ao criar atendimento. Salvando em Modo Contingência...', err);
+      const tempId = 'offline-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7);
+      const safeDataHoraParada = dataHoraParada && !isNaN(new Date(dataHoraParada).getTime())
+        ? new Date(dataHoraParada).toISOString()
+        : new Date().toISOString();
+      const effectiveResponsavel = responsavel.trim() || currentUser?.nome || 'Operador';
+      const formattedTag = tag.toUpperCase().trim();
+
+      const offlineIncident: IncidentType = {
+        id: tempId,
+        tag: formattedTag,
+        equipamentoNome: equipamentoNome.trim() || `Equipamento ${formattedTag}`,
+        area,
+        tipoFalha,
+        falha,
+        sintoma: sintoma || null,
+        dataHoraParada: safeDataHoraParada,
+        dataHoraAcionamento: null,
+        previsaoLiberacao: previsaoLiberacao.trim() || null,
+        dataHoraLiberacao: null,
+        prioridade,
+        status,
+        noCodigo: status === 'EM_ANDAMENTO' && noCodigo,
+        isPendenciaHerdada: false,
+        isOfflinePending: true,
+        responsavel: effectiveResponsavel,
+        motivoEspera: motivoEspera || null,
+        proximaAcao: proximaAcao || null,
+        observacao: observacao || null,
+        turma: turma || currentUser?.turma || 'A',
+        divisaoAtuacao,
+        criadoEm: new Date().toISOString(),
+        atualizadoEm: new Date().toISOString(),
+        historico: [
+          {
+            id: 'hist-' + tempId,
+            incidentId: tempId,
+            tipoEvento: 'ABERTURA',
+            descricao: `Ocorrência registrada em Modo de Contingência (Local) por ${effectiveResponsavel}. Aguardando sincronização.`,
+            usuario: effectiveResponsavel,
+            dataHora: new Date().toISOString(),
+          }
+        ]
+      };
+
+      addToOfflineQueue(offlineIncident);
+      setTag('');
+      setFalha('');
+      setSintoma('');
+      setMotivoEspera('');
+      setProximaAcao('');
+      setObservacao('');
+      setNoCodigo(false);
+
+      onIncidentCreated(offlineIncident);
+      onClose();
     } finally {
       setIsSubmitting(false);
     }

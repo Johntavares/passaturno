@@ -67,6 +67,7 @@ export interface IncidentType {
   shiftId?: string | null;
   isPendenciaHerdada: boolean;
   noCodigo: boolean;
+  isOfflinePending?: boolean;
   turma?: string | null;
   divisaoAtuacao?: 'MONITORAMENTO' | 'CORRETIVA_CAMPO' | string;
   historico?: IncidentHistoryType[];
