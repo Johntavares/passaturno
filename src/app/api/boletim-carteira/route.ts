@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabaseClient';
+import { prisma } from '@/lib/prisma';
 
 export interface BoletimCarteiraType {
   turma: string;
@@ -19,20 +20,29 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Parâmetro data é obrigatório' }, { status: 400 });
     }
 
-    const { data: row, error } = await supabase
-      .from('BoletimCarteira')
-      .select('*')
-      .eq('turma', turma)
-      .eq('data', data)
-      .maybeSingle();
+    try {
+      const { data: row, error } = await supabase
+        .from('BoletimCarteira')
+        .select('*')
+        .eq('turma', turma)
+        .eq('data', data)
+        .maybeSingle();
 
-    if (error) {
-      return NextResponse.json({ error: 'Erro ao buscar carteira do boletim' }, { status: 500 });
-    }
+      if (!error && row) {
+        return NextResponse.json(row);
+      }
+    } catch (e) {}
+
+    const row = await prisma.boletimCarteira.findUnique({
+      where: {
+        turma_data: { turma, data },
+      },
+    }).catch(() => null);
+
     return NextResponse.json(row || null);
   } catch (error) {
     console.error('Erro ao buscar carteira do boletim:', error);
-    return NextResponse.json({ error: 'Erro ao buscar carteira do boletim' }, { status: 500 });
+    return NextResponse.json(null);
   }
 }
 

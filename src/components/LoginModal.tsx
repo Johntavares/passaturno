@@ -100,18 +100,18 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess, onClose 
 
       if (cleanSenha === '123456' || cleanSenha === 'admin' || cleanSenha === 'lider') {
         const defaultUserMap: Record<string, UserSession> = {
-          'lider@passaturno.com': { id: 'usr-lider-def', nome: 'Líder da Turma', email: 'lider@passaturno.com', matricula: '9999', equipe: 'Liderança CCO', cargo: 'LÍDER DE TURMA', turma: 'GERAL' },
-          '9999': { id: 'usr-lider-def', nome: 'Líder da Turma', email: 'lider@passaturno.com', matricula: '9999', equipe: 'Liderança CCO', cargo: 'LÍDER DE TURMA', turma: 'GERAL' },
-          'john.tavares@passaturno.com': { id: 'usr-john-def', nome: 'John Tavares', email: 'john.tavares@passaturno.com', matricula: '8888', equipe: 'Automação A', cargo: 'Técnico de Automação (Turma A)', turma: 'A' },
-          '8888': { id: 'usr-john-def', nome: 'John Tavares', email: 'john.tavares@passaturno.com', matricula: '8888', equipe: 'Automação A', cargo: 'Técnico de Automação (Turma A)', turma: 'A' },
-          'turma.a@passaturno.com': { id: 'usr-turma-a-def', nome: 'Operador Turma A', email: 'turma.a@passaturno.com', matricula: '1001', equipe: 'Automação A', cargo: 'Técnico de Automação (Turma A)', turma: 'A' },
-          '1001': { id: 'usr-turma-a-def', nome: 'Operador Turma A', email: 'turma.a@passaturno.com', matricula: '1001', equipe: 'Automação A', cargo: 'Técnico de Automação (Turma A)', turma: 'A' },
-          'turma.b@passaturno.com': { id: 'usr-turma-b-def', nome: 'Operador Turma B', email: 'turma.b@passaturno.com', matricula: '1002', equipe: 'Automação B', cargo: 'Técnico de Automação (Turma B)', turma: 'B' },
-          '1002': { id: 'usr-turma-b-def', nome: 'Operador Turma B', email: 'turma.b@passaturno.com', matricula: '1002', equipe: 'Automação B', cargo: 'Técnico de Automação (Turma B)', turma: 'B' },
-          'turma.c@passaturno.com': { id: 'usr-turma-c-def', nome: 'Operador Turma C', email: 'turma.c@passaturno.com', matricula: '1003', equipe: 'Automação C', cargo: 'Técnico de Automação (Turma C)', turma: 'C' },
-          '1003': { id: 'usr-turma-c-def', nome: 'Operador Turma C', email: 'turma.c@passaturno.com', matricula: '1003', equipe: 'Automação C', cargo: 'Técnico de Automação (Turma C)', turma: 'C' },
-          'turma.d@passaturno.com': { id: 'usr-turma-d-def', nome: 'Operador Turma D', email: 'turma.d@passaturno.com', matricula: '1004', equipe: 'Automação D', cargo: 'Técnico de Automação (Turma D)', turma: 'D' },
-          '1004': { id: 'usr-turma-d-def', nome: 'Operador Turma D', email: 'turma.d@passaturno.com', matricula: '1004', equipe: 'Automação D', cargo: 'Técnico de Automação (Turma D)', turma: 'D' },
+          'lider@passaturno.com': { id: 'eac0ffcd-e6b5-42fd-88e0-c272577fa0b2', nome: 'Líder da Turma', email: 'lider@passaturno.com', matricula: '9999', equipe: 'Liderança CCO', cargo: 'LÍDER DE TURMA', turma: 'GERAL' },
+          '9999': { id: 'eac0ffcd-e6b5-42fd-88e0-c272577fa0b2', nome: 'Líder da Turma', email: 'lider@passaturno.com', matricula: '9999', equipe: 'Liderança CCO', cargo: 'LÍDER DE TURMA', turma: 'GERAL' },
+          'john.tavares@passaturno.com': { id: 'e0992388-870f-4663-9f32-15335b9a63df', nome: 'JOHN TAVARES', email: 'turma.c@passaturno.com', matricula: '1003', equipe: 'Automação C', cargo: 'Técnico de Automação (Turma C)', turma: 'C' },
+          '8888': { id: 'e0992388-870f-4663-9f32-15335b9a63df', nome: 'JOHN TAVARES', email: 'turma.c@passaturno.com', matricula: '1003', equipe: 'Automação C', cargo: 'Técnico de Automação (Turma C)', turma: 'C' },
+          'turma.a@passaturno.com': { id: 'c3087835-a63f-48c1-9fe8-d8046725ef5a', nome: 'Pedro Almeida', email: 'turma.a@passaturno.com', matricula: '1001', equipe: 'Automação A', cargo: 'Técnico de Automação (Turma A)', turma: 'A' },
+          '1001': { id: 'c3087835-a63f-48c1-9fe8-d8046725ef5a', nome: 'Pedro Almeida', email: 'turma.a@passaturno.com', matricula: '1001', equipe: 'Automação A', cargo: 'Técnico de Automação (Turma A)', turma: 'A' },
+          'turma.b@passaturno.com': { id: '52d82c5e-121b-48df-8e45-ee0504e08755', nome: 'Gabriel', email: 'turma.b@passaturno.com', matricula: '1002', equipe: 'Automação B', cargo: 'Técnico de Automação (Turma B)', turma: 'B' },
+          '1002': { id: '52d82c5e-121b-48df-8e45-ee0504e08755', nome: 'Gabriel', email: 'turma.b@passaturno.com', matricula: '1002', equipe: 'Automação B', cargo: 'Técnico de Automação (Turma B)', turma: 'B' },
+          'turma.c@passaturno.com': { id: 'e0992388-870f-4663-9f32-15335b9a63df', nome: 'JOHN TAVARES', email: 'turma.c@passaturno.com', matricula: '1003', equipe: 'Automação C', cargo: 'Técnico de Automação (Turma C)', turma: 'C' },
+          '1003': { id: 'e0992388-870f-4663-9f32-15335b9a63df', nome: 'JOHN TAVARES', email: 'turma.c@passaturno.com', matricula: '1003', equipe: 'Automação C', cargo: 'Técnico de Automação (Turma C)', turma: 'C' },
+          'turma.d@passaturno.com': { id: '6ae38523-f639-48c3-a267-bed8873ff84b', nome: 'GUSTAVO BARCELAR', email: 'turma.d@passaturno.com', matricula: '1004', equipe: 'Automação D', cargo: 'Técnico de Automação (Turma D)', turma: 'D' },
+          '1004': { id: '6ae38523-f639-48c3-a267-bed8873ff84b', nome: 'GUSTAVO BARCELAR', email: 'turma.d@passaturno.com', matricula: '1004', equipe: 'Automação D', cargo: 'Técnico de Automação (Turma D)', turma: 'D' },
         };
 
         const fallbackUser = defaultUserMap[cleanInput];

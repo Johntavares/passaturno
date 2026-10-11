@@ -1,15 +1,44 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabaseClient';
+import { prisma } from '@/lib/prisma';
+
+const DEFAULT_CATEGORIES = [
+  'CASGPS',
+  'OPTALERT',
+  'MEMES',
+  'DESMONTE',
+  'TELEOP',
+  'AUTONOMOS',
+  'MODULAR',
+  'ALIMENTAÇÃO/ELETRICA',
+  'MOVIMENTAÇÃO',
+  'COMUNICAÇÃO',
+  'TELEMETRIA',
+];
 
 async function listCategories(): Promise<string[]> {
-  const { data, error } = await supabase
-    .from('FailureCategory')
-    .select('nome')
-    .order('criadoEm', { ascending: true });
+  try {
+    const { data, error } = await supabase
+      .from('FailureCategory')
+      .select('nome')
+      .order('criadoEm', { ascending: true });
 
-  if (error) throw new Error(error.message);
-  if (!data) return [];
-  return data.map((r: any) => r.nome);
+    if (!error && Array.isArray(data) && data.length > 0) {
+      return data.map((r: any) => r.nome);
+    }
+  } catch (e) {}
+
+  try {
+    const rows = await prisma.failureCategory.findMany({
+      select: { nome: true },
+      orderBy: { criadoEm: 'asc' },
+    });
+    if (rows && rows.length > 0) {
+      return rows.map((r) => r.nome);
+    }
+  } catch (e) {}
+
+  return DEFAULT_CATEGORIES;
 }
 
 export async function GET() {
@@ -18,7 +47,7 @@ export async function GET() {
     return NextResponse.json(categories);
   } catch (error: any) {
     console.error('Erro ao listar categorias:', error);
-    return NextResponse.json({ error: 'Erro ao listar categorias' }, { status: 500 });
+    return NextResponse.json(DEFAULT_CATEGORIES);
   }
 }
 

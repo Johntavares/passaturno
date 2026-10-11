@@ -305,9 +305,14 @@ export default function Home() {
   useEffect(() => {
     let channel: ReturnType<typeof supabase.channel> | null = null;
     let active = true;
+    let failureCount = 0;
 
     const setupRealtime = () => {
       if (!active) return;
+      if (failureCount >= 3) {
+        console.info('ℹ️ Supabase Realtime pausado/restrito (cota da API). Sincronização mantida via polling ativo a cada 4s.');
+        return;
+      }
       try {
         channel = supabase
           .channel('passaturno-realtime-changes')
@@ -338,20 +343,28 @@ export default function Home() {
           .subscribe((status) => {
             console.log('⚡ Realtime status:', status);
             if (status === 'SUBSCRIBED') {
+              failureCount = 0;
               // Sincronização imediata ao conectar (cobre perdas de evento durante reconnect)
               loadData();
             } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-              console.warn('⚡ Realtime com problema, tentando reconectar em 5s...');
-              setTimeout(() => {
-                if (active) setupRealtime();
-              }, 5000);
+              failureCount++;
+              if (failureCount < 3) {
+                console.warn(`⚡ Realtime com problema (tentativa ${failureCount}/3), tentando reconectar em 5s...`);
+                setTimeout(() => {
+                  if (active) setupRealtime();
+                }, 5000);
+              } else {
+                console.info('ℹ️ Supabase Realtime indisponível (cota excedida). Alternando para polling contínuo (a cada 4s).');
+              }
             }
           });
       } catch (e) {
-        console.error('Realtime subscription error:', e);
-        setTimeout(() => {
-          if (active) setupRealtime();
-        }, 5000);
+        failureCount++;
+        if (failureCount < 3) {
+          setTimeout(() => {
+            if (active) setupRealtime();
+          }, 5000);
+        }
       }
     };
 

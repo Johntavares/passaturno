@@ -16,6 +16,22 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Parâmetro id ou matricula obrigatório' }, { status: 400 });
     }
 
+    // Mapeamento de contingência para IDs fictícios do frontend
+    const mockIdToMatricula: Record<string, string> = {
+      'usr-turma-a-def': '1001',
+      'usr-turma-b-def': '1002',
+      'usr-turma-c-def': '1003',
+      'usr-turma-d-def': '1004',
+      'usr-lider-def': '9999',
+      'usr-john-def': '8888',
+      'usr-turma-a-official': '1001',
+      'usr-turma-b-official': '1002',
+      'usr-turma-c-official': '1003',
+      'usr-turma-d-official': '1004',
+    };
+
+    const targetMatricula = matricula || (id ? mockIdToMatricula[id] : null);
+
     let user: any = null;
 
     // 1. Supabase REST
@@ -24,17 +40,30 @@ export async function GET(request: Request) {
         .from('User')
         .select('id, nome, email, matricula, equipe, cargo, turma, horarioTurno, periodoTurno, escala, diaEscala');
 
-      const { data } = id
+      const { data, error } = id
         ? await query.eq('id', id).single()
         : await query.eq('matricula', matricula!).single();
 
-      if (data) user = data;
+      if (!error && data) user = data;
+
+      if (!user && targetMatricula) {
+        const { data: byMat, error: errMat } = await supabase
+          .from('User')
+          .select('id, nome, email, matricula, equipe, cargo, turma, horarioTurno, periodoTurno, escala, diaEscala')
+          .eq('matricula', targetMatricula)
+          .single();
+        if (!errMat && byMat) user = byMat;
+      }
     } catch (e) {}
 
     // 2. Prisma fallback
     if (!user) {
+      const orConditions: any[] = [];
+      if (id) orConditions.push({ id });
+      if (targetMatricula) orConditions.push({ matricula: targetMatricula });
+
       user = await prisma.user.findFirst({
-        where: id ? { id } : { matricula: matricula! },
+        where: orConditions.length > 1 ? { OR: orConditions } : orConditions[0] || {},
         select: {
           id: true, nome: true, email: true, matricula: true,
           equipe: true, cargo: true, turma: true,

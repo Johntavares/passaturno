@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabaseClient';
+import { prisma } from '@/lib/prisma';
 
 export interface BoletimConfigType {
   turma: string;
@@ -19,19 +20,26 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const turma = (searchParams.get('turma') || 'A').toUpperCase().trim();
 
-    const { data, error } = await supabase
-      .from('BoletimConfig')
-      .select('*')
-      .eq('turma', turma)
-      .maybeSingle();
+    try {
+      const { data, error } = await supabase
+        .from('BoletimConfig')
+        .select('*')
+        .eq('turma', turma)
+        .maybeSingle();
 
-    if (error) {
-      return NextResponse.json({ error: 'Erro ao buscar configuração do boletim' }, { status: 500 });
-    }
-    return NextResponse.json(data || null);
+      if (!error && data) {
+        return NextResponse.json(data);
+      }
+    } catch (e) {}
+
+    const config = await prisma.boletimConfig.findUnique({
+      where: { turma },
+    }).catch(() => null);
+
+    return NextResponse.json(config || null);
   } catch (error) {
     console.error('Erro ao buscar boletim config:', error);
-    return NextResponse.json({ error: 'Erro ao buscar configuração do boletim' }, { status: 500 });
+    return NextResponse.json(null);
   }
 }
 

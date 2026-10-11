@@ -41,14 +41,15 @@ export async function GET(request: Request) {
 
   // 2. PRISMA POSTGRESQL (Fallback)
   try {
+    const cleanTurma = turma && turma !== 'TODAS' ? normalizeTurma(turma) : '';
     const incidents = await prisma.incident.findMany({
-      where: turma ? { turma: turmaInFilter(turma) } : {},
+      where: cleanTurma ? { turma: turmaInFilter(cleanTurma) } : {},
       include: { historico: true },
       orderBy: { criadoEm: 'desc' },
     });
     return NextResponse.json(incidents);
   } catch (error) {
-    console.error('Erro ao buscar atendimentos no Supabase:', error);
+    console.error('Erro ao buscar atendimentos no Prisma:', error);
     return NextResponse.json({ error: 'Erro ao buscar atendimentos' }, { status: 500 });
   }
 }
