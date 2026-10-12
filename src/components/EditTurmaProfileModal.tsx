@@ -2,6 +2,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { X, User, Clock, Sun, Moon, Check, Save } from 'lucide-react';
+import { 
+  getTodayYMDInBR, 
+  cleanDiaEscala, 
+  getEffectiveDiaEscala, 
+  saveEscalaReference 
+} from '@/lib/turma';
 
 
 interface EditTurmaProfileModalProps {
@@ -32,7 +38,8 @@ export const EditTurmaProfileModal: React.FC<EditTurmaProfileModalProps> = ({
       setPeriodoTurno(currentUser.periodoTurno || (currentUser.turma === 'D' ? 'Noite' : 'Dia'));
       setTurma(currentUser.turma || 'A');
       setEscala(currentUser.escala || '3x3');
-      setDiaEscala(currentUser.diaEscala || '1º Dia');
+      const eff = getEffectiveDiaEscala(currentUser, currentUser.turma);
+      setDiaEscala(cleanDiaEscala(eff || '1º Dia'));
     }
   }, [currentUser, isOpen]);
 
@@ -41,6 +48,19 @@ export const EditTurmaProfileModal: React.FC<EditTurmaProfileModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    const today = getTodayYMDInBR();
+    const cleanDia = cleanDiaEscala(diaEscala);
+    const finalEscala = (escala || '3x3').trim();
+
+    saveEscalaReference({
+      baseDia: cleanDia,
+      baseDate: today,
+      escala: finalEscala,
+      turma,
+      userId: currentUser?.id,
+    });
+
+    const encodedDiaEscala = `${cleanDia} [${today}]`;
     const userSessionData = {
       ...(currentUser || {}),
       id: currentUser?.id || `usr-${Date.now()}`,
@@ -48,8 +68,10 @@ export const EditTurmaProfileModal: React.FC<EditTurmaProfileModalProps> = ({
       horarioTurno: horarioTurno.trim(),
       periodoTurno,
       turma,
-      escala: escala.trim(),
-      diaEscala: diaEscala.trim(),
+      escala: finalEscala,
+      diaEscala: cleanDia,
+      diaEscalaBase: cleanDia,
+      diaEscalaDataRef: today,
     };
 
     if (currentUser?.id) {
@@ -62,8 +84,8 @@ export const EditTurmaProfileModal: React.FC<EditTurmaProfileModalProps> = ({
             horarioTurno: horarioTurno.trim(),
             periodoTurno,
             turma,
-            escala: escala.trim(),
-            diaEscala: diaEscala.trim(),
+            escala: finalEscala,
+            diaEscala: encodedDiaEscala,
           }),
         });
       } catch (err) {
@@ -231,22 +253,30 @@ export const EditTurmaProfileModal: React.FC<EditTurmaProfileModalProps> = ({
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                Dia de Trabalho (Sua Letra):
-              </label>
-              <select
-                value={diaEscala}
-                  onChange={(e) => setDiaEscala(e.target.value)}
-                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
-                >
-                  <option value="1º Dia">1º Dia</option>
-                  <option value="2º Dia">2º Dia</option>
-                  <option value="3º Dia">3º Dia</option>
-                  <option value="4º Dia">4º Dia</option>
-                  <option value="5º Dia">5º Dia</option>
-                  <option value="Folga">Folga</option>
-                </select>
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Dia de Trabalho (Sua Letra):
+                </label>
+                <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800">
+                  ✨ Avanço Automático
+                </span>
               </div>
+              <select
+                value={cleanDiaEscala(diaEscala)}
+                onChange={(e) => setDiaEscala(e.target.value)}
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
+              >
+                <option value="1º Dia">1º Dia</option>
+                <option value="2º Dia">2º Dia</option>
+                <option value="3º Dia">3º Dia</option>
+                <option value="4º Dia">4º Dia</option>
+                <option value="5º Dia">5º Dia</option>
+                <option value="Folga">Folga</option>
+              </select>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                Ao selecionar o dia que você entrou (ex: 1º Dia), nos próximos dias o sistema avança automaticamente para 2º Dia, 3º Dia e Folga.
+              </p>
+            </div>
 
             {/* Actions */}
             <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-2">

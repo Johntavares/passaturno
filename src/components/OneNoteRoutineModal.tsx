@@ -17,6 +17,7 @@ import {
   FileText
 } from 'lucide-react';
 import { getBoletimConfig } from '@/lib/boletimConfig';
+import { getEffectiveDiaEscala, cleanDiaEscala } from '@/lib/turma';
 
 interface OneNoteRoutineModalProps {
   isOpen: boolean;
@@ -38,7 +39,7 @@ export const OneNoteRoutineModal: React.FC<OneNoteRoutineModalProps> = ({
 
   // Estados dos campos do OneNote
   const [tipoTurno, setTipoTurno] = useState('Diurno');
-  const [escala, setEscala] = useState('2x3');
+  const [escala, setEscala] = useState('3x3');
   const [turma, setTurma] = useState('C');
   const [ausencias, setAusencias] = useState('');
   
@@ -118,7 +119,7 @@ export const OneNoteRoutineModal: React.FC<OneNoteRoutineModalProps> = ({
 
 Turno: ${tipoTurno}
 ESCALA: ${escala}
-LETRA: ${turma}
+LETRA: ${turma}${getEffectiveDiaEscala(activeShift, turma) ? ` (${cleanDiaEscala(getEffectiveDiaEscala(activeShift, turma))})` : ''}
 DATA: ${new Date().toLocaleDateString('pt-BR')}
 EQUIPE: _ ${equipeSonda} _
 MONITORAMENTO: ${activeShift?.responsavelNome || 'John Tavares'}

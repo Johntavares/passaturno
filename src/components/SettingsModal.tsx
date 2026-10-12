@@ -40,6 +40,13 @@ import {
   resetFailureCategories 
 } from '@/lib/categories';
 import { getBoletimConfig, saveBoletimConfig } from '@/lib/boletimConfig';
+import { 
+  getTodayYMDInBR, 
+  cleanDiaEscala, 
+  getEffectiveDiaEscala, 
+  saveEscalaReference 
+} from '@/lib/turma';
+
 
 
 interface SettingsModalProps {
@@ -91,7 +98,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [periodoTurno, setPeriodoTurno] = useState<'Dia' | 'Noite'>((currentUser as any)?.periodoTurno || 'Dia');
   const [turma, setTurma] = useState(currentUser?.turma || 'A');
   const [escala, setEscala] = useState((currentUser as any)?.escala || '3x3');
-  const [diaEscala, setDiaEscala] = useState((currentUser as any)?.diaEscala || '1º Dia');
+  const [diaEscala, setDiaEscala] = useState(cleanDiaEscala((currentUser as any)?.diaEscala || '1º Dia'));
   const [savedMsg, setSavedMsg] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
@@ -209,7 +216,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       setPeriodoTurno((currentUser as any)?.periodoTurno || (currentUser.turma === 'D' ? 'Noite' : 'Dia'));
       setTurma(currentUser.turma || 'A');
       setEscala((currentUser as any)?.escala || '3x3');
-      setDiaEscala((currentUser as any)?.diaEscala || '1º Dia');
+      const eff = getEffectiveDiaEscala(currentUser, currentUser.turma);
+      setDiaEscala(cleanDiaEscala(eff || '1º Dia'));
     }
   }, [currentUser, isOpen]);
 
@@ -220,14 +228,30 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     if (!currentUser?.id) return;
 
     setIsSaving(true);
+    const today = getTodayYMDInBR();
+    const cleanDia = cleanDiaEscala(diaEscala);
+    const finalEscala = (escala || '3x3').trim();
+
+    // Salva a referência para o cálculo sequencial automático subsequente
+    saveEscalaReference({
+      baseDia: cleanDia,
+      baseDate: today,
+      escala: finalEscala,
+      turma,
+      userId: currentUser.id,
+    });
+
+    const encodedDiaEscala = `${cleanDia} [${today}]`;
     const userSessionData = {
       ...currentUser,
       nome: nome.trim(),
       horarioTurno: horarioTurno.trim(),
       periodoTurno,
       turma,
-      escala: escala.trim(),
-      diaEscala: diaEscala.trim(),
+      escala: finalEscala,
+      diaEscala: cleanDia,
+      diaEscalaBase: cleanDia,
+      diaEscalaDataRef: today,
     };
 
     try {
@@ -239,13 +263,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           horarioTurno: horarioTurno.trim(),
           periodoTurno,
           turma,
-          escala: escala.trim(),
-          diaEscala: diaEscala.trim(),
+          escala: finalEscala,
+          diaEscala: encodedDiaEscala,
         }),
       });
 
       if (res.ok) {
-        setSavedMsg('Configurações salvas e sincronizadas no banco com sucesso!');
+        setSavedMsg('Configurações salvas! Progressão automática do dia da letra ativada.');
       } else {
         setSavedMsg('Configurações salvas!');
       }
@@ -466,11 +490,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                      Dia de Trabalho (Sua Letra):
-                    </label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                        Dia de Trabalho (Sua Letra):
+                      </label>
+                      <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800">
+                        ✨ Avanço Automático
+                      </span>
+                    </div>
                     <select
-                      value={diaEscala}
+                      value={cleanDiaEscala(diaEscala)}
                       onChange={(e) => setDiaEscala(e.target.value)}
                       className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
                     >
@@ -481,6 +510,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       <option value="5º Dia">5º Dia</option>
                       <option value="Folga">Folga</option>
                     </select>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
+                      Ao selecionar o dia que você entrou (ex: 1º Dia), nos dias seguintes o sistema avança automaticamente para 2º Dia, 3º Dia e Folga.
+                    </p>
                   </div>
                 </div>
 

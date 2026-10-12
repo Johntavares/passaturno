@@ -16,9 +16,18 @@ import {
   Truck,
   Users,
   Radio,
-  FileText
+  FileText,
+  Calendar
 } from 'lucide-react';
-import { normalizeTurma, isIncidentFromToday, getTodayYMDInBR, formatBRTime } from '@/lib/turma';
+import { 
+  normalizeTurma, 
+  isIncidentFromToday, 
+  getTodayYMDInBR, 
+  formatBRTime,
+  cleanDiaEscala,
+  getEffectiveDiaEscala,
+  saveEscalaReference
+} from '@/lib/turma';
 import { getBoletimConfig, saveBoletimConfig, subscribeBoletimConfigRealtime } from '@/lib/boletimConfig';
 import { getBoletimCarteira, saveBoletimCarteira, subscribeBoletimCarteiraRealtime } from '@/lib/boletimCarteira';
 
@@ -60,6 +69,7 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
 
   const [customReportText, setCustomReportText] = useState('');
   const [isCustomEdited, setIsCustomEdited] = useState(false);
+  const [diaEscala, setDiaEscala] = useState('1º Dia');
 
   // Guarda se o operador JÁ editou algum valor nesta sessão do modal.
   // A partir do primeiro ajuste manual, os campos NÃO podem mais ser sobrescritos
@@ -68,22 +78,22 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
   // Guarda se a configuração fixa já foi carregada do banco nesta turma
   const configLoadedRef = useRef(false);
 
+  const turmaBoletim = (activeShift?.turma || currentUser?.turma || 'A').toUpperCase();
+
   // A cada abertura do modal, resetar o "editado" para carregar os dados salvos do banco
+  // e inicializar o dia da escala efetivo de hoje (com progressão automática)
   useEffect(() => {
     if (isOpen) {
       userTouchedRef.current = false;
-      // Ao abrir, sempre parte de um texto novo gerado a partir dos incidents
-      // atuais. Isso garante que equipamentos que entraram no código / em
-      // atendimento apareçam, sem ficar "congelado" com edições de sessões anteriores.
       setIsCustomEdited(false);
+      const eff = getEffectiveDiaEscala(currentUser, turmaBoletim);
+      setDiaEscala(cleanDiaEscala(eff || '1º Dia'));
     }
-  }, [isOpen]);
+  }, [isOpen, currentUser, turmaBoletim]);
 
   const markUserEdited = () => {
     userTouchedRef.current = true;
   };
-
-  const turmaBoletim = (activeShift?.turma || currentUser?.turma || 'A').toUpperCase();
 
   const applyConfigToFields = (config: any) => {
     if (!config) return;
@@ -321,10 +331,11 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
       return line;
     };
 
+    const diaCalculado = cleanDiaEscala(diaEscala) || getEffectiveDiaEscala(currentUser, letraTurma);
     let text = `TURNO: ${tipoTurno}\n`;
     text += `HORÁRIO: ${horarioTurno}\n`;
-    text += `ESCALA: ${activeShift?.escala || '2x3'}\n`;
-    text += `LETRA: ${letraTurma}\n`;
+    text += `ESCALA: ${currentUser?.escala || activeShift?.escala || '3x3'}\n`;
+    text += `LETRA: ${letraTurma}${diaCalculado ? ` (${diaCalculado})` : ''}\n`;
     text += `DATA: ${dataFormatada}\n`;
     text += `EQUIPE: _ ${equipeSonda} _\n`;
     text += `MONITORAMENTO: ${nomeOperador}\n`;
@@ -373,7 +384,7 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
     if (isOpen && !isCustomEdited) {
       setCustomReportText(generateReportText());
     }
-  }, [isOpen, incidents, activeShift, currentUser, carteiraTotal, carteiraAndamento, carteiraAberto, carteiraPendente, equipSemDespacho, equipSemGps, equipPreventiva, equipManutencao, equipeSonda, liderVale, ausencia, isCustomEdited]);
+  }, [isOpen, incidents, activeShift, currentUser, carteiraTotal, carteiraAndamento, carteiraAberto, carteiraPendente, equipSemDespacho, equipSemGps, equipPreventiva, equipManutencao, equipeSonda, liderVale, ausencia, diaEscala, isCustomEdited]);
 
   if (!isOpen) return null;
 
@@ -474,6 +485,71 @@ export const TwoHourReportModal: React.FC<TwoHourReportModalProps> = ({
             className="w-full bg-slate-900 dark:bg-slate-950 text-slate-100 font-mono text-xs p-4 rounded-2xl border border-slate-800 focus:outline-none focus:border-emerald-500 leading-relaxed shadow-inner custom-scrollbar resize-y"
             placeholder="Edite a mensagem do boletim de 2h..."
           />
+        </div>
+
+        {/* Configuração Rápida da Escala e Dia da Letra (Atualização Automática) */}
+        <div className="mt-3 p-3 bg-emerald-50/70 dark:bg-emerald-950/40 rounded-2xl border border-emerald-200 dark:border-emerald-800/60 space-y-2">
+          <div className="flex flex-wrap items-center justify-between gap-1.5">
+            <span className="text-[11px] font-bold text-emerald-900 dark:text-emerald-300 flex items-center gap-1.5">
+              <Calendar className="w-3.5 h-3.5 text-emerald-600" />
+              Escala & Dia de Trabalho da Turma {turmaBoletim}
+            </span>
+            <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 bg-white dark:bg-emerald-900 px-2 py-0.5 rounded-full border border-emerald-300 dark:border-emerald-700 shadow-2xs">
+              ✨ Progressão Automática Ativa (3x3)
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+            <div>
+              <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-0.5">
+                Escala de Revezamento:
+              </label>
+              <div className="px-2.5 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-mono font-bold text-slate-800 dark:text-white">
+                {currentUser?.escala || activeShift?.escala || '3x3'} (3 dias de trabalho x 3 folgas)
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-0.5">
+                Dia da Letra Hoje:
+              </label>
+              <select
+                value={cleanDiaEscala(diaEscala)}
+                onChange={(e) => {
+                  const newVal = e.target.value;
+                  const today = getTodayYMDInBR();
+                  const clean = cleanDiaEscala(newVal);
+                  setDiaEscala(clean);
+                  saveEscalaReference({
+                    baseDia: clean,
+                    baseDate: today,
+                    escala: currentUser?.escala || activeShift?.escala || '3x3',
+                    turma: turmaBoletim,
+                    userId: currentUser?.id,
+                  });
+                  if (currentUser?.id) {
+                    fetch(`/api/usuarios/${currentUser.id}`, {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ diaEscala: `${clean} [${today}]` }),
+                    }).catch(() => {});
+                  }
+                  setIsCustomEdited(false);
+                }}
+                className="w-full bg-white dark:bg-slate-800 border border-emerald-300 dark:border-emerald-700 rounded-lg px-2.5 py-1.5 text-xs font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
+              >
+                <option value="1º Dia">1º Dia</option>
+                <option value="2º Dia">2º Dia</option>
+                <option value="3º Dia">3º Dia</option>
+                <option value="4º Dia">4º Dia</option>
+                <option value="5º Dia">5º Dia</option>
+                <option value="Folga">Folga</option>
+              </select>
+            </div>
+          </div>
+          <p className="text-[10px] text-slate-500 dark:text-slate-400">
+            Ao definir o dia inicial (ex: 1º Dia), nos dias seguintes o boletim atualiza automaticamente para 2º Dia e 3º Dia sequencialmente.
+          </p>
         </div>
 
         {/* Configuração Editável dos Números da Carteira de Incidentes */}

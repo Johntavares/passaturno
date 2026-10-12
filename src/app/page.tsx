@@ -28,7 +28,7 @@ import { SettingsModal } from '@/components/SettingsModal';
 import { TeamsCheckModal } from '@/components/TeamsCheckModal';
 import { TurmaReportsModal } from '@/components/TurmaReportsModal';
 import { Sidebar } from '@/components/Sidebar';
-import { normalizeTurma, getNextTurma, isSameDayAsToday, isIncidentFromToday } from '@/lib/turma';
+import { normalizeTurma, getNextTurma, isSameDayAsToday, isIncidentFromToday, cleanDiaEscala, getEffectiveDiaEscala } from '@/lib/turma';
 import { subscribeFailureCategoriesRealtime } from '@/lib/categories';
 import { supabase } from '@/lib/supabaseClient';
 import { getOfflineQueue, syncOfflineQueue, hasOfflinePending } from '@/lib/offlineSync';
@@ -605,6 +605,8 @@ export default function Home() {
         const savedUserStr = localStorage.getItem('passaturno-user');
         if (savedUserStr) {
           const cached = JSON.parse(savedUserStr) as UserSession;
+          const effCached = getEffectiveDiaEscala(cached, cached.turma);
+          if (effCached) cached.diaEscala = cleanDiaEscala(effCached);
 
           // Mostra imediatamente os dados do cache para não travar a tela
           setCurrentUser(cached);
@@ -621,6 +623,9 @@ export default function Home() {
                 const { user: freshUser } = await freshRes.json();
                 if (freshUser && freshUser.id) {
                   const merged: UserSession = { ...cached, ...freshUser };
+                  const effMerged = getEffectiveDiaEscala(merged, merged.turma);
+                  if (effMerged) merged.diaEscala = cleanDiaEscala(effMerged);
+
                   setCurrentUser(merged);
                   localStorage.setItem('passaturno-user', JSON.stringify(merged));
 
@@ -727,6 +732,9 @@ export default function Home() {
   };
 
   const handleLoginSuccess = async (user: UserSession) => {
+    const eff = getEffectiveDiaEscala(user, user.turma);
+    if (eff) user.diaEscala = cleanDiaEscala(eff);
+
     setCurrentUser(user);
     setLoggedInUsers((prev) => {
       const filtered = prev.filter((u) => u.id !== user.id);
@@ -751,6 +759,9 @@ export default function Home() {
 
   // Alternar para outro usuário que já está logado
   const handleSelectUser = async (user: UserSession) => {
+    const eff = getEffectiveDiaEscala(user, user.turma);
+    if (eff) user.diaEscala = cleanDiaEscala(eff);
+
     setCurrentUser(user);
     localStorage.setItem('passaturno-user', JSON.stringify(user));
     const uTurma = normalizeTurma(user.turma) || user.turma?.toUpperCase().trim() || 'A';

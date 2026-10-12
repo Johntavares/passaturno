@@ -146,3 +146,180 @@ export function formatBRTime(
     ...options,
   }).format(d);
 }
+
+// ============================================================================
+// PROGRESSÃO AUTOMÁTICA DA ESCALA DE TRABALHO (EX: 3x3, 2x3, 4x3)
+// ============================================================================
+
+/**
+ * Remove anotações extras e referências de data, retornando a string limpa
+ * como '1º Dia', '2º Dia', '3º Dia' ou 'Folga'.
+ */
+export function cleanDiaEscala(raw?: string | null): string {
+  if (!raw) return '1º Dia';
+  const cleaned = raw.replace(/\[\d{4}-\d{2}-\d{2}\]/g, '').trim();
+  return cleaned || '1º Dia';
+}
+
+/**
+ * Extrai o dia base e a data de referência a partir de uma string codificada ou crua.
+ */
+export function parseDiaEscala(raw?: string | null): { baseDia: string; baseDate: string | null } {
+  if (!raw) return { baseDia: '1º Dia', baseDate: null };
+  const match = raw.match(/^(.*?)\s*\[(\d{4}-\d{2}-\d{2})\]$/);
+  if (match) {
+    return {
+      baseDia: cleanDiaEscala(match[1]),
+      baseDate: match[2],
+    };
+  }
+  return {
+    baseDia: cleanDiaEscala(raw),
+    baseDate: null,
+  };
+}
+
+/**
+ * Calcula dinamicamente o dia da escala atual (ex: 3x3) a partir de uma data de referência.
+ * Na escala 3x3:
+ * - 1º Dia -> 2º Dia -> 3º Dia -> Folga (3 dias de folga) -> 1º Dia (repete o ciclo de 6 dias).
+ */
+export function calculateCurrentDiaEscala(
+  baseDia: string,
+  baseDateYMD: string,
+  escala = '3x3',
+  targetDateYMD?: string
+): string {
+  const cleanBase = cleanDiaEscala(baseDia);
+  const targetYMD = targetDateYMD || getTodayYMDInBR();
+
+  // Parsing da escala (ex: '3x3' -> 3 dias de trabalho, 3 dias de folga)
+  const matchEscala = (escala || '3x3').match(/^(\d+)\s*[xX]\s*(\d+)$/);
+  const workDays = matchEscala ? Math.max(1, parseInt(matchEscala[1], 10) || 3) : 3;
+  const offDays = matchEscala ? Math.max(1, parseInt(matchEscala[2], 10) || 3) : 3;
+  const cycleLength = workDays + offDays;
+
+  // Determina o índice base no ciclo (0 = 1º Dia, 1 = 2º Dia, etc.)
+  let baseIndex = 0;
+  const lower = cleanBase.toLowerCase();
+  if (lower.includes('folga')) {
+    baseIndex = workDays; // Primeiro dia de folga
+  } else {
+    const numMatch = cleanBase.match(/(\d+)/);
+    if (numMatch) {
+      baseIndex = Math.max(0, parseInt(numMatch[1], 10) - 1);
+    }
+  }
+
+  // Diferença em dias corridos calculados a partir de UTC meia-noite para evitar desvios de timezone
+  const [y1, m1, d1] = baseDateYMD.split('-').map(Number);
+  const [y2, m2, d2] = targetYMD.split('-').map(Number);
+  if (isNaN(y1) || isNaN(m1) || isNaN(d1) || isNaN(y2) || isNaN(m2) || isNaN(d2)) {
+    return cleanBase;
+  }
+
+  const utc1 = Date.UTC(y1, m1 - 1, d1);
+  const utc2 = Date.UTC(y2, m2 - 1, d2);
+  const diffDays = Math.round((utc2 - utc1) / (24 * 60 * 60 * 1000));
+
+  const currentCycleIndex = ((baseIndex + diffDays) % cycleLength + cycleLength) % cycleLength;
+
+  if (currentCycleIndex < workDays) {
+    return `${currentCycleIndex + 1}º Dia`;
+  }
+  return 'Folga';
+}
+
+const ESCALA_REF_PREFIX = 'passaturno-escala-ref-';
+
+export interface EscalaReference {
+  baseDia: string;
+  baseDate: string;
+  escala: string;
+  turma?: string;
+  userId?: string;
+}
+
+/**
+ * Salva a referência da escala no localStorage (por turma e usuário).
+ */
+export function saveEscalaReference(ref: {
+  baseDia: string;
+  baseDate?: string;
+  escala?: string;
+  turma?: string;
+  userId?: string;
+}): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const today = getTodayYMDInBR();
+    const data: EscalaReference = {
+      baseDia: cleanDiaEscala(ref.baseDia),
+      baseDate: ref.baseDate || today,
+      escala: ref.escala || '3x3',
+      turma: ref.turma,
+      userId: ref.userId,
+    };
+    if (ref.turma) {
+      const cleanT = normalizeTurma(ref.turma) || ref.turma;
+      localStorage.setItem(`${ESCALA_REF_PREFIX}turma-${cleanT}`, JSON.stringify(data));
+    }
+    if (ref.userId) {
+      localStorage.setItem(`${ESCALA_REF_PREFIX}user-${ref.userId}`, JSON.stringify(data));
+    }
+    localStorage.setItem(`${ESCALA_REF_PREFIX}current`, JSON.stringify(data));
+  } catch (e) {
+    console.warn('Erro ao salvar referência de escala:', e);
+  }
+}
+
+/**
+ * Obtém a referência da escala do localStorage.
+ */
+export function getEscalaReference(turma?: string, userId?: string): EscalaReference | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    if (userId) {
+      const u = localStorage.getItem(`${ESCALA_REF_PREFIX}user-${userId}`);
+      if (u) return JSON.parse(u);
+    }
+    if (turma) {
+      const cleanT = normalizeTurma(turma) || turma;
+      const t = localStorage.getItem(`${ESCALA_REF_PREFIX}turma-${cleanT}`);
+      if (t) return JSON.parse(t);
+    }
+    const c = localStorage.getItem(`${ESCALA_REF_PREFIX}current`);
+    if (c) return JSON.parse(c);
+  } catch {}
+  return null;
+}
+
+/**
+ * Calcula o dia efetivo de hoje para um usuário / turma, considerando avanço automático.
+ */
+export function getEffectiveDiaEscala(user?: any, turma?: string): string {
+  const userTurma = turma || user?.turma || 'A';
+  const escala = user?.escala || '3x3';
+  const parsed = parseDiaEscala(user?.diaEscala);
+  let baseDia = parsed.baseDia;
+  let baseDate = parsed.baseDate || user?.diaEscalaDataRef;
+
+  // Se não tem data no objeto user, busca no localStorage
+  if (!baseDate && typeof window !== 'undefined') {
+    const ref = getEscalaReference(userTurma, user?.id);
+    if (ref && ref.baseDate) {
+      baseDate = ref.baseDate;
+      if (!user?.diaEscala || cleanDiaEscala(user.diaEscala) === '1º Dia') {
+        baseDia = ref.baseDia;
+      }
+    }
+  }
+
+  // Se ainda não tiver data base, adota a data de hoje para iniciar a contagem
+  if (!baseDate) {
+    return cleanDiaEscala(baseDia);
+  }
+
+  return calculateCurrentDiaEscala(baseDia, baseDate, escala);
+}
+
