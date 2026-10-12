@@ -108,6 +108,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [ausenciaMotivo, setAusenciaMotivo] = useState('');
   const [equipeSaving, setEquipeSaving] = useState(false);
   const [equipeSavedMsg, setEquipeSavedMsg] = useState('');
+  const [isDownloadingBackup, setIsDownloadingBackup] = useState(false);
 
   // Carregar configuração da equipe da turma ao abrir o modal
   React.useEffect(() => {
@@ -270,7 +271,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     window.open('/api/relatorio', '_blank');
   };
 
-  const [isDownloadingBackup, setIsDownloadingBackup] = useState(false);
   const handleDownloadBackup = async () => {
     try {
       setIsDownloadingBackup(true);
