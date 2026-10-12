@@ -633,9 +633,16 @@ export default function Home() {
                   setLoggedInUsers(finalList);
                   localStorage.setItem('passaturno-users-list', JSON.stringify(finalList));
                 }
+              } else if (freshRes.status === 404) {
+                // Usuário não existe no banco de dados (sessão obsoleta/antiga): limpa cache e restaura tela de login
+                localStorage.removeItem('passaturno-user');
+                localStorage.removeItem('passaturno-users-list');
+                setCurrentUser(null);
+                setLoggedInUsers([]);
+                return;
               }
             } catch (syncErr) {
-              // Falha silenciosa — usa dados do cache normalmente
+              // Falha de rede temporária — mantém dados do cache
               console.warn('Sincronização de perfil em background falhou:', syncErr);
             }
           }

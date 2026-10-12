@@ -55,12 +55,12 @@ export const IncidentHistoryTabModal: React.FC<IncidentHistoryTabModalProps> = (
     const q = searchTerm.toLowerCase().trim();
     const matchesSearch =
       !q ||
-      item.tag.toLowerCase().includes(q) ||
-      item.equipamentoNome.toLowerCase().includes(q) ||
-      item.falha.toLowerCase().includes(q) ||
-      item.responsavel.toLowerCase().includes(q) ||
-      (item.solucao && item.solucao.toLowerCase().includes(q)) ||
-      (item.observacao && item.observacao.toLowerCase().includes(q));
+      (item.tag || '').toLowerCase().includes(q) ||
+      (item.equipamentoNome || '').toLowerCase().includes(q) ||
+      (item.falha || '').toLowerCase().includes(q) ||
+      (item.responsavel || '').toLowerCase().includes(q) ||
+      ((item.solucao || '').toLowerCase().includes(q)) ||
+      ((item.observacao || '').toLowerCase().includes(q));
 
     const matchesStatus = statusFilter === 'TODOS' || item.status === statusFilter;
     const matchesArea = areaFilter === 'TODAS' || item.area === areaFilter;

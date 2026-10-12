@@ -28,6 +28,7 @@ export async function GET(request: Request) {
       'usr-turma-b-official': '1002',
       'usr-turma-c-official': '1003',
       'usr-turma-d-official': '1004',
+      'usr-lider-official': '9999',
     };
 
     const targetMatricula = matricula || (id ? mockIdToMatricula[id] : null);

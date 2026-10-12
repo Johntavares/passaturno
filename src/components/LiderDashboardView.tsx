@@ -568,11 +568,11 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
     if (reportSearchTerm.trim()) {
       const q = reportSearchTerm.toLowerCase().trim();
       const matches =
-        i.tag.toLowerCase().includes(q) ||
-        i.equipamentoNome.toLowerCase().includes(q) ||
-        i.falha.toLowerCase().includes(q) ||
-        i.responsavel.toLowerCase().includes(q) ||
-        (i.tipoFalha && i.tipoFalha.toLowerCase().includes(q));
+        (i.tag || '').toLowerCase().includes(q) ||
+        (i.equipamentoNome || '').toLowerCase().includes(q) ||
+        (i.falha || '').toLowerCase().includes(q) ||
+        (i.responsavel || '').toLowerCase().includes(q) ||
+        ((i.tipoFalha || '').toLowerCase().includes(q));
       if (!matches) return false;
     }
 
@@ -670,12 +670,12 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
     const matchesStatus = historyStatusFilter === 'TODOS' || i.status === historyStatusFilter;
     const matchesSearch =
       !q ||
-      i.tag.toLowerCase().includes(q) ||
-      i.equipamentoNome.toLowerCase().includes(q) ||
-      i.falha.toLowerCase().includes(q) ||
-      i.responsavel.toLowerCase().includes(q) ||
-      (i.solucao && i.solucao.toLowerCase().includes(q)) ||
-      (i.observacao && i.observacao.toLowerCase().includes(q));
+      (i.tag || '').toLowerCase().includes(q) ||
+      (i.equipamentoNome || '').toLowerCase().includes(q) ||
+      (i.falha || '').toLowerCase().includes(q) ||
+      (i.responsavel || '').toLowerCase().includes(q) ||
+      ((i.solucao || '').toLowerCase().includes(q)) ||
+      ((i.observacao || '').toLowerCase().includes(q));
 
     return matchesTurma && matchesStatus && matchesSearch;
   });

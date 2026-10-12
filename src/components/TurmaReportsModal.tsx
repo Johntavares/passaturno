@@ -119,11 +119,11 @@ export const TurmaReportsModal: React.FC<TurmaReportsModalProps> = ({
     if (reportSearchTerm.trim()) {
       const q = reportSearchTerm.toLowerCase().trim();
       const matches =
-        i.tag.toLowerCase().includes(q) ||
-        i.equipamentoNome.toLowerCase().includes(q) ||
-        i.falha.toLowerCase().includes(q) ||
-        i.responsavel.toLowerCase().includes(q) ||
-        (i.tipoFalha && i.tipoFalha.toLowerCase().includes(q));
+        (i.tag || '').toLowerCase().includes(q) ||
+        (i.equipamentoNome || '').toLowerCase().includes(q) ||
+        (i.falha || '').toLowerCase().includes(q) ||
+        (i.responsavel || '').toLowerCase().includes(q) ||
+        ((i.tipoFalha || '').toLowerCase().includes(q));
       if (!matches) return false;
     }
 

@@ -73,11 +73,12 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
   // Filtragem de busca e área
   const filteredIncidents = incidents.filter((item) => {
+    const term = (searchTerm || '').toLowerCase();
     const matchesSearch =
-      item.tag.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.equipamentoNome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.falha.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.responsavel.toLowerCase().includes(searchTerm.toLowerCase());
+      (item.tag || '').toLowerCase().includes(term) ||
+      (item.equipamentoNome || '').toLowerCase().includes(term) ||
+      (item.falha || '').toLowerCase().includes(term) ||
+      (item.responsavel || '').toLowerCase().includes(term);
 
     const matchesArea = selectedArea === 'TODAS' || item.area === selectedArea;
 
