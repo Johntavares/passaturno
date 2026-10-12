@@ -135,9 +135,6 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [operatorReplies, setOperatorReplies] = useState<OperatorReply[]>([]);
 
-  // Time clock
-  const [currentTime, setCurrentTime] = useState<string>('');
-
   const loadUsers = async () => {
     try {
       const res = await fetch('/api/usuarios');
@@ -177,14 +174,7 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
     loadReplies();
   }, []);
 
-  useEffect(() => {
-    const updateTime = () => {
-      setCurrentTime(format(new Date(), "EEEE, dd 'de' MMMM 'de' yyyy • HH:mm:ss"));
-    };
-    updateTime();
-    const interval = setInterval(updateTime, 1000);
-    return () => clearInterval(interval);
-  }, []);
+  // (Relógio por segundo removido: o valor não era exibido e forçava re-render completo do painel a cada 1s)
 
   // Polling de respostas a cada 10s
   useEffect(() => {
@@ -845,6 +835,30 @@ export const LiderDashboardView: React.FC<LiderDashboardViewProps> = ({
             </button>
           </div>
         </header>
+
+        {/* Navegação para telas menores (a sidebar fica oculta abaixo de 1024px) */}
+        <nav className="lg:hidden bg-white border-b border-slate-200 px-4 py-2 flex gap-1.5 overflow-x-auto">
+          {[
+            { id: 'dashboard',     label: 'Dashboard', icon: LayoutDashboard },
+            { id: 'reports',       label: 'Relatórios', icon: BarChart3 },
+            { id: 'team',          label: 'Gestão de Turma', icon: Users },
+            { id: 'notifications', label: 'Notificações', icon: Megaphone },
+          ].map(({ id, label, icon: Icon }) => (
+            <button
+              key={`mobile-${id}`}
+              id={`lider-mobile-nav-${id}`}
+              onClick={() => setActiveSection(id as typeof activeSection)}
+              className={`flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                activeSection === id
+                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                  : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800 border border-transparent'
+              }`}
+            >
+              <Icon className={`w-4 h-4 ${activeSection === id ? 'text-emerald-600' : 'text-slate-400'}`} />
+              {label}
+            </button>
+          ))}
+        </nav>
 
         {/* CONTEÚDO PRINCIPAL RENDERIZADO CONFORME A ABA ATIVA */}
         <div className="p-6 space-y-6 max-w-[1600px] w-full mx-auto">

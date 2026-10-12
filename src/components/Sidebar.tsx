@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { UserSession } from './HeaderNav';
 import {
   Plus,
@@ -35,8 +35,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
+  // Em telas estreitas (< 1024px) inicia recolhido (apenas ícones) para não ocupar espaço
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      setIsCollapsed(true);
+    }
+  }, []);
+
   return (
-    <aside className={`${isCollapsed ? 'w-16' : 'w-56'} theme-card flex flex-col justify-between hidden lg:flex flex-shrink-0 border-r relative z-30 transition-all duration-300`}>
+    <aside className={`${isCollapsed ? 'w-16' : 'w-56'} theme-card flex flex-col justify-between flex-shrink-0 border-r relative z-30 transition-all duration-300`}>
       
       {/* Floating Toggle Button */}
       <button

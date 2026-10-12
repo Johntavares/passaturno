@@ -35,16 +35,9 @@ import { getOfflineQueue, syncOfflineQueue, hasOfflinePending } from '@/lib/offl
 import { CheckCircle2, RefreshCw, AlertTriangle } from 'lucide-react';
 
 export default function Home() {
-  const [incidents, setIncidents] = useState<IncidentType[]>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const cacheKey = 'passaturno-cache-incidents-GLOBAL';
-        const saved = localStorage.getItem(cacheKey);
-        if (saved) return JSON.parse(saved);
-      } catch (e) {}
-    }
-    return [];
-  });
+  // IMPORTANTE: o estado inicial precisa ser idêntico no servidor e no cliente (evita erro de hidratação).
+  // O cache local é carregado em um useEffect após a montagem.
+  const [incidents, setIncidents] = useState<IncidentType[]>([]);
   const [equipments, setEquipments] = useState<EquipmentType[]>([]);
   const [activeShift, setActiveShift] = useState<ShiftType | null>(null);
   const [currentUser, setCurrentUser] = useState<UserSession | null>(null);
@@ -53,7 +46,7 @@ export default function Home() {
   const [theme, setTheme] = useState<'light' | 'dark' | 'mina'>('light');
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(() => new Date());
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Modals state
@@ -83,16 +76,23 @@ export default function Home() {
   const pendingOverridesRef = useRef<Map<string, { patch: Record<string, unknown>; ts: number }>>(new Map());
 
   // Estado da fila de contingência offline
-  const [offlinePendingCount, setOfflinePendingCount] = useState<number>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        return getOfflineQueue().length;
-      } catch (e) {}
-    }
-    return 0;
-  });
+  const [offlinePendingCount, setOfflinePendingCount] = useState<number>(0);
   const [isSyncingOffline, setIsSyncingOffline] = useState(false);
   const equipmentsRef = useRef<EquipmentType[]>([]);
+
+  // Hidrata o cache local somente no cliente, após a montagem
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('passaturno-cache-incidents-GLOBAL');
+      if (saved) {
+        const parsed = JSON.parse(saved) as IncidentType[];
+        setIncidents((prev) => (prev.length === 0 ? parsed : prev));
+      }
+    } catch (e) {}
+    try {
+      setOfflinePendingCount(getOfflineQueue().length);
+    } catch (e) {}
+  }, []);
 
   const markPending = useCallback((id: string, patch: Record<string, unknown>) => {
     pendingOverridesRef.current.set(id, { patch, ts: Date.now() });
@@ -167,7 +167,7 @@ export default function Home() {
     });
   };
 
-  const loadData = useCallback(async (turmaOverride?: string, forceRefreshEquipments = false) => {
+  const loadDataRaw = useCallback(async (turmaOverride?: string, forceRefreshEquipments = false) => {
     const deletedIds = getDeletedIds();
 
     const savedUserStr = typeof window !== 'undefined' ? localStorage.getItem('passaturno-user') : null;
@@ -313,6 +313,22 @@ export default function Home() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Evita requisições sobrepostas: cada carga baixa ~1 MB de atendimentos, grava no localStorage
+  // e re-renderiza a tela inteira. Chamadas simultâneas reaproveitam a requisição em andamento.
+  const loadInFlightRef = useRef<Promise<void> | null>(null);
+  const lastLoadAtRef = useRef<number>(0);
+  const loadData = useCallback((turmaOverride?: string, forceRefreshEquipments = false): Promise<void> => {
+    if (loadInFlightRef.current && !turmaOverride && !forceRefreshEquipments) {
+      return loadInFlightRef.current;
+    }
+    const p = loadDataRaw(turmaOverride, forceRefreshEquipments).finally(() => {
+      lastLoadAtRef.current = Date.now();
+      if (loadInFlightRef.current === p) loadInFlightRef.current = null;
+    });
+    loadInFlightRef.current = p;
+    return p;
+  }, [loadDataRaw]);
+
   const handleManualRefresh = useCallback(async () => {
     setIsRefreshing(true);
     try {
@@ -381,6 +397,8 @@ export default function Home() {
 
     const handleVisibility = () => {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        // Throttle: não recarrega se a última carga foi há menos de 15s
+        if (Date.now() - lastLoadAtRef.current < 15000) return;
         loadData();
       }
     };
